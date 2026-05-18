@@ -717,6 +717,9 @@ class HASmartReports extends HTMLElement {
     this._config = {};
     this._activeTab = 'energy';
     this._period = '7d';
+    // Scaffold-once perf guard: full shadowRoot innerHTML is built once,
+    // subsequent hass updates only patch #tabContent via _updateData().
+    this._scaffoldRendered = false;
   }
 
   set hass(hass) {
@@ -726,7 +729,6 @@ class HASmartReports extends HTMLElement {
     const now = Date.now();
     if (!this._firstHassRender) {
       this._firstHassRender = true;
-      this._updateData();
       this._render();
       this._lastRenderTime = now;
       return;
@@ -737,15 +739,13 @@ class HASmartReports extends HTMLElement {
         this._renderScheduled = true;
         setTimeout(() => {
           this._renderScheduled = false;
-      this._updateData();
-          this._render();
+          this._updateData();
           this._lastRenderTime = Date.now();
         }, 5000 - (now - (this._lastRenderTime || 0)));
       }
       return;
     }
-      this._updateData();
-    this._render();
+    this._updateData();
     this._lastRenderTime = now;
   }
 
@@ -815,6 +815,13 @@ class HASmartReports extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
+    // Scaffold-once: a previously-built shadowRoot stays put on subsequent
+    // hass updates. Only #tabContent is patched via _updateData(); this avoids
+    // the ~10 KB <style> + DOM teardown that was freezing the main thread.
+    if (this._scaffoldRendered) {
+      this._updateData();
+      return;
+    }
     const tabs = [];
     if (this._config.show_energy) tabs.push({ id: 'energy', label: 'Energy', icon: '⚡' });
     if (this._config.show_automations) tabs.push({ id: 'automations', label: 'Automations', icon: '🤖' });
@@ -1264,6 +1271,7 @@ canvas {
         </div>
       
     `;
+    this._scaffoldRendered = true;
     this._attachEvents();
     this._updateData();
   }

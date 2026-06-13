@@ -825,6 +825,8 @@ class HAEnergyEmail extends HTMLElement {
 
   getCardSize() { return 4; }
 
+  getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
+
   _getRate(hour, dayOfWeek) {
     const c = this._config;
     const mode = c.energy_tariff_mode || 'flat';

@@ -21,6 +21,8 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
    HA Tools — Bento Design System v2.0 (Premium)
    ═══════════════════════════════════════════════ */
 
+/* keyboard a11y */
+:focus-visible { outline: 2px solid var(--bento-primary, #6366f1); outline-offset: 2px; border-radius: 3px; }
 
 :host {
   /* Brand palette — diamond top, gradient-friendly */
@@ -1265,7 +1267,7 @@ canvas {
         <div class="card">
           <div class="card-header">
             <h2>${_esc(this._config.title || '')}</h2>
-            <select class="period-select" id="periodSelect">
+            <select class="period-select" id="periodSelect" aria-label="Report period">
               <option value="1d">Today</option>
               <option value="7d" selected>Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -1318,7 +1320,10 @@ canvas {
     if (!content || !this._hass) return;
 
     switch (this._activeTab) {
-      case 'energy': this._renderEnergy(content).catch(e => console.error('[ha-smart-reports] Energy render error:', e)); break;
+      case 'energy':
+        content.innerHTML = '<div class="loading-bar" role="status" aria-label="Loading energy data"></div>';
+        this._renderEnergy(content).catch(e => console.error('[ha-smart-reports] Energy render error:', e));
+        break;
       case 'automations': this._renderAutomations(content); break;
       case 'system': this._renderSystem(content); break;
     }

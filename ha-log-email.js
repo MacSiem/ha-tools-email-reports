@@ -23,6 +23,8 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
    HA Tools — Bento Design System v2.0 (Premium)
    ═══════════════════════════════════════════════ */
 
+/* keyboard a11y */
+:focus-visible { outline: 2px solid var(--bento-primary, #6366f1); outline-offset: 2px; border-radius: 3px; }
 
 :host {
   /* Brand palette — diamond top, gradient-friendly */
@@ -1023,7 +1025,7 @@ class HALogEmail extends HTMLElement {
           '</div>' +
         '</div>' +
         '<div class="smtp-actions">' +
-          '<button class="send-btn" id="btn-smtp-test" style="width:auto;padding:8px 16px" ' + (this._smtpTesting ? 'disabled' : '') + '>' +
+          '<button class="send-btn" id="btn-smtp-test" aria-label="' + (this._lang === 'pl' ? 'Wyślij email testowy' : 'Send test email') + '" style="width:auto;padding:8px 16px" ' + (this._smtpTesting ? 'disabled' : '') + '>' +
             (this._smtpTesting ? (this._lang === 'pl' ? '\u23F3 Wysyłam...' : '\u23F3 Sending...') : (this._lang === 'pl' ? '\u{1F4E8} Wyślij test' : '\u{1F4E8} Send test')) +
           '</button>' +
           statusBadge +
@@ -1275,7 +1277,7 @@ class HALogEmail extends HTMLElement {
       tabContent = `
         <div class="section-header">
           <span>Email Preview</span>
-          <button class="refresh-btn" id="btn-refresh-preview">\uD83D\uDD04 Refresh Data</button>
+          <button class="refresh-btn" id="btn-refresh-preview" aria-label="Refresh log data">\uD83D\uDD04 Refresh Data</button>
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${this._buildEmailPreview()}
@@ -1292,7 +1294,7 @@ class HALogEmail extends HTMLElement {
               <span class="count-badge error-badge">${totalErrors} errors</span>
               <span class="count-badge warn-badge">${totalWarnings} warnings</span>
             </div>
-            <button class="send-btn" id="btn-send-daily">Send Daily Email</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="Send daily log email">Send Daily Email</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
@@ -1301,7 +1303,7 @@ class HALogEmail extends HTMLElement {
             <div class="send-counts">
               <span class="count-badge info-badge">7 days</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly">Send Weekly Email</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="Send weekly log email">Send Weekly Email</button>
           </div>
         </div>
         ${sendStatusHTML}

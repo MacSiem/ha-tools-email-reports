@@ -18,7 +18,7 @@
   var FILES = ["ha-energy-email.js", "ha-log-email.js", "ha-smart-reports.js"];
   Promise.all(FILES.map(load)).then(function(r) {
     var ok = r.filter(Boolean).length;
-    console.info('%c HA Tools — Email & Reports %c v4.1.6 — ' + ok + '/' + FILES.length + ' loaded',
+    console.info('%c HA Tools — Email & Reports %c v4.1.7 — ' + ok + '/' + FILES.length + ' loaded',
       'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
       'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');
   });

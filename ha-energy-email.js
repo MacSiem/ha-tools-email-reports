@@ -33,6 +33,8 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
    HA Tools — Bento Design System v2.0 (Premium)
    ═══════════════════════════════════════════════ */
 
+/* keyboard a11y */
+:focus-visible { outline: 2px solid var(--bento-primary, #6366f1); outline-offset: 2px; border-radius: 3px; }
 
 :host {
   /* Brand palette — diamond top, gradient-friendly */
@@ -1572,12 +1574,12 @@ class HAEnergyEmail extends HTMLElement {
             <div class="header-sub">${recipientDisplay} \u00A0\u2022\u00A0 <span id="price-display" style="cursor:pointer;color:var(--bento-primary);border-bottom:1px dashed var(--bento-primary)" title="${L ? 'Kliknij aby zmieni\u0107' : 'Click to change'}">${_esc(this._config.currency)} ${this._getTariffLabel()} \u270E</span></div>
           </div>
         </div>
-        <div class="tabs">
-          <button class="tab-btn ${this._activeTab === 'overview' ? 'active' : ''}" data-tab="overview">\u{1F4CA} Overview</button>
-          <button class="tab-btn ${this._activeTab === 'schedule' ? 'active' : ''}" data-tab="schedule">\u{1F4C5} Schedule</button>
-          <button class="tab-btn ${this._activeTab === 'preview' ? 'active' : ''}" data-tab="preview">\u{1F4CB} Preview</button>
-          <button class="tab-btn ${this._activeTab === 'send' ? 'active' : ''}" data-tab="send">\u{1F4E4} Send Now</button>
-          <button class="tab-btn ${this._activeTab === 'config' ? 'active' : ''}" data-tab="config">\u2699\uFE0F Config</button>
+        <div class="tabs" role="tablist">
+          <button class="tab-btn ${this._activeTab === 'overview' ? 'active' : ''}" data-tab="overview" role="tab" aria-selected="${this._activeTab === 'overview'}">\u{1F4CA} Overview</button>
+          <button class="tab-btn ${this._activeTab === 'schedule' ? 'active' : ''}" data-tab="schedule" role="tab" aria-selected="${this._activeTab === 'schedule'}">\u{1F4C5} Schedule</button>
+          <button class="tab-btn ${this._activeTab === 'preview' ? 'active' : ''}" data-tab="preview" role="tab" aria-selected="${this._activeTab === 'preview'}">\u{1F4CB} Preview</button>
+          <button class="tab-btn ${this._activeTab === 'send' ? 'active' : ''}" data-tab="send" role="tab" aria-selected="${this._activeTab === 'send'}">\u{1F4E4} Send Now</button>
+          <button class="tab-btn ${this._activeTab === 'config' ? 'active' : ''}" data-tab="config" role="tab" aria-selected="${this._activeTab === 'config'}">\u2699\uFE0F Config</button>
         </div>
         <div id="tab-content"></div>
       </div>
@@ -1981,17 +1983,17 @@ class HAEnergyEmail extends HTMLElement {
       <div class="schedule-card">
         <div class="schedule-row"><div class="schedule-name">\u2600\uFE0F ${L ? 'Wy\u015Blij raport dzienny' : 'Send Daily Report Now'}</div><span class="badge badge-pr">Manual</span></div>
         <div id="last-daily" class="last-sent">${this._lastSent.daily ? 'Last sent: ' + this._lastSent.daily : ''}</div>
-        <div class="btn-row"><button class="btn btn-primary" id="send-daily" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u2600\uFE0F Send Daily'}</button></div>
+        <div class="btn-row"><button class="btn btn-primary" id="send-daily" aria-label="${L ? 'Wyślij raport dzienny' : 'Send Daily Report'}" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u2600\uFE0F Send Daily'}</button></div>
       </div>
       <div class="schedule-card">
         <div class="schedule-row"><div class="schedule-name">\u{1F4C6} ${L ? 'Wy\u015Blij raport tygodniowy' : 'Send Weekly Report Now'}</div><span class="badge badge-pr">Manual</span></div>
         <div id="last-weekly" class="last-sent">${this._lastSent.weekly ? 'Last sent: ' + this._lastSent.weekly : ''}</div>
-        <div class="btn-row"><button class="btn btn-primary" id="send-weekly" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u{1F4E4} Send Weekly'}</button></div>
+        <div class="btn-row"><button class="btn btn-primary" id="send-weekly" aria-label="${L ? 'Wyślij raport tygodniowy' : 'Send Weekly Report'}" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u{1F4E4} Send Weekly'}</button></div>
       </div>
       <div class="schedule-card">
         <div class="schedule-row"><div class="schedule-name">\u{1F4C8} ${L ? 'Wy\u015Blij raport miesi\u0119czny' : 'Send Monthly Report Now'}</div><span class="badge badge-pr">Manual</span></div>
         <div id="last-monthly" class="last-sent">${this._lastSent.monthly ? 'Last sent: ' + this._lastSent.monthly : ''}</div>
-        <div class="btn-row"><button class="btn btn-primary" id="send-monthly" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u{1F4C8} Send Monthly'}</button></div>
+        <div class="btn-row"><button class="btn btn-primary" id="send-monthly" aria-label="${L ? 'Wyślij raport miesięczny' : 'Send Monthly Report'}" ${this._sending ? 'disabled' : ''}>${this._sending ? '<span class="spinner"></span>Sending...' : '\u{1F4C8} Send Monthly'}</button></div>
       </div>
       <div class="schedule-card">
         <div class="schedule-row"><div class="schedule-name">\u{1F4E7} ${L ? 'Szybkie podsumowanie' : 'Quick Summary'}</div><span class="badge badge-ok">Instant</span></div>

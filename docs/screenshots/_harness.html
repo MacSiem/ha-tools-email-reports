@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EER screenshot harness</title>
+<style>
+  html, body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body.light { background: #f4f5f7; }
+  body.light ha-energy-email { --card-background-color: #ffffff; --primary-background-color: #f4f5f7; }
+  body.dark { background: #111318; }
+  body.dark ha-energy-email { --card-background-color: #1c1e26; --primary-background-color: #111318; }
+  ha-energy-email { display: block; width: 480px; }
+</style>
+</head>
+<body>
+<ha-energy-email id="card"></ha-energy-email>
+<script>
+  try { localStorage.setItem('ha-intro-dismissed-ha-energy-email', '1'); } catch (e) {}
+</script>
+<script src="../../ha-energy-email.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
+  document.body.className = theme;
+  const now = Date.now(); const h = 3600000; const min = 60000;
+
+  const mk = (id, name, state, attrs, lastChanged) => ({
+    entity_id: id, state,
+    attributes: Object.assign({ friendly_name: name }, attrs || {}),
+    last_changed: new Date(now - (lastChanged || h)).toISOString(),
+    last_updated: new Date(now - (lastChanged || h)).toISOString(),
+  });
+
+  // Energy sensors — auto-discovered by the card via device_class:'energy'
+  // (or kWh/Wh + total_increasing/total/measurement state class), same
+  // detection the real card uses (ha-energy-email.js _discoverEnergySensors).
+  const energySensors = [
+    mk('sensor.solar_energy', 'Solar Energy', '412.6', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 5 * min),
+    mk('sensor.kitchen_energy', 'Kitchen Energy', '38.2', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 8 * min),
+    mk('sensor.heat_pump_energy', 'Heat Pump Energy', '256.9', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 6 * min),
+    mk('sensor.ev_charger_energy', 'EV Charger Energy', '184.3', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 4 * min),
+    mk('sensor.living_room_energy', 'Living Room Energy', '22.7', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 9 * min),
+    mk('sensor.office_energy', 'Office Energy', '17.1', { unit_of_measurement: 'kWh', device_class: 'energy', state_class: 'total_increasing' }, 7 * min),
+  ];
+
+  // HA-native persistence helpers the card reads via _helperEntity()/_loadFromHelpers()
+  // — pre-populated so it renders as "already configured" without the card
+  // needing to create them through input_text/create first.
+  const helperEntities = [
+    mk('input_text.energy_email_recipient', 'Energy Email Recipient', 'family@example.com', {}, 2 * h),
+    mk('input_text.energy_email_service', 'Energy Email Service', '', {}, 2 * h),
+    mk('input_text.energy_email_daily_time', 'Energy Email Daily Time', '07:30', {}, 2 * h),
+    mk('input_text.energy_email_weekly_time', 'Energy Email Weekly Time', '08:00', {}, 2 * h),
+    mk('input_text.energy_email_weekly_day', 'Energy Email Weekly Day', 'mon', {}, 2 * h),
+    mk('input_text.energy_email_monthly_time', 'Energy Email Monthly Time', '08:00', {}, 2 * h),
+    mk('input_text.energy_email_price', 'Energy Email Price', '0.15', {}, 2 * h),
+    mk('input_text.energy_email_excluded', 'Energy Email Excluded', '', {}, 2 * h),
+  ];
+
+  // Schedule automations the card itself would have created via
+  // config/automation/config: daily + weekly already on, monthly not yet
+  // created — a realistic "partially configured" schedule.
+  const scheduleAutomations = [
+    mk('automation.send_daily_energy_report', 'Send Daily Energy Report', 'on', { last_triggered: new Date(now - 15 * h).toISOString(), mode: 'single' }, 15 * h),
+    mk('automation.send_weekly_energy_report', 'Send Weekly Energy Report', 'on', { last_triggered: new Date(now - 3 * 24 * h).toISOString(), mode: 'single' }, 3 * 24 * h),
+    // automation.send_monthly_energy_report intentionally absent — shows "Not Created".
+  ];
+
+  const states = {};
+  [...energySensors, ...helperEntities, ...scheduleAutomations].forEach(e => { states[e.entity_id] = e; });
+
+  // Per-device recorder stats keyed by entity_id, shape matching
+  // recorder/statistics_during_period: { [entity_id]: [{ change, ... }, ...] }.
+  function statsFor(period) {
+    const scale = period === 'day' ? 0.03 : period === 'week' ? 0.2 : 1;
+    const out = {};
+    energySensors.forEach((s) => {
+      const base = parseFloat(s.state) * scale;
+      out[s.entity_id] = [
+        { start: new Date(now - 2 * h).toISOString(), change: +(base * 0.55).toFixed(2) },
+        { start: new Date(now - h).toISOString(), change: +(base * 0.45).toFixed(2) },
+      ];
+    });
+    return out;
+  }
+
+  const hass = {
+    language: 'en',
+    themes: { darkMode: theme === 'dark' },
+    states,
+    // Presence of ha_tools_email.send is exactly what the card checks
+    // (_hasHaToolsEmail) to decide the integration is installed.
+    services: { ha_tools_email: { send: {}, test: {}, get_config: {}, save_config: {}, list_secrets: {} }, automation: { turn_on: {}, turn_off: {} } },
+    connection: { subscribeEvents: () => Promise.resolve(() => {}) },
+    callWS: async (msg) => {
+      const t = String(msg && msg.type || '');
+      if (t === 'config/entity_registry/list') {
+        return helperEntities.map((e) => ({ entity_id: e.entity_id }));
+      }
+      if (t === 'input_text/create') return { entity_id: 'input_text.demo' };
+      if (t === 'config/config_entries') {
+        return [{ domain: 'ha_tools_email', data: { default_recipient: 'family@example.com' } }];
+      }
+      if (t === 'recorder/statistics_during_period') {
+        const period = msg.period === 'hour' ? 'day' : (msg.period === 'day' && msg.end_time && (new Date(msg.end_time) - new Date(msg.start_time)) > 200 * h ? 'month' : 'week');
+        return statsFor(period);
+      }
+      if (t === 'config/automation/config') return { result: 'ok' };
+      return {};
+    },
+    callApi: async () => ({}),
+    callService: async (domain, service) => {
+      if (domain === 'ha_tools_email' && service === 'get_config') return { default_recipient: 'family@example.com' };
+      return {};
+    },
+  };
+
+  const card = document.getElementById('card');
+  card.setConfig({ type: 'custom:ha-energy-email', title: 'Energy Email Reports', currency: 'USD', energy_price: 0.15 });
+  card.hass = hass;
+  setTimeout(() => { card.hass = Object.assign({}, hass); }, 400);
+
+  // Default to the Schedule tab — it's the view that best shows the
+  // integration-detected state (SMTP-configured banner) plus a
+  // partially-configured schedule (daily/weekly on, monthly not created).
+  // ?tab=overview|schedule|preview|send|config overrides.
+  const tab = params.get('tab') || 'schedule';
+  setTimeout(() => {
+    try {
+      const btn = card.shadowRoot.querySelector('.tab-btn[data-tab="' + tab + '"]');
+      if (btn) btn.click();
+    } catch (e) {}
+  }, 700);
+
+  const scrub = () => {
+    try {
+      if (!card.shadowRoot) return;
+      card.shadowRoot.querySelectorAll('#tip-banner, [class*="banner"]:not(.prereq-banner), .donate-section, [class*="donate"], [class*="support"]').forEach((n) => {
+        const p = n.parentElement && n.parentElement.children.length === 1 ? n.parentElement : n;
+        p.remove();
+      });
+      // Fallback: remove any block whose text mentions supporting development.
+      card.shadowRoot.querySelectorAll('div,section').forEach((n) => {
+        const t = n.textContent || '';
+        if (n.children.length && t.length < 700 && /Support HA Tools Development/.test(t)) n.remove();
+      });
+      // Some cards append overlay/toast/banner containers directly to body.
+      document.querySelectorAll('body > *:not(#card):not(script):not(style)').forEach((n) => n.remove());
+      // Outside HA there is no real <ha-card>; neutralize its default
+      // background/shadow so the Bento card background shows correctly.
+      if (!card.shadowRoot.getElementById('harness-hacard-fix')) {
+        const st = document.createElement('style');
+        st.id = 'harness-hacard-fix';
+        st.textContent = 'ha-card { background: transparent !important; box-shadow: none !important; border: none !important; }';
+        card.shadowRoot.appendChild(st);
+      }
+    } catch (e) {}
+  };
+  setInterval(scrub, 150);
+  setTimeout(() => { scrub(); document.title = 'READY'; }, 1500);
+})();
+</script>
+</body>
+</html>

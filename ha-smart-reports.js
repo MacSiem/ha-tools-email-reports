@@ -1,4 +1,4 @@
-/* HA Tools split — ha-smart-reports v4.1.3 (2026-05-12) — single-tool standalone repo */
+/* HA Tools split — ha-smart-reports v4.2.0 (2026-07-12) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -1715,7 +1715,7 @@ canvas {
 if (!customElements.get('ha-smart-reports')) { customElements.define('ha-smart-reports', HASmartReports); };
 
 console.info(
-  '%c  HA-SMART-REPORTS  %c v1.0.0 ',
+  '%c  HA-SMART-REPORTS  %c v4.2.0 ',
   'background: #4caf50; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #e8f5e9; color: #4caf50; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );

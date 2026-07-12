@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.1.3 (2026-05-12) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.2.0 (2026-07-12) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = window._haToolsEsc || ((s) => typeof s === 'string' ? s.replace(/[&
 window._haToolsPersistence = window._haToolsPersistence || { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
 
 /**
- * HA Log Email Card v1.0
+ * HA Log Email Card v4.2.0
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -822,9 +822,12 @@ class HALogEmail extends HTMLElement {
   async _loadCentralRecipient() {
     if (!this._hass || !this._hasHaToolsEmail()) return;
     try {
-      const resp = await this._hass.callService('ha_tools_email', 'get_config', {}, undefined, true);
-      if (resp?.default_recipient && !this._config.email_recipient) {
-        this._centralRecipient = resp.default_recipient;
+      // get_config is SupportsResponse.ONLY — must pass returnResponse=true
+      // (signature: callService(domain, service, data, target, notifyOnError, returnResponse))
+      // and read the payload from result.response.
+      const resp = await this._hass.callService('ha_tools_email', 'get_config', {}, undefined, false, true);
+      if (resp?.response?.default_recipient && !this._config.email_recipient) {
+        this._centralRecipient = resp.response.default_recipient;
         this._render();
       }
     } catch(e) { /* ignore if service not available */ }
@@ -1740,7 +1743,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v1.0 registered');
+  console.log('[ha-log-email] v4.2.0 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

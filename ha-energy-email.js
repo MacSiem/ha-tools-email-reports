@@ -1,4 +1,4 @@
-/* HA Tools split — ha-energy-email v4.1.3 (2026-05-12) — single-tool standalone repo */
+/* HA Tools split — ha-energy-email v4.2.0 (2026-07-12) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -10,7 +10,7 @@ const _esc = window._haToolsEsc;
 window._haToolsPersistence = window._haToolsPersistence || { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-energy-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-energy-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-energy-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-energy-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
 
 /**
- * HA Energy Email Card v4.0.0
+ * HA Energy Email Card v4.2.0
  * Send daily/weekly/monthly energy usage reports as HTML email.
  * v4.0.0: HA-native persistent storage (input_text helpers) for cross-device sync.
  *         Auto-creation of report automations with configurable schedule.

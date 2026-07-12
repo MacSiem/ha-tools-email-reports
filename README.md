@@ -13,10 +13,12 @@ Part of the [HA Tools](https://github.com/MacSiem) ecosystem.
 
 ## How it works
 
-This plugin ships one Lovelace resource (`ha-tools-email-reports.js`) that is
-only a loader — it injects `<script>` tags for the three card files and does
-not register a Lovelace card itself. There is **no `custom:ha-tools-email-reports`
-card type**; add the individual cards you want by their own tag:
+This plugin ships one Lovelace resource (`ha-tools-email-reports.js`) — a
+single-file bundle that contains all three cards (the individual
+`ha-energy-email.js` / `ha-log-email.js` / `ha-smart-reports.js` files are
+kept in the repo for development only). There is **no
+`custom:ha-tools-email-reports` card type**; add the individual cards you
+want by their own tag:
 
 1. **`ha-energy-email`** — sends daily / weekly / monthly energy-usage
    reports by email. Energy sensors are auto-discovered (`device_class:
@@ -79,7 +81,9 @@ Assistant theme automatically.*
 1. Open HACS → Frontend (Dashboard) → ⋮ → **Custom repositories**.
 2. Add `https://github.com/MacSiem/ha-tools-email-reports` with category
    **Dashboard** (Lovelace plugin).
-3. Install **HA Tools — Email & Reports** and reload your browser.
+3. Install **HA Tools — Email & Reports** and reload your browser. HACS
+   delivers a single file (`ha-tools-email-reports.js`) that bundles all
+   three cards — nothing else to download.
 4. If you want `ha-energy-email` or `ha-log-email`, also add
    `https://github.com/MacSiem/ha-tools-email-integration` with category
    **Integration**, install it, and restart Home Assistant.
@@ -87,9 +91,10 @@ Assistant theme automatically.*
 
 ### Manual
 
-1. Download the four `.js` files from the [latest
+1. Download `ha-tools-email-reports.js` (the bundle with all three cards)
+   from the [latest
    release](https://github.com/MacSiem/ha-tools-email-reports/releases).
-2. Copy them to `/config/www/community/ha-tools-email-reports/`.
+2. Copy it to `/config/www/community/ha-tools-email-reports/`.
 3. Add `/local/community/ha-tools-email-reports/ha-tools-email-reports.js`
    as a Lovelace resource (type: `module`).
 
@@ -146,6 +151,11 @@ No. There are no `fetch`/`XMLHttpRequest` calls anywhere in this repo's
 code — the only outbound URLs are the optional donate links (Buy Me a
 Coffee / PayPal) and HACS install-guide links, which only open if you click
 them. No telemetry, no analytics, no CDN-hosted assets (system fonts only).
+The email cards do auto-inject one extra script, `ha-tools-discovery.js`
+from [ha-tools-panel](https://github.com/MacSiem/ha-tools-panel), but only
+from your own HA instance's same-origin `/local/community/ha-tools-panel/`
+path — no external network request is ever made, and if that file isn't
+installed the injection simply fails silently.
 
 ## Changelog
 

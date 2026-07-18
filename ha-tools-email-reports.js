@@ -1,4 +1,4 @@
-/* HA Tools Email Reports bundle v4.2.0 — concatenated from ha-energy-email.js, ha-log-email.js, ha-smart-reports.js (kept in repo for development) */
+/* HA Tools Email Reports bundle v4.2.1 — concatenated from ha-energy-email.js, ha-log-email.js, ha-smart-reports.js (kept in repo for development) */
 /* HA Tools split — ha-energy-email v4.2.0 (2026-07-12) — single-tool standalone repo */
 (function() {
 'use strict';

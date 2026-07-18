@@ -1,3 +1,7 @@
+## 4.2.1 (2026-07-18)
+
+- Fix (UI): responsive tab bar, donate-footer anti-flicker, and section accent-dot alignment. This bundle was missed by the earlier family-wide UI fix waves; all three fixes are now applied to each of the three bundled cards.
+
 # Changelog — HA Tools — Email & Reports
 
 ## [4.2.0] - 2026-07-12

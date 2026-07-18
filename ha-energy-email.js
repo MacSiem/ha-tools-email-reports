@@ -1,4 +1,4 @@
-/* HA Tools split — ha-energy-email v4.2.0 (2026-07-12) — single-tool standalone repo */
+/* HA Tools split — ha-energy-email v4.2.1 (2026-07-12) — single-tool standalone repo */
 (function() {
 'use strict';
 

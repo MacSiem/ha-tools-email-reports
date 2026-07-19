@@ -1,3 +1,7 @@
+## 4.2.2 (2026-07-18)
+
+- Fix (log-email): the Schedule tab no longer shows a dead Enable button for automations the card cannot create. When the daily/weekly automation does not exist it now shows Not created with a short note explaining how to add one (the log-email card sends the digest but, unlike energy-email, does not write the schedule automation itself).
+
 ## 4.2.1 (2026-07-18)
 
 - Fix (UI): responsive tab bar, donate-footer anti-flicker, and section accent-dot alignment. This bundle was missed by the earlier family-wide UI fix waves; all three fixes are now applied to each of the three bundled cards.

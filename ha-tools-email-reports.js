@@ -3819,11 +3819,9 @@ class HALogEmail extends HTMLElement {
             <div class="schedule-desc">Every day at 07:00 — errors + warnings summary</div>
             <div class="schedule-row">
               <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : '\u26AB Disabled'}
+                ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : dailyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
               </span>
-              <button class="toggle-btn" id="btn-daily-toggle">
-                ${dailyAuto === 'on' ? 'Disable' : 'Enable'}
-              </button>
+              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
             </div>
           </div>
 
@@ -3832,14 +3830,17 @@ class HALogEmail extends HTMLElement {
             <div class="schedule-desc">Every Monday at 07:30 — full week log digest</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : '\u26AB Disabled'}
+                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : weeklyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
               </span>
-              <button class="toggle-btn" id="btn-weekly-toggle">
-                ${weeklyAuto === 'on' ? 'Disable' : 'Enable'}
-              </button>
+              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
             </div>
           </div>
         </div>
+        ${(dailyAuto === 'unknown' || weeklyAuto === 'unknown') ? `
+          <div class="info-note" style="margin-top:8px">\u2139\uFE0F ${this._lang === 'pl'
+            ? 'Karta log-email wysy\u0142a digest, ale nie tworzy automatyzacji harmonogramu. Dodaj automatyzacj\u0119 wo\u0142aj\u0105c\u0105 ha_tools_email o wybranej porze (przyk\u0142ad w README) \u2014 jej stan pojawi si\u0119 tutaj do w\u0142\u0105czania/wy\u0142\u0105czania.'
+            : 'The log-email card sends the digest, but does not create the schedule automation. Add an automation that calls ha_tools_email at your chosen time (see README) \u2014 it will then appear here to enable/disable.'}</div>
+        ` : ''}
 
         <div class="section-header">SMTP Service</div>
         <div class="info-card" style="padding:12px">

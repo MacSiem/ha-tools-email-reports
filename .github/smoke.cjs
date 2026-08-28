@@ -57,10 +57,28 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   const files = listCardFiles();
+  const forbiddenPersistence = 'window._haToolsPersistence';
+  if (files.some(f => fs.readFileSync(f, 'utf8').includes(forbiddenPersistence))) {
+    console.error('smoke: residual global persistence singleton');
+    process.exit(1);
+  }
   const targets = [];
   for (const f of files) {
     const code = fs.readFileSync(f, 'utf8');
+    const residual = ['window.HAToolsBentoCSS', '_injectDiscovery', 'HAToolsDiscovery', 'ha-tools-discovery.js'].find(token => code.includes(token));
+    if (residual) {
+      console.error('smoke: residual global/discovery dependency: ' + residual + ' (' + path.basename(f) + ')');
+      process.exit(1);
+    }
     for (const t of tagsIn(code)) targets.push({ file: f, tag: t });
+  }
+  const bundle = fs.readFileSync(path.join(ROOT, 'ha-tools-email-reports.js'), 'utf8');
+  for (const sourceName of ['ha-energy-email.js', 'ha-log-email.js', 'ha-smart-reports.js']) {
+    const source = fs.readFileSync(path.join(ROOT, sourceName), 'utf8');
+    if (!bundle.includes(source)) {
+      console.error('smoke: source/bundle parity mismatch: ' + sourceName);
+      process.exit(1);
+    }
   }
   if (!targets.length) { console.log('smoke: no custom elements found — skipping'); process.exit(0); }
   let pass = 0; const fail = [];
@@ -70,6 +88,30 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
       const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', { runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/' });
       const { window } = dom;
       stub(window);
+      Object.defineProperty(window, 'HAToolsBentoCSS', {
+        configurable: true,
+        get() { throw new Error('global Bento CSS must not be read'); },
+        set() { throw new Error('global Bento CSS must not be written'); }
+      });
+      const NativeMutationObserver = window.MutationObserver;
+      let documentWideObservers = 0;
+      window.MutationObserver = class extends NativeMutationObserver {
+        observe(target, options) {
+          if (target === window.document.body && options && options.subtree) documentWideObservers++;
+          return super.observe(target, options);
+        }
+      };
+      class ForeignCard extends window.HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: 'open' });
+          this.shadowRoot.innerHTML = '<div data-foreign-marker="true">foreign card</div>';
+        }
+      }
+      window.customElements.define('ha-yaml-checker', ForeignCard);
+      const foreign = window.document.createElement('ha-yaml-checker');
+      window.document.body.appendChild(foreign);
+      const foreignHtml = foreign.shadowRoot.innerHTML;
       let asyncErr = null;
       window.addEventListener('error', e => { asyncErr = asyncErr || (e.error && e.error.message) || e.message; });
       window.onerror = (m) => { asyncErr = asyncErr || m; };
@@ -84,6 +126,16 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
       if (!el.shadowRoot) problem = 'no shadowRoot';
       else if (len < 50) problem = 'empty render (len=' + len + ')';
       else if (asyncErr) problem = 'async error: ' + asyncErr;
+      else if (foreign.shadowRoot.innerHTML !== foreignHtml) problem = 'foreign HA Tools card was mutated';
+      else if (documentWideObservers !== 0) problem = 'document-wide MutationObserver was registered';
+      else {
+        const footer = el.shadowRoot.querySelector('.donate-section[data-source="own-card"]');
+        const coffee = footer && footer.querySelector('a[href="https://buymeacoffee.com/macsiem"][target="_blank"][rel="noopener noreferrer"]');
+        const paypal = footer && footer.querySelector('a[href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W"][target="_blank"][rel="noopener noreferrer"]');
+        if (el.shadowRoot.querySelectorAll('.donate-section[data-source="own-card"]').length !== 1 || !coffee || !paypal) {
+          problem = 'card-owned support footer contract is incomplete';
+        }
+      }
       window.close();
     } catch (e) { problem = (e && e.message) ? e.message : String(e); }
     if (problem) fail.push(`${t.tag}  (${path.basename(t.file)})  -> ${problem}`); else pass++;

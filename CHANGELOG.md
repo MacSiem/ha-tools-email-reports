@@ -1,3 +1,11 @@
+## 4.2.3 (2026-08-28)
+
+- Isolation: persistence is now card-local in each source and bundled IIFE, removing `window._haToolsPersistence` load-order coupling while retaining existing localStorage keys.
+- Isolation: removed document-wide sibling-card injectors and all shared global escape-helper/discovery dependencies from the three cards and development bundle.
+- Isolation: each card renders its own support footer in its own shadow root, with no panel/discovery runtime dependency.
+- Isolation: each source and bundled IIFE owns its Bento CSS and ignores any pre-existing `window.HAToolsBentoCSS` value.
+- Security: every runtime value uses a local String-before-escape helper.
+
 ## 4.2.2 (2026-07-18)
 
 - Fix (log-email): the Schedule tab no longer shows a dead Enable button for automations the card cannot create. When the daily/weekly automation does not exist it now shows Not created with a short note explaining how to add one (the log-email card sends the digest but, unlike energy-email, does not write the schedule automation itself).

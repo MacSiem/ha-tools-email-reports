@@ -3,9 +3,10 @@
 ![Preview](banner.png)
 
 Three Lovelace cards in one HACS plugin: scheduled energy-usage emails,
-error/warning log-digest emails, and a zero-config dashboard summary. The two
-email cards send through the separate **HA Tools Email** integration; the
-summary card needs nothing extra.
+error/warning log-digest emails, and a Recorder-backed dashboard report. The
+two email cards send through the separate **HA Tools Email** integration;
+Smart Reports reads Home Assistant Energy/Recorder data and does not send
+email.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-tools-email-reports)](https://github.com/MacSiem/ha-tools-email-reports/releases) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -28,10 +29,11 @@ want by their own tag:
 2. **`ha-log-email`** — sends a daily digest of `system_log` errors and
    warnings (`system_log/list`), with a configurable entry limit and a
    history tab.
-3. **`ha-smart-reports`** — a standalone dashboard summary (energy /
-   automations / system-health tabs) computed entirely from current
-   `hass.states`. It **does not** send email and does not need the
-   integration below.
+3. **`ha-smart-reports`** — an on-demand energy / automations / system-health
+   report. Energy periods use exact Recorder `change` statistics declared by
+   Home Assistant Energy (or explicit statistic IDs); Automations and System
+   remain current-state operational summaries. It **does not** send email and
+   does not need the integration below.
 
 **`ha-energy-email` and `ha-log-email` require the separate [HA Tools
 Email](https://github.com/MacSiem/ha-tools-email-integration) integration**
@@ -58,10 +60,11 @@ reflects its `on`/`off` state — the send itself happens server-side.
 
 | Automatic | Manual (optional) |
 |---|---|
-| Energy/power sensor discovery (`ha-energy-email`, `ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
+| Home Assistant Energy source mapping (`ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
 | Integration-presence detection + install banner | Creating/enabling the daily / weekly / monthly report automations |
 | Error/warning digest from `system_log` (`ha-log-email`) | Choosing send time, weekday, currency and tariff mode |
-| Dashboard summary — energy / automations / system (`ha-smart-reports`) | Exporting the `ha-smart-reports` snapshot to CSV/JSON |
+| Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
+| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Exporting Smart Reports schema-v2 JSON or flat CSV |
 
 ## Screenshots
 
@@ -114,6 +117,44 @@ type: custom:ha-log-email
 type: custom:ha-smart-reports
 ```
 
+The minimal Smart Reports configuration uses the Home Assistant Energy
+Dashboard preferences. It does not auto-detect energy entities from names or
+fall back to current entity states. If no grid import statistic is configured,
+the card shows a configuration state.
+
+Use explicit roles when the report should use a different exact set:
+
+```yaml
+type: custom:ha-smart-reports
+energy_source_mode: explicit
+energy_total_statistics:
+  - sensor.grid_import_energy
+energy_device_statistics:
+  - statistic_id: sensor.heat_pump_energy
+    label: Heat pump
+  - statistic_id: sensor.heat_pump_indoor_energy
+    label: Indoor unit
+    included_in_stat: sensor.heat_pump_energy
+energy_cost_statistics:
+  - sensor.grid_import_cost
+```
+
+Headline totals include only root total sources. Devices never increase the
+headline, and included children are nested rather than ranked twice. Cost
+statistics are labeled as actual cost and must use the exact currency from
+Home Assistant configuration. Without them, a flat estimate requires
+both an explicit finite `energy_price >= 0` and a `currency`; Smart Reports
+has no default tariff.
+
+Today / 7 days / 30 days are local-calendar windows in Home Assistant's
+configured timezone. Missing, invalid, unsupported or incomplete required
+statistics are surfaced with per-source status/reason evidence and combined
+totals/cost are withheld. JSON export uses the full `schema_version: 2`
+contract including warnings and total/cost source rows; CSV is flat, keeps
+status/provenance/reason and neutralizes formula-leading labels. The visual
+editor exposes safe Title and Currency fields, tab selection is per card
+instance, and disabling every section performs no Home Assistant requests.
+
 All config keys are optional. A more complete `ha-energy-email` example:
 
 ```yaml
@@ -128,9 +169,11 @@ energy_tariff_mode: flat       # flat | day_night | weekday_weekend | mixed
 ## FAQ
 
 **Do I have to configure anything?**
-`ha-smart-reports` needs nothing. `ha-energy-email` and `ha-log-email` need
-the HA Tools Email integration installed and its SMTP settings saved once —
-after that, recipient auto-detection and "Send Now" work immediately.
+`ha-smart-reports` does not need the email integration, but its default Energy
+view expects a configured Home Assistant Energy grid-import statistic. It can
+instead use explicit statistic roles as shown above. `ha-energy-email` and
+`ha-log-email` need the HA Tools Email integration and its SMTP settings saved
+once.
 
 **What happens if the HA Tools Email integration isn't installed?**
 `ha-energy-email` and `ha-log-email` show an inline banner explaining the
@@ -147,15 +190,20 @@ This plugin's cards never talk to any mail server directly — they only call
 `ha_tools_email.send` / `.test` / `.get_config`.
 
 **Does this send data anywhere else, or use any CDN?**
-No. There are no `fetch`/`XMLHttpRequest` calls anywhere in this repo's
-code — the only outbound URLs are the optional donate links (Buy Me a
-Coffee / PayPal) and HACS install-guide links, which only open if you click
-them. No telemetry, no analytics, no CDN-hosted assets (system fonts only).
-The email cards do auto-inject one extra script, `ha-tools-discovery.js`
-from [ha-tools-panel](https://github.com/MacSiem/ha-tools-panel), but only
-from your own HA instance's same-origin `/local/community/ha-tools-panel/`
-path — no external network request is ever made, and if that file isn't
-installed the injection simply fails silently.
+No. There are no `fetch`/`XMLHttpRequest` calls in the card runtime. The cards
+use Home Assistant's same-origin APIs and state objects; optional donation and
+installation links open only when clicked. There is no telemetry, analytics,
+remote font, CDN or panel/discovery runtime dependency.
+
+## Smart Reports source and bundle parity
+
+`ha-smart-reports.js` is a vendored, byte-identical copy of the standalone
+Smart Reports runtime. `generated-sources.json` pins owner, path, version and
+SHA-256 provenance for all three inputs, and `scripts/build-bundle.mjs --check`
+validates the complete manifest before deterministically verifying that each
+developer source appears exactly once in
+`ha-tools-email-reports.js`. CI does not depend on a sibling repository;
+cross-repository comparison is an additional maintainer gate.
 
 ## Changelog
 

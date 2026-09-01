@@ -1,3 +1,14 @@
+## 4.3.0 (2026-09-01)
+
+- Smart Reports now uses exact Home Assistant Energy Dashboard or explicit Recorder statistics, local-calendar periods, root-only totals and nested `included_in_stat` device rows.
+- Smart Reports cost now prefers actual cost statistics and otherwise requires an explicit non-negative rate and currency; the old fabricated default rate and current-state fallback were removed.
+- Smart Reports adds complete loading/configuration/error/no-data/partial states, latest-request-wins lifecycle guards, schema-v2 JSON and flat formula-safe CSV.
+- The vendored Smart Reports source is byte-identical to the standalone canonical source; a pinned source digest and deterministic bundle check are now covered by tests without requiring a sibling checkout.
+- Current Smart Reports screenshots remain pending a fresh in-app browser visual-QA run; no public image was regenerated in this remediation.
+- Smart Reports now validates role metadata/currency, preserves per-source evidence in partial UI/JSON/CSV, supports current Energy preference names, excludes invalid total relationships and rejects detached Recorder buckets.
+- Restored safe Smart Reports Title/Currency editor controls and per-instance tab selection; an all-disabled card performs no HA requests.
+- Bundle provenance now covers all three source owners/paths/versions/digests, validates every input before deterministic generation, and CI runs both JavaScript and Python tests.
+
 ## 4.2.3 (2026-08-28)
 
 - Isolation: persistence is now card-local in each source and bundled IIFE, removing `window._haToolsPersistence` load-order coupling while retaining existing localStorage keys.

@@ -2,11 +2,16 @@
 
 ![Preview](banner.png)
 
-Three Lovelace cards in one HACS plugin: scheduled energy-usage emails,
-error/warning log-digest emails, and a Recorder-backed dashboard report. The
-two email cards send through the separate **HA Tools Email** integration;
-Smart Reports reads Home Assistant Energy/Recorder data and does not send
-email.
+Error/warning log-digest emails and a Recorder-backed dashboard report in one
+HACS plugin. The log card sends through the separate **HA Tools Email**
+integration; Smart Reports reads Home Assistant Energy/Recorder data and does
+not send email.
+
+> **Energy Email moved to Energy Optimizer (4.5.0).** `custom:ha-energy-email`
+> is now maintained in [Energy Optimizer](https://github.com/MacSiem/ha-energy-optimizer)
+> (HACS default catalog). This plugin keeps a thin wrapper so existing cards
+> keep working: with Energy Optimizer installed they render its card; without
+> it they show how to install it. No dashboard changes are needed.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-tools-email-reports)](https://github.com/MacSiem/ha-tools-email-reports/releases) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -15,17 +20,16 @@ Part of the [HA Tools](https://github.com/MacSiem) ecosystem.
 ## How it works
 
 This plugin ships one Lovelace resource (`ha-tools-email-reports.js`) — a
-single-file bundle that contains all three cards (the individual
+single-file bundle that contains the log and Smart Reports cards plus the
+Energy Email wrapper (the individual
 `ha-energy-email.js` / `ha-log-email.js` / `ha-smart-reports.js` files are
 kept in the repo for development only). There is **no
 `custom:ha-tools-email-reports` card type**; add the individual cards you
 want by their own tag:
 
-1. **`ha-energy-email`** — sends daily / weekly / monthly energy-usage
-   reports by email. Energy sensors are auto-discovered (`device_class:
-   energy`, or `kWh`/`Wh` with a `total_increasing`/`total`/`measurement`
-   state class) and ranked by usage; cost is estimated from a configurable
-   flat or day/night/weekday/weekend tariff.
+1. **`ha-energy-email`** — compatibility wrapper only. The card itself is
+   provided by [Energy Optimizer](https://github.com/MacSiem/ha-energy-optimizer);
+   install it from HACS to use energy-usage emails.
 2. **`ha-log-email`** — sends a daily digest of `system_log` errors and
    warnings (`system_log/list`), with a configurable entry limit and a
    history tab.
@@ -35,7 +39,7 @@ want by their own tag:
    remain current-state operational summaries. It **does not** send email and
    does not need the integration below.
 
-**`ha-energy-email` and `ha-log-email` require the separate [HA Tools
+**`ha-log-email` (and Energy Optimizer's `ha-energy-email`) require the separate [HA Tools
 Email](https://github.com/MacSiem/ha-tools-email-integration) integration**
 (`ha_tools_email` domain). Detection is a client-side check for
 `hass.services.ha_tools_email.send`; if it's missing, the card shows an
@@ -72,7 +76,8 @@ reflects its `on`/`off` state — the send itself happens server-side.
 |---|---|
 | ![ha-energy-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-energy-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
 
-*`ha-energy-email`'s Schedule tab with the HA Tools Email integration
+*The Energy Email Schedule tab (screenshot from before 4.5.0; the card now
+lives in Energy Optimizer) with the HA Tools Email integration
 detected (SMTP-configured banner) and the daily and weekly report
 automations already created and active. Dark mode follows your Home
 Assistant theme automatically.*
@@ -85,16 +90,17 @@ Assistant theme automatically.*
 2. Add `https://github.com/MacSiem/ha-tools-email-reports` with category
    **Dashboard** (Lovelace plugin).
 3. Install **HA Tools — Email & Reports** and reload your browser. HACS
-   delivers a single file (`ha-tools-email-reports.js`) that bundles all
-   three cards — nothing else to download.
-4. If you want `ha-energy-email` or `ha-log-email`, also add
+   delivers a single file (`ha-tools-email-reports.js`) — nothing else to
+   download. For `ha-energy-email`, also install **Energy Optimizer** from the
+   HACS default catalog.
+4. If you want `ha-log-email` (or Energy Optimizer's `ha-energy-email`), also add
    `https://github.com/MacSiem/ha-tools-email-integration` with category
    **Integration**, install it, and restart Home Assistant.
    `ha-smart-reports` works without this step.
 
 ### Manual
 
-1. Download `ha-tools-email-reports.js` (the bundle with all three cards)
+1. Download `ha-tools-email-reports.js` (the bundle)
    from the [latest
    release](https://github.com/MacSiem/ha-tools-email-reports/releases).
 2. Copy it to `/config/www/community/ha-tools-email-reports/`.
@@ -104,14 +110,10 @@ Assistant theme automatically.*
 ## Quick start
 
 ```yaml
-type: custom:ha-energy-email
-```
-
-The other two cards are added the same way:
-
-```yaml
 type: custom:ha-log-email
 ```
+
+Smart Reports is added the same way:
 
 ```yaml
 type: custom:ha-smart-reports
@@ -155,29 +157,20 @@ status/provenance/reason and neutralizes formula-leading labels. The visual
 editor exposes safe Title and Currency fields, tab selection is per card
 instance, and disabling every section performs no Home Assistant requests.
 
-All config keys are optional. A more complete `ha-energy-email` example:
-
-```yaml
-type: custom:ha-energy-email
-title: Energy Email Reports
-recipient: your@email.com      # optional — auto-detected from the integration's default recipient
-currency: PLN
-energy_price: 0.65
-energy_tariff_mode: flat       # flat | day_night | weekday_weekend | mixed
-```
+Energy Email options are documented in the
+[Energy Optimizer README](https://github.com/MacSiem/ha-energy-optimizer).
 
 ## FAQ
 
 **Do I have to configure anything?**
 `ha-smart-reports` does not need the email integration, but its default Energy
 view expects a configured Home Assistant Energy grid-import statistic. It can
-instead use explicit statistic roles as shown above. `ha-energy-email` and
-`ha-log-email` need the HA Tools Email integration and its SMTP settings saved
+instead use explicit statistic roles as shown above. `ha-log-email` needs the HA Tools Email integration and its SMTP settings saved
 once.
 
 **What happens if the HA Tools Email integration isn't installed?**
-`ha-energy-email` and `ha-log-email` show an inline banner explaining the
-integration is required and linking to it — they don't fail silently or send
+`ha-log-email` shows an inline banner explaining the
+integration is required and linking to it — it doesn't fail silently or send
 through your `notify:` platform instead.
 
 **Does scheduled sending require a browser tab to stay open?**

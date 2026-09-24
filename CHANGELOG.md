@@ -1,3 +1,9 @@
+## 4.5.0 (2026-09-24)
+
+- Energy Email moved: `custom:ha-energy-email` is now maintained only in Energy Optimizer (HACS default). This plugin no longer ships its own copy, which removes the race where whichever bundle loaded first decided which version of the card you got.
+- Existing `custom:ha-energy-email` cards keep working through a thin wrapper: with Energy Optimizer 3.5.0+ installed they render its card (in either load order); without it they show how to install Energy Optimizer.
+- Tests cover both load orders, the missing-optimizer state and bundle parity.
+
 ## 4.4.0 (2026-09-24)
 
 - The SMTP hints in the Log Email and Energy Email cards now link to **Settings → Devices & services → HA Tools Email → Configure** (HA Tools Email 2.1.0) instead of the retired "HA Tools → Settings → Email/SMTP" panel, and no longer suggest configuring an SMTP notify service.

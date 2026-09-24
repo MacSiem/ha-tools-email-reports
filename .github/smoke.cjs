@@ -53,6 +53,8 @@ function stub(window) {
   try { Object.defineProperty(window, 'localStorage', { configurable: true, value: store() }); } catch (e) {}
   try { Object.defineProperty(window, 'sessionStorage', { configurable: true, value: store() }); } catch (e) {}
 }
+// ha-energy-email is a thin compatibility wrapper around Energy Optimizer's card (HA Tools 7a).
+const COMPAT_SHIMS = new Set(['ha-energy-email']);
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 (async () => {
@@ -128,6 +130,7 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
       else if (asyncErr) problem = 'async error: ' + asyncErr;
       else if (foreign.shadowRoot.innerHTML !== foreignHtml) problem = 'foreign HA Tools card was mutated';
       else if (documentWideObservers !== 0) problem = 'document-wide MutationObserver was registered';
+      else if (COMPAT_SHIMS.has(t.tag)) { /* compatibility wrapper: contract covered by tests/energy-email-shim.test.cjs */ }
       else {
         const footer = el.shadowRoot.querySelector('.donate-section[data-source="own-card"]');
         const coffee = footer && footer.querySelector('a[href="https://buymeacoffee.com/macsiem"][target="_blank"][rel="noopener noreferrer"]');

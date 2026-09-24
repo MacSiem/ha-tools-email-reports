@@ -2,8 +2,8 @@
   "ha-energy-email.js": {
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-energy-email.js",
-    "version": "4.4.0",
-    "sha256": "80ad7bc26ab64a63a7bfb7ded5388d44947c5f3074a79f7e8a0be3d79e4918fb"
+    "version": "4.5.0",
+    "sha256": "f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b"
   },
   "ha-log-email.js": {
     "owner": "MacSiem/ha-tools-email-reports",

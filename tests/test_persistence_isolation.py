@@ -5,7 +5,6 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PERSISTENT_SOURCES = (
-    "ha-energy-email.js",
     "ha-log-email.js",
     "ha-tools-email-reports.js",
 )
@@ -19,6 +18,13 @@ class PersistenceIsolationTest(unittest.TestCase):
                 self.assertNotIn("window._haToolsPersistence", source)
                 self.assertNotIn("full impl in ha-tools-panel", source)
                 self.assertIn("haToolsPersistence", source)
+
+    def test_energy_email_shim_keeps_no_state(self):
+        # Since 4.5.0 ha-energy-email.js only forwards to Energy Optimizer's card.
+        source = (ROOT / "ha-energy-email.js").read_text(encoding="utf-8")
+        self.assertNotIn("window._haToolsPersistence", source)
+        self.assertNotIn("haToolsPersistence", source)
+        self.assertNotIn("localStorage", source)
 
     def test_smart_reports_tab_state_is_instance_local(self):
         source = (ROOT / "ha-smart-reports.js").read_text(encoding="utf-8")

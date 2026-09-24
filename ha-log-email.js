@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.2.3 (2026-08-28) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.4.0 (2026-09-24) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = 
 const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
 
 /**
- * HA Log Email Card v4.2.3
+ * HA Log Email Card v4.4.0
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -831,7 +831,7 @@ class HALogEmail extends HTMLElement {
           '<span class="smtp-icon">\u2709\uFE0F</span>' +
           '<div>' +
             '<div class="smtp-title">' + (this._lang === 'pl' ? '\u2705 SMTP skonfigurowany (ha_tools_email)' : '\u2705 SMTP configured (ha_tools_email)') + '</div>' +
-            '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Skonfiguruj w <b>HA Tools \u2192 Ustawienia \u2192 Email/SMTP</b>' : 'Configure in <b>HA Tools \u2192 Settings \u2192 Email/SMTP</b>') + '</div>' +
+            '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Zmie\u0144 w <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Change in <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="smtp-actions">' +
@@ -847,7 +847,7 @@ class HALogEmail extends HTMLElement {
         '<span class="smtp-icon">\u26A0\uFE0F</span>' +
         '<div class="smtp-info">' +
           '<div class="smtp-title">' + (this._lang === 'pl' ? '\u26A0\uFE0F SMTP nie skonfigurowany' : '\u26A0\uFE0F SMTP not configured') + '</div>' +
-          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Otwórz <b>HA Tools \u2192 Ustawienia \u2192 Email/SMTP</b>' : 'Open <b>HA Tools \u2192 Settings \u2192 Email/SMTP</b>') + '</div>' +
+          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Otw\u00F3rz <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Open <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -855,7 +855,7 @@ class HALogEmail extends HTMLElement {
   async _sendEmailNow(period) {
     if (!this._hass) return;
     if (!this._hasHaToolsEmail()) {
-      this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'ha_tools_email nie zainstalowany. Skonfiguruj SMTP w HA Tools \u2192 Ustawienia \u2192 Email/SMTP.' : 'ha_tools_email not installed. Configure SMTP in HA Tools \u2192 Settings \u2192 Email/SMTP.') };
+      this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
       this._render(); return;
     }
     this._sendStatus = { status: 'sending', period };
@@ -1533,7 +1533,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.2.3 registered');
+  console.log('[ha-log-email] v4.4.0 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

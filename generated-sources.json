@@ -2,14 +2,14 @@
   "ha-energy-email.js": {
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-energy-email.js",
-    "version": "4.2.3",
-    "sha256": "77d9320e8017cc38dfea3e9012e049ccf4b3ed27f80e70eb4d3cd997d40bc7be"
+    "version": "4.4.0",
+    "sha256": "80ad7bc26ab64a63a7bfb7ded5388d44947c5f3074a79f7e8a0be3d79e4918fb"
   },
   "ha-log-email.js": {
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-log-email.js",
-    "version": "4.2.3",
-    "sha256": "b55429d3e56a60e32e7d5c116aa0fb16ca8ae506c3802c3a74a6bf7951df8693"
+    "version": "4.4.0",
+    "sha256": "fb73c21ff51e92b08b4fc90b40a632cf4a52a7b425988f584c75c74942cc4f59"
   },
   "ha-smart-reports.js": {
     "owner": "MacSiem/ha-smart-reports",

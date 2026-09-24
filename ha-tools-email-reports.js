@@ -1,10 +1,10 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.3.0
- * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.2.3 sha256:77d9320e8017cc38dfea3e9012e049ccf4b3ed27f80e70eb4d3cd997d40bc7be
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.2.3 sha256:b55429d3e56a60e32e7d5c116aa0fb16ca8ae506c3802c3a74a6bf7951df8693
+ * HA Tools Email Reports bundle v4.4.0
+ * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.4.0 sha256:80ad7bc26ab64a63a7bfb7ded5388d44947c5f3074a79f7e8a0be3d79e4918fb
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:fb73c21ff51e92b08b4fc90b40a632cf4a52a7b425988f584c75c74942cc4f59
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:ccc4a958307c45b95a1934170b9a99eb9fb6502e69b780906ce621bc56ef0e68
  */
-/* HA Tools split — ha-energy-email v4.2.3 (2026-08-28) — single-tool standalone repo */
+/* HA Tools split — ha-energy-email v4.4.0 (2026-09-24) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -15,7 +15,7 @@ const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = 
 const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
 
 /**
- * HA Energy Email Card v4.2.3
+ * HA Energy Email Card v4.4.0
  * Send daily/weekly/monthly energy usage reports as HTML email.
  * v4.0.0: HA-native persistent storage (input_text helpers) for cross-device sync.
  *         Auto-creation of report automations with configurable schedule.
@@ -606,7 +606,7 @@ class HAEnergyEmail extends HTMLElement {
         refresh: 'Odśwież',
         save: 'Zapisz',
         cancel: 'Anuluj',
-        smtpConfigWarning: 'Skonfiguruj SMTP w zakładce Schedule lub w ustawieniach Home Assistant.',
+        smtpConfigWarning: 'Skonfiguruj SMTP w: Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj.',
         locale: (this._lang === 'pl' ? 'pl-PL' : 'en-US'),
       },
       en: {
@@ -617,7 +617,7 @@ class HAEnergyEmail extends HTMLElement {
         refresh: 'Refresh',
         save: 'Save',
         cancel: 'Cancel',
-        smtpConfigWarning: 'Configure SMTP in the Schedule tab or in Home Assistant settings.',
+        smtpConfigWarning: 'Set up SMTP in: Settings \u2192 Devices & services \u2192 HA Tools Email \u2192 Configure.',
         locale: 'en-US',
       },
     };
@@ -1681,8 +1681,8 @@ class HAEnergyEmail extends HTMLElement {
     return `
       ${this._renderSmtpSection()}
       ${!recipient && !service ? `<div class="info-row info-warn">\u26A0\uFE0F\u00A0 ${L
-        ? '<b>Brak adresu email.</b> Ustaw email w polu powy\u017Cej lub skonfiguruj serwis notify z SMTP.'
-        : '<b>No email recipient.</b> Set email in the field above or configure an SMTP notify service.'}</div>` : ''}
+        ? '<b>Brak adresu email.</b> Ustaw email w polu powy\u017Cej lub domy\u015Blnego odbiorc\u0119 w <a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a>.'
+        : '<b>No email recipient.</b> Set an email in the field above or a default recipient in <a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a>.'}</div>` : ''}
       ${scheduleCard(
         '\u2600\uFE0F', 'Raport dzienny', 'Daily Report', dailyState,
         `${L ? 'Codziennie o' : 'Every day at'} ${sd.daily}`,
@@ -1777,7 +1777,7 @@ class HAEnergyEmail extends HTMLElement {
     return `
       <div class="info-row">\u{1F4E4}\u00A0 ${L ? 'R\u0119cznie wy\u015Blij raport energii poprzez ha_tools_email.' : 'Manually trigger an energy report via ha_tools_email.'}</div>
       ${smtpConfig}
-      <div style="font-size:12px;color:var(--bento-text-secondary);margin:16px 0 12px;padding:10px;background:var(--bento-primary-light);border-radius:var(--bento-radius-xs)">${L ? '💡 Konfiguracja SMTP w: HA Tools Panel → Settings → Log Email' : '💡 SMTP configuration in: HA Tools Panel → Settings → Log Email'}</div>
+      <div style="font-size:12px;color:var(--bento-text-secondary);margin:16px 0 12px;padding:10px;background:var(--bento-primary-light);border-radius:var(--bento-radius-xs)">${L ? '💡 Konfiguracja SMTP: <a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a>' : '💡 SMTP settings: <a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a>'}</div>
       <div class="schedule-card">
         <div class="schedule-row"><div class="schedule-name">\u2600\uFE0F ${L ? 'Wy\u015Blij raport dzienny' : 'Send Daily Report Now'}</div><span class="badge badge-pr">Manual</span></div>
         <div id="last-daily" class="last-sent">${this._lastSent.daily ? 'Last sent: ' + this._lastSent.daily : ''}</div>
@@ -2126,7 +2126,7 @@ class HAEnergyEmail extends HTMLElement {
     const dateStr = new Date().toISOString().split('T')[0];
     const nowStr = new Date().toLocaleString((this._lang === 'pl' ? 'pl-PL' : 'en-US'), { hour12: false });
     try {
-      if (!this._hasHaToolsEmail()) throw new Error(L ? 'ha_tools_email nie zainstalowany. Skonfiguruj SMTP w Ustawienia \u2192 Email/SMTP.' : 'ha_tools_email not installed. Configure SMTP in Settings \u2192 Email/SMTP.');
+      if (!this._hasHaToolsEmail()) throw new Error(L ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS and set up SMTP in Configure.');
       // Get device data — fetch from recorder for period reports
       const periodMap = { daily: 'day', weekly: 'week', monthly: 'month', quick: 'week' };
       const periodKey = periodMap[type] || 'week';
@@ -2234,7 +2234,7 @@ class HAEnergyEmail extends HTMLElement {
       return `<div class="smtp-section">
         <div class="smtp-header"><div class="smtp-icon">\u2705</div><div>
           <div class="smtp-title">${L ? 'SMTP skonfigurowany (ha_tools_email)' : 'SMTP Configured (ha_tools_email)'}</div>
-          <div class="smtp-detail">${L ? 'Konfiguracja w' : 'Configure in'} <b>${L ? 'Ustawienia \u2192 Email/SMTP' : 'Settings \u2192 Email/SMTP'}</b></div>
+          <div class="smtp-detail">${L ? 'Zmie\u0144 w' : 'Change in'} <b>${L ? '<a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a>' : '<a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a>'}</b></div>
         </div></div>
         <div class="smtp-actions" style="margin-top:12px">
           <button class="btn btn-primary" id="btn-smtp-test">\uD83D\uDCE7 ${L ? 'Wy\u015Blij testowy email' : 'Send Test Email'}</button>
@@ -2244,7 +2244,7 @@ class HAEnergyEmail extends HTMLElement {
     return `<div class="smtp-section smtp-missing">
       <div class="smtp-header"><div class="smtp-icon">\u26A0\uFE0F</div><div>
         <div class="smtp-title">${L ? 'SMTP nie skonfigurowany' : 'SMTP Not Configured'}</div>
-        <div class="smtp-detail">${L ? 'Otw\u00F3rz' : 'Open'} <b>HA Tools \u2192 ${L ? 'Ustawienia' : 'Settings'} \u2192 Email/SMTP</b></div>
+        <div class="smtp-detail">${L ? 'Otw\u00F3rz' : 'Open'} <b>${L ? '<a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a>' : '<a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a>'}</b></div>
       </div></div>
     </div>`;
   }
@@ -2339,7 +2339,7 @@ if (!customElements.get('ha-energy-email-editor')) { customElements.define('ha-e
 
 window.customCards = window.customCards || [];
 window.customCards.push({ type: 'ha-energy-email', name: 'Energy Email Reports', description: 'Send energy reports via email. Auto-discovers energy sensors.', preview: true });
-/* HA Tools split — ha-log-email v4.2.3 (2026-08-28) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.4.0 (2026-09-24) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -2350,7 +2350,7 @@ const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = 
 const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
 
 /**
- * HA Log Email Card v4.2.3
+ * HA Log Email Card v4.4.0
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -3172,7 +3172,7 @@ class HALogEmail extends HTMLElement {
           '<span class="smtp-icon">\u2709\uFE0F</span>' +
           '<div>' +
             '<div class="smtp-title">' + (this._lang === 'pl' ? '\u2705 SMTP skonfigurowany (ha_tools_email)' : '\u2705 SMTP configured (ha_tools_email)') + '</div>' +
-            '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Skonfiguruj w <b>HA Tools \u2192 Ustawienia \u2192 Email/SMTP</b>' : 'Configure in <b>HA Tools \u2192 Settings \u2192 Email/SMTP</b>') + '</div>' +
+            '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Zmie\u0144 w <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Change in <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="smtp-actions">' +
@@ -3188,7 +3188,7 @@ class HALogEmail extends HTMLElement {
         '<span class="smtp-icon">\u26A0\uFE0F</span>' +
         '<div class="smtp-info">' +
           '<div class="smtp-title">' + (this._lang === 'pl' ? '\u26A0\uFE0F SMTP nie skonfigurowany' : '\u26A0\uFE0F SMTP not configured') + '</div>' +
-          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Otwórz <b>HA Tools \u2192 Ustawienia \u2192 Email/SMTP</b>' : 'Open <b>HA Tools \u2192 Settings \u2192 Email/SMTP</b>') + '</div>' +
+          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Otw\u00F3rz <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Open <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -3196,7 +3196,7 @@ class HALogEmail extends HTMLElement {
   async _sendEmailNow(period) {
     if (!this._hass) return;
     if (!this._hasHaToolsEmail()) {
-      this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'ha_tools_email nie zainstalowany. Skonfiguruj SMTP w HA Tools \u2192 Ustawienia \u2192 Email/SMTP.' : 'ha_tools_email not installed. Configure SMTP in HA Tools \u2192 Settings \u2192 Email/SMTP.') };
+      this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
       this._render(); return;
     }
     this._sendStatus = { status: 'sending', period };
@@ -3874,7 +3874,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.2.3 registered');
+  console.log('[ha-log-email] v4.4.0 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {
@@ -4688,6 +4688,6 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.3.0 — 3 cards bundled',
+console.info('%c HA Tools — Email & Reports %c v4.4.0 — 3 cards bundled',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

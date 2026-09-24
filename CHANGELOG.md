@@ -1,3 +1,8 @@
+## 4.4.0 (2026-09-24)
+
+- The SMTP hints in the Log Email and Energy Email cards now link to **Settings → Devices & services → HA Tools Email → Configure** (HA Tools Email 2.1.0) instead of the retired "HA Tools → Settings → Email/SMTP" panel, and no longer suggest configuring an SMTP notify service.
+- When the HA Tools Email integration is missing, the cards explain how to install and set it up.
+
 ## 4.3.0 (2026-09-01)
 
 - Smart Reports now uses exact Home Assistant Energy Dashboard or explicit Recorder statistics, local-calendar periods, root-only totals and nested `included_in_stat` device rows.

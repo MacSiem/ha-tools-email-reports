@@ -6,7 +6,9 @@ const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&
 
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
-const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
+const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card" style="margin:8px 0;padding:8px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px"><span>❤️ Support HA Tools:</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto">×</button></div>`;
+const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
+const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
  * HA Log Email Card v4.4.0
@@ -561,6 +563,7 @@ class HALogEmail extends HTMLElement {
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
 
+    const previousAdmin = this._hass?.user?.is_admin;
     if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
     if (!hass) return;
     if (!this._firstRender) {
@@ -568,6 +571,7 @@ class HALogEmail extends HTMLElement {
       this._fetchLogData();
       this._render();
     }
+    else if (previousAdmin !== hass.user?.is_admin) this._render();
   }
 
   get _t() {
@@ -624,6 +628,7 @@ class HALogEmail extends HTMLElement {
       ...config
     };
     this._loadCentralRecipient();
+    if (this._hass) this._render();
   }
 
   async _loadCentralRecipient() {
@@ -1427,9 +1432,14 @@ max: 3</pre>
         <div class="content">
           ${tabContent}
         </div>
-        ${OWN_SUPPORT_FOOTER}
+        ${this._hass?.user?.is_admin && this._config?.show_support !== false && !logEmailSupportDismissed() ? OWN_SUPPORT_FOOTER : ''}
       </ha-card>
     `;
+
+    this.shadowRoot.querySelector('.support-dismiss')?.addEventListener('click', () => {
+      try { localStorage.setItem(LOG_EMAIL_SUPPORT_KEY, '1'); } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]')?.remove();
+    });
 
     // Restore tabs scroll position
     if (this._tabsScrollLeft) {

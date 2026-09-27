@@ -139,6 +139,26 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
           problem = 'card-owned support footer contract is incomplete';
         }
       }
+      if (!problem && (t.tag === 'ha-log-email' || t.tag === 'ha-smart-reports')) {
+        const visible = () => {
+          const footer = el.shadowRoot.querySelector('.donate-section[data-source="own-card"]');
+          return Boolean(footer && !footer.hidden);
+        };
+        if (!visible()) problem = 'admin support link missing';
+        el.setConfig({ type: 'custom:' + t.tag, show_support: false });
+        if (visible()) problem = 'show_support false did not hide link';
+        el.setConfig({ type: 'custom:' + t.tag });
+        const guestHass = mockHass(); guestHass.user.is_admin = false;
+        el.hass = guestHass;
+        if (visible()) problem = 'guest saw support link';
+        el.hass = mockHass();
+        const dismiss = el.shadowRoot.querySelector('.support-dismiss');
+        if (!dismiss) problem = 'admin support dismiss button missing';
+        else {
+          dismiss.click();
+          if (visible() || window.localStorage.getItem(t.tag + '-support-dismissed') !== '1') problem = 'support dismissal was not persisted';
+        }
+      }
       window.close();
     } catch (e) { problem = (e && e.message) ? e.message : String(e); }
     if (problem) fail.push(`${t.tag}  (${path.basename(t.file)})  -> ${problem}`); else pass++;

@@ -1,8 +1,8 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:fb73c21ff51e92b08b4fc90b40a632cf4a52a7b425988f584c75c74942cc4f59
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:ccc4a958307c45b95a1934170b9a99eb9fb6502e69b780906ce621bc56ef0e68
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:a18d954a235b3af113498c7413dac4c2a7f49bee1a4816f4b700d410506b9806
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:2adbe04fa146914fa9be473596fc94ad66ed74434e00d0cb2b5cf656f8aadd15
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
 (function() {
@@ -137,7 +137,9 @@ const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&
 
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
-const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
+const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card" style="margin:8px 0;padding:8px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px"><span>❤️ Support HA Tools:</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto">×</button></div>`;
+const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
+const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
  * HA Log Email Card v4.4.0
@@ -692,6 +694,7 @@ class HALogEmail extends HTMLElement {
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
 
+    const previousAdmin = this._hass?.user?.is_admin;
     if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
     if (!hass) return;
     if (!this._firstRender) {
@@ -699,6 +702,7 @@ class HALogEmail extends HTMLElement {
       this._fetchLogData();
       this._render();
     }
+    else if (previousAdmin !== hass.user?.is_admin) this._render();
   }
 
   get _t() {
@@ -755,6 +759,7 @@ class HALogEmail extends HTMLElement {
       ...config
     };
     this._loadCentralRecipient();
+    if (this._hass) this._render();
   }
 
   async _loadCentralRecipient() {
@@ -1558,9 +1563,14 @@ max: 3</pre>
         <div class="content">
           ${tabContent}
         </div>
-        ${OWN_SUPPORT_FOOTER}
+        ${this._hass?.user?.is_admin && this._config?.show_support !== false && !logEmailSupportDismissed() ? OWN_SUPPORT_FOOTER : ''}
       </ha-card>
     `;
+
+    this.shadowRoot.querySelector('.support-dismiss')?.addEventListener('click', () => {
+      try { localStorage.setItem(LOG_EMAIL_SUPPORT_KEY, '1'); } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]')?.remove();
+    });
 
     // Restore tabs scroll position
     if (this._tabsScrollLeft) {
@@ -1837,6 +1847,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     set hass(hass) {
       this._hass = hass;
       this._syncTheme();
+      this._syncSupport();
       if (this._connected && hass) this._scheduleRefresh(false);
     }
 
@@ -1853,6 +1864,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         show_energy: next.show_energy !== false,
         show_automations: next.show_automations !== false,
         show_system: next.show_system !== false,
+        show_support: next.show_support !== false,
         energy_source_mode: next.energy_source_mode === 'explicit' ? 'explicit' : 'dashboard',
         energy_total_statistics: Array.isArray(next.energy_total_statistics) ? next.energy_total_statistics : [],
         energy_device_statistics: Array.isArray(next.energy_device_statistics) ? next.energy_device_statistics : [],
@@ -1864,6 +1876,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         currency,
       };
       if (this._scaffoldRendered) {
+        this._syncSupport();
         this._invalidateEnergyRequest();
         this._syncTabs();
         this._scheduleRefresh(true);
@@ -1896,9 +1909,14 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
             <div class="toolbar-actions"><button class="action" type="button" id="exportCsvBtn" disabled>Export CSV</button><button class="action primary" type="button" id="exportJsonBtn" disabled>Export JSON</button></div>
           </div>
           <main class="pane" id="content"></main>
-          <footer class="donate-section" data-source="own-card"><span>Support HA Tools</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy me a coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a></footer>
+          <footer class="donate-section" data-source="own-card" style="padding:8px 12px"><span>Support HA Tools</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy me a coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;border:0;background:none;color:inherit">×</button></footer>
         </ha-card>`;
       this._scaffoldRendered = true;
+      this.shadowRoot.querySelector('.support-dismiss').addEventListener('click', () => {
+        try { localStorage.setItem('ha-smart-reports-support-dismissed', '1'); } catch (_) {}
+        this._syncSupport();
+      });
+      this._syncSupport();
       this.shadowRoot.getElementById('periodSelect').value = this._period;
       this.shadowRoot.getElementById('periodSelect').addEventListener('change', (event) => {
         const period = VALID_PERIODS.has(event.target.value) ? event.target.value : '7d';
@@ -1914,6 +1932,13 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
     _syncTheme() {
       if (this._hass) this.classList.toggle('bento-dark', Boolean(this._hass.themes && this._hass.themes.darkMode));
+    }
+
+    _syncSupport() {
+      if (!this._scaffoldRendered) return;
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('ha-smart-reports-support-dismissed') === '1'; } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]').hidden = !this._hass?.user?.is_admin || this._config.show_support === false || dismissed;
     }
 
     _availableTabs() {

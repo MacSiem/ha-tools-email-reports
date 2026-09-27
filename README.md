@@ -52,13 +52,12 @@ talk to it purely through HA services:
 - `ha_tools_email.test` — sends a test email to verify SMTP.
 - `ha_tools_email.send` — sends the actual report.
 
-Scheduling does **not** rely on a browser tab staying open: clicking
-"Create Automation" on the Schedule tab has the card write an ordinary Home
-Assistant automation (e.g. `automation.send_daily_energy_report`) whose
-action calls `ha_tools_email.send` with a Jinja-templated subject/body. HA's
-own automation engine fires it, so it keeps working after the dashboard is
-closed. The card only creates/updates/enables/disables that automation and
-reflects its `on`/`off` state — the send itself happens server-side.
+The Log Email card's Schedule tab shows and toggles existing
+`automation.ha_tools_log_email_daily` and
+`automation.ha_tools_log_email_weekly` automations. It does not create them.
+Add an automation that calls `ha_tools_email.send` at the chosen time; Home
+Assistant runs it even when the dashboard is closed. Energy Email scheduling
+is provided by Energy Optimizer.
 
 ### What is automatic vs. manual
 
@@ -66,7 +65,7 @@ reflects its `on`/`off` state — the send itself happens server-side.
 |---|---|
 | Home Assistant Energy source mapping (`ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
 | Integration-presence detection + install banner | Creating/enabling the daily / weekly / monthly report automations |
-| Error/warning digest from `system_log` (`ha-log-email`) | Choosing send time, weekday, currency and tariff mode |
+| Error/warning digest from `system_log` (`ha-log-email`) | Creating the Log Email schedule automations; choosing a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
 | Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Exporting Smart Reports schema-v2 JSON or flat CSV |
 
@@ -74,13 +73,11 @@ reflects its `on`/`off` state — the send itself happens server-side.
 
 | Light | Dark |
 |---|---|
-| ![ha-energy-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-energy-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
+| ![ha-log-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-log-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
 
-*The Energy Email Schedule tab (screenshot from before 4.5.0; the card now
-lives in Energy Optimizer) with the HA Tools Email integration
-detected (SMTP-configured banner) and the daily and weekly report
-automations already created and active. Dark mode follows your Home
-Assistant theme automatically.*
+*The current Log Email Schedule tab with synthetic data: HA Tools Email is
+available, the daily automation is active, and the weekly automation is
+disabled. No real address, log entry, or household data is shown.*
 
 ## Installation
 

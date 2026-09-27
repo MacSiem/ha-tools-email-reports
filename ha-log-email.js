@@ -829,13 +829,13 @@ class HALogEmail extends HTMLElement {
       const statusBadge = this._smtpStatus
         ? (this._smtpStatus.ok
           ? '<span class="badge-ok">\u2705 Test OK (' + this._smtpStatus.time + ')</span>'
-          : '<span class="badge-er">\u274C ' + this._smtpStatus.error + '</span>')
+          : '<span class="badge-er">\u274C ' + _esc(this._smtpStatus.error) + '</span>')
         : '';
       return '<div class="smtp-section">' +
         '<div class="smtp-header">' +
           '<span class="smtp-icon">\u2709\uFE0F</span>' +
           '<div>' +
-            '<div class="smtp-title">' + (this._lang === 'pl' ? '\u2705 SMTP skonfigurowany (ha_tools_email)' : '\u2705 SMTP configured (ha_tools_email)') + '</div>' +
+            '<div class="smtp-title">' + (this._lang === 'pl' ? 'HA Tools Email dostępne' : 'HA Tools Email available') + '</div>' +
             '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Zmie\u0144 w <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Change in <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
           '</div>' +
         '</div>' +
@@ -877,12 +877,12 @@ class HALogEmail extends HTMLElement {
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + (e.domain||'') + '</b>: ' + (e.message||'').substring(0,200) + ' (x' + (e.count||1) + ')</li>'; });
+        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (warnings.length > 0) {
         body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + (e.domain||'') + '</b>: ' + (e.message||'').substring(0,200) + ' (x' + (e.count||1) + ')</li>'; });
+        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';
@@ -934,8 +934,8 @@ class HALogEmail extends HTMLElement {
             errors.slice(0, 10).map(e => `
               <div style="background:#2d1b1b;border-left:3px solid #ef4444;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
                 <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
-                ${e.domain ? `<span style="color:#f87171;font-size:11px"> [${e.domain}]</span>` : ''}
-                <div style="margin-top:2px">${(e.message || '').substring(0, 120)}${(e.message || '').length > 120 ? '...' : ''}</div>
+                ${e.domain ? `<span style="color:#f87171;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
+                <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
             `).join('') + (errors.length > 10 ? `<p style="color:#94a3b8;font-size:11px">...and ${errors.length - 10} more</p>` : '')
           }
@@ -947,8 +947,8 @@ class HALogEmail extends HTMLElement {
             warnings.slice(0, 10).map(e => `
               <div style="background:#2d2410;border-left:3px solid #f59e0b;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
                 <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
-                ${e.domain ? `<span style="color:#fbbf24;font-size:11px"> [${e.domain}]</span>` : ''}
-                <div style="margin-top:2px">${(e.message || '').substring(0, 120)}${(e.message || '').length > 120 ? '...' : ''}</div>
+                ${e.domain ? `<span style="color:#fbbf24;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
+                <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
             `).join('') + (warnings.length > 10 ? `<p style="color:#94a3b8;font-size:11px">...and ${warnings.length - 10} more</p>` : '')
           }
@@ -985,7 +985,7 @@ class HALogEmail extends HTMLElement {
       const s = this._sendStatus;
       if (s.status === 'sending') return `<div class="send-status sending">\u23F3 Sending ${s.period} log email...</div>`;
       if (s.status === 'success') return `<div class="send-status success">\u2705 ${s.period} log email sent at ${s.time}</div>`;
-      if (s.status === 'error') return `<div class="send-status error">\u274C Send failed: ${s.error}</div>`;
+      if (s.status === 'error') return `<div class="send-status error">\u274C Send failed: ${_esc(s.error)}</div>`;
       return '';
     })() : '';
 
@@ -1027,8 +1027,8 @@ class HALogEmail extends HTMLElement {
           errors.slice(0, 5).map(e => `
             <div class="log-entry error-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain error-domain">${e.domain || 'unknown'}</span>
-              <span class="log-msg">${(e.message || '').substring(0, 100)}${(e.message || '').length > 100 ? '…' : ''}</span>
+              <span class="log-domain error-domain">${_esc(e.domain || 'unknown')}</span>
+              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
             </div>
           `).join('')
         }
@@ -1039,14 +1039,14 @@ class HALogEmail extends HTMLElement {
           warnings.slice(0, 3).map(e => `
             <div class="log-entry warn-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain warn-domain">${e.domain || 'unknown'}</span>
-              <span class="log-msg">${(e.message || '').substring(0, 100)}${(e.message || '').length > 100 ? '…' : ''}</span>
+              <span class="log-domain warn-domain">${_esc(e.domain || 'unknown')}</span>
+              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
             </div>
           `).join('')
         }
 
         ${data && data.fetchedAt ? `<div class="last-updated">Last fetched: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
-        ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${data.note}</div>` : ''}
+        ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${_esc(data.note)}</div>` : ''}
       `;
     } else if (this._activeTab === 'schedule') {
       tabContent = `
@@ -1080,7 +1080,7 @@ class HALogEmail extends HTMLElement {
         ` : ''}
 
         <div class="section-header">SMTP Service</div>
-        <div class="info-card" style="padding:12px">
+        <div class="info-card" style="padding:12px">${smtpHtml}
         </div>
         <div class="section-header" style="margin-top:10px">Recipient</div>
         <div class="info-card">

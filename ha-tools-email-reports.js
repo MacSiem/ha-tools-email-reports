@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:0c83b8376f3c5f40b04383cfcd2456e84b59e4eb57856bc155397a9b44cb9686
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:7a2e3e741ba30107eef527244d3045102e707e168527daf062f3ee03d9be9794
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:1f74c419ffaf7b9bfbb05b5153c51d07b3a89db1874fd4136b06f78d8f191e3a
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
@@ -697,12 +697,20 @@ class HALogEmail extends HTMLElement {
     const previousAdmin = this._hass?.user?.is_admin;
     if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
     if (!hass) return;
+    if (hass.user?.is_admin !== true) {
+      this._logData = null;
+      this._logHistory = [];
+      this._stopPolling();
+    }
     if (!this._firstRender) {
       this._firstRender = true;
-      this._fetchLogData();
+      if (hass.user?.is_admin === true) this._fetchLogData();
       this._render();
     }
-    else if (previousAdmin !== hass.user?.is_admin) this._render();
+    else if (previousAdmin !== hass.user?.is_admin) {
+      if (hass.user?.is_admin === true) this._fetchLogData();
+      this._render();
+    }
   }
 
   get _t() {
@@ -763,7 +771,7 @@ class HALogEmail extends HTMLElement {
   }
 
   async _loadCentralRecipient() {
-    if (!this._hass || !this._hasHaToolsEmail()) return;
+    if (!this._hass?.user?.is_admin || !this._hasHaToolsEmail()) return;
     try {
       // get_config is SupportsResponse.ONLY — must pass returnResponse=true
       // (signature: callService(domain, service, data, target, notifyOnError, returnResponse))
@@ -789,11 +797,12 @@ class HALogEmail extends HTMLElement {
   }
 
   async _fetchLogData() {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
     this._loading = true;
     this._render();
     try {
       const logs = await this._hass.callWS({ type: 'system_log/list' });
+      if (!this._hass?.user?.is_admin) return;
       if (Array.isArray(logs)) {
         const now = Date.now();
         const h24 = 24 * 60 * 60 * 1000;
@@ -821,6 +830,7 @@ class HALogEmail extends HTMLElement {
         };
       }
     } catch (err) {
+      if (!this._hass?.user?.is_admin) return;
       console.warn('[ha-log-email] system_log/list failed:', err);
       this._logData = this._getLogFromSensor();
     }
@@ -840,6 +850,7 @@ class HALogEmail extends HTMLElement {
 
   // FUNC-2: Real-time error polling
   _startPolling() {
+    if (!this._hass?.user?.is_admin) return;
     this._stopPolling();
     this._pollingEnabled = true;
     this._savePollingConfig();
@@ -870,9 +881,10 @@ class HALogEmail extends HTMLElement {
   }
 
   async _pollForNewErrors() {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
     try {
       const logs = await this._hass.callWS({ type: 'system_log/list' });
+      if (!this._hass?.user?.is_admin) return;
       if (!Array.isArray(logs)) return;
       const now = Date.now();
       const h1 = 60 * 60 * 1000;
@@ -909,9 +921,7 @@ class HALogEmail extends HTMLElement {
     if (!this._hass) return null;
     const sensor = this._hass.states['sensor.ha_log_summary'];
     if (!sensor) return {
-      errors: [],
-      warnings: [],
-      total: 0,
+      unavailable: true,
       note: 'Sensor sensor.ha_log_summary not found. Install log_email.yaml package.',
       fetchedAt: new Date().toISOString()
     };
@@ -989,7 +999,12 @@ class HALogEmail extends HTMLElement {
     '</div>';
   }
   async _sendEmailNow(period) {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
+    if (!this._logData || this._logData.unavailable) {
+      this._sendStatus = { status: 'error', period, error: this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.' };
+      this._render();
+      return;
+    }
     if (!this._hasHaToolsEmail()) {
       this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
       this._render(); return;
@@ -1048,7 +1063,7 @@ class HALogEmail extends HTMLElement {
 
   _buildEmailPreview() {
     const data = this._logData;
-    if (!data) return '<p style="color:var(--bento-text-secondary)">No log data loaded yet. Click refresh.</p>';
+    if (!data || data.unavailable) return '<p style="color:var(--bento-text-secondary)">Log data unavailable.</p>';
 
     const errors = data.errors || [];
     const warnings = data.warnings || [];
@@ -1090,13 +1105,18 @@ class HALogEmail extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
+    if (this._hass.user?.is_admin !== true) {
+      this.shadowRoot.innerHTML = `<ha-card style="padding:20px"><strong>${_esc(this._config.title || 'Log Email Summary')}</strong><p>${this._lang === 'pl' ? 'Dziennik systemowy i wysyłanie raportów są dostępne tylko dla administratora.' : 'System logs and report controls require an administrator.'}</p></ha-card>`;
+      return;
+    }
     const data = this._logData;
+    const unavailable = !data || data.unavailable;
     const errors = data ? (data.errors || []) : [];
     const warnings = data ? (data.warnings || []) : [];
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
     const statusColor = totalErrors > 0 ? '#ef4444' : totalWarnings > 5 ? '#f59e0b' : '#10b981';
-    const statusLabel = totalErrors > 0 ? `${totalErrors} error${totalErrors > 1 ? 's' : ''}` :
+    const statusLabel = unavailable ? 'Unavailable' : totalErrors > 0 ? `${totalErrors} error${totalErrors > 1 ? 's' : ''}` :
                         totalWarnings > 0 ? `${totalWarnings} warning${totalWarnings > 1 ? 's' : ''}` : 'Clean';
 
     const dailyEntityId = 'automation.ha_tools_log_email_daily';
@@ -1128,17 +1148,17 @@ class HALogEmail extends HTMLElement {
         <div class="overview-grid">
           <div class="stat-card ${totalErrors > 0 ? 'stat-error' : 'stat-ok'}">
             <div class="stat-icon">\u274C</div>
-            <div class="stat-value">${totalErrors}</div>
+            <div class="stat-value">${unavailable ? '—' : totalErrors}</div>
             <div class="stat-label">Errors (24h)</div>
           </div>
           <div class="stat-card ${totalWarnings > 5 ? 'stat-warn' : 'stat-ok'}">
             <div class="stat-icon">\u26A0\uFE0F</div>
-            <div class="stat-value">${totalWarnings}</div>
+            <div class="stat-value">${unavailable ? '—' : totalWarnings}</div>
             <div class="stat-label">Warnings (24h)</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">\uD83D\uDCDD</div>
-            <div class="stat-value">${data ? (data.total || totalErrors + totalWarnings) : '—'}</div>
+            <div class="stat-value">${unavailable ? '—' : (data.total || totalErrors + totalWarnings)}</div>
             <div class="stat-label">Total entries</div>
           </div>
           <div class="stat-card">
@@ -1154,7 +1174,7 @@ class HALogEmail extends HTMLElement {
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${errors.length === 0 && !this._loading ?
-          '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>' :
+          (unavailable ? '<div class="empty-state">Log data unavailable</div>' : '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>') :
           errors.slice(0, 5).map(e => `
             <div class="log-entry error-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
@@ -1166,7 +1186,7 @@ class HALogEmail extends HTMLElement {
 
         <div class="section-header" style="margin-top:12px">Recent Warnings</div>
         ${warnings.length === 0 && !this._loading ?
-          '<div class="empty-state">\u2705 No warnings found in last 24h</div>' :
+          (unavailable ? '<div class="empty-state">Log data unavailable</div>' : '<div class="empty-state">\u2705 No warnings found in last 24h</div>') :
           warnings.slice(0, 3).map(e => `
             <div class="log-entry warn-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>

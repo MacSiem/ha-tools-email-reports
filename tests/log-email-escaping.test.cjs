@@ -49,6 +49,7 @@ test('household view never requests admin logs or displays stored admin results'
   });
   const { window } = dom;
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+  window.localStorage.setItem('ha-tools-log-polling', JSON.stringify({ enabled: true, interval: 60 }));
   window.eval(fs.readFileSync(path.join(__dirname, '..', 'ha-log-email.js'), 'utf8'));
   const card = window.document.createElement('ha-log-email');
   card.setConfig({ title: 'Log Email' });
@@ -62,6 +63,7 @@ test('household view never requests admin logs or displays stored admin results'
   await card._pollForNewErrors();
   assert.equal(calls, 0);
   assert.equal(card._logData, null);
+  assert.equal(JSON.parse(window.localStorage.getItem('ha-tools-log-polling')).enabled, true);
   assert.match(card.shadowRoot.textContent, /administrator/i);
   assert.doesNotMatch(card.shadowRoot.textContent, /private admin log|Clean|No errors found/i);
   dom.window.close();

@@ -569,7 +569,8 @@ class HALogEmail extends HTMLElement {
     if (hass.user?.is_admin !== true) {
       this._logData = null;
       this._logHistory = [];
-      this._stopPolling();
+      if (this._pollingTimer) clearInterval(this._pollingTimer);
+      this._pollingTimer = null;
     }
     if (!this._firstRender) {
       this._firstRender = true;

@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:7a2e3e741ba30107eef527244d3045102e707e168527daf062f3ee03d9be9794
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:4a0f7e566deaab3c0e6cc14f703c689dd702063b7ffe79822b5865697c58ae4a
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:1f74c419ffaf7b9bfbb05b5153c51d07b3a89db1874fd4136b06f78d8f191e3a
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
@@ -700,7 +700,8 @@ class HALogEmail extends HTMLElement {
     if (hass.user?.is_admin !== true) {
       this._logData = null;
       this._logHistory = [];
-      this._stopPolling();
+      if (this._pollingTimer) clearInterval(this._pollingTimer);
+      this._pollingTimer = null;
     }
     if (!this._firstRender) {
       this._firstRender = true;

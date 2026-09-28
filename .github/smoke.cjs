@@ -134,8 +134,7 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
       else {
         const footer = el.shadowRoot.querySelector('.donate-section[data-source="own-card"]');
         const coffee = footer && footer.querySelector('a[href="https://buymeacoffee.com/macsiem"][target="_blank"][rel="noopener noreferrer"]');
-        const paypal = footer && footer.querySelector('a[href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W"][target="_blank"][rel="noopener noreferrer"]');
-        if (el.shadowRoot.querySelectorAll('.donate-section[data-source="own-card"]').length !== 1 || !coffee || !paypal) {
+        if (el.shadowRoot.querySelectorAll('.donate-section[data-source="own-card"]').length !== 1 || !coffee || footer.querySelectorAll('a').length !== 1) {
           problem = 'card-owned support footer contract is incomplete';
         }
       }

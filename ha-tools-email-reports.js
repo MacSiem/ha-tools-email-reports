@@ -1,8 +1,8 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:4a0f7e566deaab3c0e6cc14f703c689dd702063b7ffe79822b5865697c58ae4a
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:1f74c419ffaf7b9bfbb05b5153c51d07b3a89db1874fd4136b06f78d8f191e3a
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:83618a96c392486f59840d41b338b70a80ffd0914271403af5a734da4529791b
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:d6e807b0898b6b3008e373514346de4d62751e66b418e09d7c2d626fb1a6d1ec
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
 (function() {

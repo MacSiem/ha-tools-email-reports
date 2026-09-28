@@ -647,7 +647,7 @@ class HALogEmail extends HTMLElement {
 
   getCardSize() { return 5; }
 
-  getGridOptions() { return { rows: 6, columns: 12, min_rows: 3, min_columns: 6 }; }
+  getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
   static getStubConfig() {
     return {

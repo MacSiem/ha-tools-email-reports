@@ -1,8 +1,8 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:2fbd449b7885839a867bb55f8e44210547fc1f169cbf52ec3f9e0bd63f6145bb
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:2adbe04fa146914fa9be473596fc94ad66ed74434e00d0cb2b5cf656f8aadd15
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:0c83b8376f3c5f40b04383cfcd2456e84b59e4eb57856bc155397a9b44cb9686
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:1f74c419ffaf7b9bfbb05b5153c51d07b3a89db1874fd4136b06f78d8f191e3a
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
 (function() {
@@ -778,7 +778,7 @@ class HALogEmail extends HTMLElement {
 
   getCardSize() { return 5; }
 
-  getGridOptions() { return { rows: 6, columns: 12, min_rows: 3, min_columns: 6 }; }
+  getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
   static getStubConfig() {
     return {
@@ -1885,7 +1885,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
     getCardSize() { return 5; }
 
-    getGridOptions() { return { rows: 5, columns: 12, min_rows: 3, min_columns: 6 }; }
+    getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
     static getStubConfig() { return { title: 'Smart Reports', energy_source_mode: 'dashboard' }; }
 

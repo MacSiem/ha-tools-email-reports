@@ -1,10 +1,10 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.5.0
- * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:83618a96c392486f59840d41b338b70a80ffd0914271403af5a734da4529791b
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:d6e807b0898b6b3008e373514346de4d62751e66b418e09d7c2d626fb1a6d1ec
+ * HA Tools Email Reports bundle v4.5.1
+ * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:e24611d84432e2b27f8db6e3444d04d54b39c9fe16a7dcd946d578a39d215c8c
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:041b3a7978cca384065962c657f24ea9b8d4f605d9e117b763ba2423a2a5fa88
  */
-/* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
+/* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
 'use strict';
 
@@ -129,7 +129,7 @@ if (!window.customCards.some(c => c.type === TAG)) {
 }
 
 })();
-/* HA Tools split — ha-log-email v4.4.0 (2026-09-24) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.4.1 (2026-09-29) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -142,7 +142,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.4.0
+ * HA Log Email Card v4.4.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1695,7 +1695,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.4.0 registered');
+  console.log('[ha-log-email] v4.4.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {
@@ -1754,7 +1754,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.0.0
+ * Version: 4.0.1
  */
 
 (function registerHASmartReports() {
@@ -1762,7 +1762,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
   if (customElements.get('ha-smart-reports')) return;
 
-  const VERSION = '4.0.0';
+  const VERSION = '4.0.1';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 
@@ -2524,6 +2524,6 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.5.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.5.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

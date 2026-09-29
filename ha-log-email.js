@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.4.0 (2026-09-24) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.4.1 (2026-09-29) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -11,7 +11,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.4.0
+ * HA Log Email Card v4.4.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1564,7 +1564,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.4.0 registered');
+  console.log('[ha-log-email] v4.4.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

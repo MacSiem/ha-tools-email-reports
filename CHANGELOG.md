@@ -1,3 +1,9 @@
+## 4.5.1 (2026-09-29)
+
+- Keep household users from reading administrator logs through the Log Email card; unavailable logs show an explicit state and an empty digest cannot be sent.
+- Escape log content before rendering; keep Smart Reports at natural height in Sections and use compact administrator-only support links.
+- Sync the vendored Smart Reports 4.0.1 source and regenerate the bundle with exact source digests.
+
 ## 4.5.0 (2026-09-24)
 
 - Energy Email moved: `custom:ha-energy-email` is now maintained only in Energy Optimizer (HACS default). This plugin no longer ships its own copy, which removes the race where whichever bundle loaded first decided which version of the card you got.

@@ -212,3 +212,9 @@ The optional support link in Log Email and Smart Reports is shown only to admini
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Privacy and data
+
+The cards read Home Assistant logs and configured energy statistics. Reports and logs can reveal household activity, entity identifiers and error details. Sending through HA Tools Email transmits the selected content to your configured SMTP destination. Review recipients and content, and redact exports before sharing.
+
+See [SECURITY.md](SECURITY.md) for safe vulnerability reporting and [NOTICE](NOTICE) for licensing notices.

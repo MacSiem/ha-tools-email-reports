@@ -117,18 +117,18 @@ test('version banner, customCards metadata and editor exist once per loaded runt
   }
 });
 
-test('generated bundle passes the shared N-01 through N-05 fix-pass-2 behavior suite', () => {
+test('generated bundle passes shared behavior and rendered-theme contrast suites', () => {
   // A nested runner inherits child-v8 and skips files unless its runner context is removed.
   const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
   delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/smart-reports-fix-pass-2.test.cjs'], {
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/smart-reports-fix-pass-2.test.cjs', 'tests/smart-reports-theme-contrast.test.cjs'], {
     cwd: ROOT,
     encoding: 'utf8',
     env,
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.doesNotMatch(result.stderr, /skipping running files/, 'shared behavior suite must execute');
-  assert.match(result.stdout, /# tests 15(?:\r?\n|$)/, 'all fifteen shared behavior cases must run');
+  assert.match(result.stdout, /# tests 23(?:\r?\n|$)/, 'all fifteen behavior and eight contrast cases must run');
   for (const id of ['N-01', 'N-02', 'N-03', 'N-04', 'N-05']) assert.ok(result.stdout.includes(id), `${id} must run against the generated bundle`);
 });
 

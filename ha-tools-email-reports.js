@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:e24611d84432e2b27f8db6e3444d04d54b39c9fe16a7dcd946d578a39d215c8c
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:6ba9670adaf95f28dcb021c7ab5ffd8098b39900b3d86860c3709044ad8d9658
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:041b3a7978cca384065962c657f24ea9b8d4f605d9e117b763ba2423a2a5fa88
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1205,7 +1205,7 @@ class HALogEmail extends HTMLElement {
         <div class="schedule-grid">
           <div class="schedule-card">
             <div class="schedule-title">\uD83D\uDDD3\uFE0F Daily Report</div>
-            <div class="schedule-desc">Every day at 07:00 — errors + warnings summary</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Dzienny raport błędów i ostrzeżeń. Czas wysyłki ustala Twoja automatyzacja.' : 'Daily errors and warnings summary. Your automation sets the sending time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
                 ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : dailyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
@@ -1216,7 +1216,7 @@ class HALogEmail extends HTMLElement {
 
           <div class="schedule-card">
             <div class="schedule-title">\uD83D\uDCC6 Weekly Report</div>
-            <div class="schedule-desc">Every Monday at 07:30 — full week log digest</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Raport dziennika z ostatniego tygodnia. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Full-week log digest. Your automation sets the sending day and time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
                 ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : weeklyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}

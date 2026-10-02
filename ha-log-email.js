@@ -1074,7 +1074,7 @@ class HALogEmail extends HTMLElement {
         <div class="schedule-grid">
           <div class="schedule-card">
             <div class="schedule-title">\uD83D\uDDD3\uFE0F Daily Report</div>
-            <div class="schedule-desc">Every day at 07:00 — errors + warnings summary</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Dzienny raport błędów i ostrzeżeń. Czas wysyłki ustala Twoja automatyzacja.' : 'Daily errors and warnings summary. Your automation sets the sending time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
                 ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : dailyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
@@ -1085,7 +1085,7 @@ class HALogEmail extends HTMLElement {
 
           <div class="schedule-card">
             <div class="schedule-title">\uD83D\uDCC6 Weekly Report</div>
-            <div class="schedule-desc">Every Monday at 07:30 — full week log digest</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Raport dziennika z ostatniego tygodnia. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Full-week log digest. Your automation sets the sending day and time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
                 ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : weeklyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}

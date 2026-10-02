@@ -1026,8 +1026,8 @@ class HALogEmail extends HTMLElement {
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
     const statusColor = totalErrors > 0 ? '#ef4444' : totalWarnings > 5 ? '#f59e0b' : '#10b981';
-    const statusLabel = unavailable ? 'Unavailable' : totalErrors > 0 ? `${totalErrors} error${totalErrors > 1 ? 's' : ''}` :
-                        totalWarnings > 0 ? `${totalWarnings} warning${totalWarnings > 1 ? 's' : ''}` : 'Clean';
+    const statusLabel = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') : totalErrors > 0 ? `${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'error' + (totalErrors > 1 ? 's' : '')}` :
+                        totalWarnings > 0 ? `${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warning' + (totalWarnings > 1 ? 's' : '')}` : (this._lang === 'pl' ? 'Bez błędów' : 'Clean');
 
     const dailyEntityId = 'automation.ha_tools_log_email_daily';
     const weeklyEntityId = 'automation.ha_tools_log_email_weekly';
@@ -1059,17 +1059,17 @@ class HALogEmail extends HTMLElement {
           <div class="stat-card ${totalErrors > 0 ? 'stat-error' : 'stat-ok'}">
             <div class="stat-icon">\u274C</div>
             <div class="stat-value">${unavailable ? '—' : totalErrors}</div>
-            <div class="stat-label">Errors (24h)</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Błędy (24 h)' : 'Errors (24h)'}</div>
           </div>
           <div class="stat-card ${totalWarnings > 5 ? 'stat-warn' : 'stat-ok'}">
             <div class="stat-icon">\u26A0\uFE0F</div>
             <div class="stat-value">${unavailable ? '—' : totalWarnings}</div>
-            <div class="stat-label">Warnings (24h)</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Ostrzeżenia (24 h)' : 'Warnings (24h)'}</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">\uD83D\uDCDD</div>
             <div class="stat-value">${unavailable ? '—' : (data.total || totalErrors + totalWarnings)}</div>
-            <div class="stat-label">Total entries</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Wszystkie wpisy' : 'Total entries'}</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">\uD83D\uDFE2</div>
@@ -1079,12 +1079,12 @@ class HALogEmail extends HTMLElement {
         </div>
 
         <div class="section-header">
-          <span>Recent Errors</span>
+          <span>${this._lang === 'pl' ? 'Ostatnie błędy' : 'Recent Errors'}</span>
 
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${errors.length === 0 && !this._loading ?
-          (unavailable ? '<div class="empty-state">Log data unavailable</div>' : '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>') :
+          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak błędów w dzienniku z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>')) :
           errors.slice(0, 5).map(e => `
             <div class="log-entry error-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
@@ -1094,9 +1094,9 @@ class HALogEmail extends HTMLElement {
           `).join('')
         }
 
-        <div class="section-header" style="margin-top:12px">Recent Warnings</div>
+        <div class="section-header" style="margin-top:12px">${this._lang === 'pl' ? 'Ostatnie ostrzeżenia' : 'Recent Warnings'}</div>
         ${warnings.length === 0 && !this._loading ?
-          (unavailable ? '<div class="empty-state">Log data unavailable</div>' : '<div class="empty-state">\u2705 No warnings found in last 24h</div>') :
+          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak ostrzeżeń z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No warnings found in last 24h</div>')) :
           warnings.slice(0, 3).map(e => `
             <div class="log-entry warn-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
@@ -1158,7 +1158,7 @@ class HALogEmail extends HTMLElement {
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${this._buildEmailPreview()}
-        ${data ? `<div class="last-updated">Based on data from: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
+        ${data ? `<div class="last-updated">${this._lang === 'pl' ? 'Dane odczytane o:' : 'Based on data from:'} ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
       `;
     } else if (this._activeTab === 'send') {
       tabContent = `
@@ -1166,19 +1166,19 @@ class HALogEmail extends HTMLElement {
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC5</div>
             <div class="send-title">${this._t.dailySummary}</div>
-            <div class="send-desc">Errors + warnings from last 24 hours</div>
+            <div class="send-desc">${this._lang === 'pl' ? 'Błędy i ostrzeżenia z ostatnich 24 godzin' : 'Errors + warnings from last 24 hours'}</div>
             <div class="send-counts">
-              <span class="count-badge error-badge">${totalErrors} errors</span>
-              <span class="count-badge warn-badge">${totalWarnings} warnings</span>
+              <span class="count-badge error-badge">${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'errors'}</span>
+              <span class="count-badge warn-badge">${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warnings'}</span>
             </div>
             <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}">${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
             <div class="send-title">${this._t.weeklyDigest}</div>
-            <div class="send-desc">Full week log summary</div>
+            <div class="send-desc">${this._lang === 'pl' ? 'Podsumowanie dziennika z całego tygodnia' : 'Full week log summary'}</div>
             <div class="send-counts">
-              <span class="count-badge info-badge">7 days</span>
+              <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>
             <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}">${this._t.sendWeekly}</button>
           </div>

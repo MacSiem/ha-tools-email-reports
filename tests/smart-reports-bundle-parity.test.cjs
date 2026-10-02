@@ -124,6 +124,9 @@ test('generated bundle passes the shared N-01 through N-05 fix-pass-2 behavior s
     env: { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE },
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /skipping running files/, 'shared behavior suite must execute');
+  assert.match(result.stdout, /# tests 12(?:\r?\n|$)/, 'all twelve shared behavior cases must run');
+  for (const id of ['N-01', 'N-02', 'N-03', 'N-04', 'N-05']) assert.ok(result.stdout.includes(id), `${id} must run against the generated bundle`);
 });
 
 test('F08 manifest owns all and only three sources with repository, path, version and digest', () => {

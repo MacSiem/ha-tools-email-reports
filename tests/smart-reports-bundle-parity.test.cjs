@@ -118,10 +118,13 @@ test('version banner, customCards metadata and editor exist once per loaded runt
 });
 
 test('generated bundle passes the shared N-01 through N-05 fix-pass-2 behavior suite', () => {
-  const result = spawnSync(process.execPath, ['--test', 'tests/smart-reports-fix-pass-2.test.cjs'], {
+  // A nested runner inherits child-v8 and skips files unless its runner context is removed.
+  const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/smart-reports-fix-pass-2.test.cjs'], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE },
+    env,
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.doesNotMatch(result.stderr, /skipping running files/, 'shared behavior suite must execute');

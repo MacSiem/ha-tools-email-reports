@@ -218,3 +218,5 @@ MIT — see [LICENSE](LICENSE).
 The cards read Home Assistant logs and configured energy statistics. Reports and logs can reveal household activity, entity identifiers and error details. Sending through HA Tools Email transmits the selected content to your configured SMTP destination. Review recipients and content, and redact exports before sharing.
 
 See [SECURITY.md](SECURITY.md) for safe vulnerability reporting and [NOTICE](NOTICE) for licensing notices.
+
+Smart Reports energy ranges end at the last completed Recorder UTC hour. Missing boundary hours or buckets extending beyond the range withhold the total and estimated cost. Before the first completed hour, Today has an empty range and no data, including timezones with fractional-hour offsets. The exported range matches the report exactly.

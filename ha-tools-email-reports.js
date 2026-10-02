@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:ba03d67a52a9948bfb0791aeddffef4d3acf8b35ed866b02c5ddd3af3da450c2
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:041b3a7978cca384065962c657f24ea9b8d4f605d9e117b763ba2423a2a5fa88
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:c07828d46c4832d63bec804b1a35e86fe1dadc848988b8df09470fdae61f1c9c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -2133,7 +2133,9 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
       const local = this._partsInZone(now, timeZone);
       const daysBack = safeKey === '1d' ? 0 : (safeKey === '30d' ? 29 : 6);
       const startDate = this._addCalendarDays(local, -daysBack);
-      return { key: safeKey, start: this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone), end: now, time_zone: timeZone };
+      const start = this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone);
+      const end = new Date(Math.max(start.getTime(), Math.floor(now.getTime() / 3600000) * 3600000));
+      return { key: safeKey, start, end, time_zone: timeZone };
     }
 
     _periodDescriptor() {
@@ -2249,7 +2251,8 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         if (effectiveBuckets[index].start - effectiveBuckets[index - 1].end > 1000) return { status: 'partial', value: null, unit: normalizedUnit };
       }
       if (startMs !== null && endMs !== null) {
-        if (effectiveBuckets[0].start - startMs > 3601000 || endMs - effectiveBuckets[effectiveBuckets.length - 1].end > 3601000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
+        // A boundary gap or a straddling bucket cannot represent the requested total.
+        if (Math.abs(effectiveBuckets[0].start - startMs) > 1000 || Math.abs(endMs - effectiveBuckets[effectiveBuckets.length - 1].end) > 1000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
       }
       let value = effectiveBuckets.reduce((sum, bucket) => sum + bucket.change, 0);
       if (role !== 'cost') {
@@ -2325,7 +2328,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         const ids = selection.ordered.map((source) => source.statistic_id);
         const metadataResponse = await this._hass.callWS({ type: 'recorder/get_statistics_metadata', statistic_ids: ids });
         if (!this._isCurrentEnergyRequest(generation)) return;
-        const statisticsResponse = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
+        const statisticsResponse = new Date(period.end) <= new Date(period.start) ? {} : await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
         if (!this._isCurrentEnergyRequest(generation)) return;
         const metadataById = this._metadataMap(metadataResponse); const statisticsById = statisticsResponse && typeof statisticsResponse === 'object' ? statisticsResponse : {};
         const window = { start: new Date(period.start), end: new Date(period.end) };

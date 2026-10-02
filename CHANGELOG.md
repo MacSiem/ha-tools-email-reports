@@ -1,5 +1,10 @@
 ## 4.5.1 (2026-09-29)
 
+## Unreleased
+
+- Vendor the exact Smart Reports completed-hour boundary fix; require complete energy coverage and preserve an empty forward range before the first hour.
+- Test the same period cases directly in standalone and generated bundle runtimes.
+
 - Keep household users from reading administrator logs through the Log Email card; unavailable logs show an explicit state and an empty digest cannot be sent.
 - Escape log content before rendering; keep Smart Reports at natural height in Sections and use compact administrator-only support links.
 - Sync the vendored Smart Reports 4.0.1 source and regenerate the bundle with exact source digests.

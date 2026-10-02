@@ -126,6 +126,15 @@ test('generated bundle passes the shared N-01 through N-05 fix-pass-2 behavior s
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
+test('generated bundle preserves complete period totals and UTC cutoff including Kathmandu midnight', () => {
+  const result = spawnSync(process.execPath, ['--test', 'tests/smart-reports-period-completeness.test.cjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE },
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
 test('F08 manifest owns all and only three sources with repository, path, version and digest', () => {
   assert.deepEqual(Object.keys(MANIFEST).sort(), SOURCE_NAMES.slice().sort());
   for (const name of SOURCE_NAMES) {

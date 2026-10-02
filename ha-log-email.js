@@ -586,6 +586,26 @@ class HALogEmail extends HTMLElement {
   get _t() {
     const T = {
       pl: {
+        overview: "Przegląd",
+        schedule: "Harmonogram",
+        preview: "Podgląd",
+        sendNow: "Wyślij teraz",
+        history: "Historia",
+        dailyReport: "Raport dzienny",
+        weeklyReport: "Raport tygodniowy",
+        active: "Aktywny",
+        disabled: "Wyłączony",
+        notCreated: "Nie utworzono",
+        enable: "Włącz",
+        disable: "Wyłącz",
+        dailySummary: "Podsumowanie dnia",
+        weeklyDigest: "Podsumowanie tygodnia",
+        sendDaily: "Wyślij raport dzienny",
+        sendWeekly: "Wyślij raport tygodniowy",
+        recipient: "Odbiorca",
+        smtpService: "Konfiguracja SMTP",
+        emailPreview: "Podgląd wiadomości",
+        refreshData: "Odśwież dane",
         title: 'Log Email',
         loading: 'Wczytywanie...',
         noData: 'Brak danych',
@@ -605,6 +625,26 @@ class HALogEmail extends HTMLElement {
         locale: (this._lang === 'pl' ? 'pl-PL' : 'en-US'),
       },
       en: {
+        overview: "Overview",
+        schedule: "Schedule",
+        preview: "Preview",
+        sendNow: "Send Now",
+        history: "History",
+        dailyReport: "Daily Report",
+        weeklyReport: "Weekly Report",
+        active: "Active",
+        disabled: "Disabled",
+        notCreated: "Not created",
+        enable: "Enable",
+        disable: "Disable",
+        dailySummary: "Daily Summary",
+        weeklyDigest: "Weekly Digest",
+        sendDaily: "Send Daily Email",
+        sendWeekly: "Send Weekly Email",
+        recipient: "Recipient",
+        smtpService: "SMTP Service",
+        emailPreview: "Email Preview",
+        refreshData: "Refresh Data",
         title: 'Log Email',
         loading: 'Loading...',
         noData: 'No data',
@@ -995,18 +1035,18 @@ class HALogEmail extends HTMLElement {
     const weeklyAuto = this._getScheduleState(weeklyEntityId);
 
     const tabs = [
-      { id: 'overview', label: 'Overview', icon: '\uD83D\uDCCA' },
-      { id: 'schedule', label: 'Schedule', icon: '\uD83D\uDCC5' },
-      { id: 'preview', label: 'Preview', icon: '\uD83D\uDC41\uFE0F' },
-      { id: 'send', label: 'Send Now', icon: '\uD83D\uDCE7' },
-      { id: 'history', label: 'History', icon: '\uD83D\uDCDC' }
+      { id: 'overview', label: this._t.overview, icon: '\uD83D\uDCCA' },
+      { id: 'schedule', label: this._t.schedule, icon: '\uD83D\uDCC5' },
+      { id: 'preview', label: this._t.preview, icon: '\uD83D\uDC41\uFE0F' },
+      { id: 'send', label: this._t.sendNow, icon: '\uD83D\uDCE7' },
+      { id: 'history', label: this._t.history, icon: '\uD83D\uDCDC' }
     ];
 
     const sendStatusHTML = this._sendStatus ? (() => {
       const s = this._sendStatus;
       if (s.status === 'sending') return `<div class="send-status sending">\u23F3 Sending ${s.period} log email...</div>`;
       if (s.status === 'success') return `<div class="send-status success">\u2705 ${s.period} log email sent at ${s.time}</div>`;
-      if (s.status === 'error') return `<div class="send-status error">\u274C Send failed: ${_esc(s.error)}</div>`;
+      if (s.status === 'error') return `<div class="send-status error">\u274C ${this._t.emailFailed}: ${_esc(s.error)}</div>`;
       return '';
     })() : '';
 
@@ -1073,24 +1113,24 @@ class HALogEmail extends HTMLElement {
       tabContent = `
         <div class="schedule-grid">
           <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDDD3\uFE0F Daily Report</div>
+            <div class="schedule-title">\uD83D\uDDD3\uFE0F ${this._t.dailyReport}</div>
             <div class="schedule-desc">${this._lang === 'pl' ? 'Dzienny raport błędów i ostrzeżeń. Czas wysyłki ustala Twoja automatyzacja.' : 'Daily errors and warnings summary. Your automation sets the sending time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : dailyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
+                ${dailyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : dailyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
               </span>
-              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
+              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
             </div>
           </div>
 
           <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDCC6 Weekly Report</div>
+            <div class="schedule-title">\uD83D\uDCC6 ${this._t.weeklyReport}</div>
             <div class="schedule-desc">${this._lang === 'pl' ? 'Raport dziennika z ostatniego tygodnia. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Full-week log digest. Your automation sets the sending day and time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : weeklyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
+                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : weeklyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
               </span>
-              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
+              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
             </div>
           </div>
         </div>
@@ -1100,10 +1140,10 @@ class HALogEmail extends HTMLElement {
             : 'The log-email card sends the digest, but does not create the schedule automation. Add an automation that calls ha_tools_email at your chosen time (see README) \u2014 it will then appear here to enable/disable.'}</div>
         ` : ''}
 
-        <div class="section-header">SMTP Service</div>
+        <div class="section-header">${this._t.smtpService}</div>
         <div class="info-card" style="padding:12px">${smtpHtml}
         </div>
-        <div class="section-header" style="margin-top:10px">Recipient</div>
+        <div class="section-header" style="margin-top:10px">${this._t.recipient}</div>
         <div class="info-card">
           <span>\uD83D\uDCE7 ${this._config.email_recipient ? _esc(this._config.email_recipient) : (this._centralRecipient ? '<span style="color:var(--bento-text-secondary)">' + (this._lang === 'pl' ? 'Domyślnie z Ustawień' : 'Default from Settings') + ' ' + _esc(this._centralRecipient) + '</span>' : '<span style="color:var(--bento-text-muted)">' + (this._lang === 'pl' ? 'Nie ustawiony \u2014 dodaj email_recipient w konfiguracji karty lub Ustawienia' : 'Not set \u2014 add email_recipient in card configuration or Settings') + '</span>')}</span>
         </div>
@@ -1113,8 +1153,8 @@ class HALogEmail extends HTMLElement {
     } else if (this._activeTab === 'preview') {
       tabContent = `
         <div class="section-header">
-          <span>Email Preview</span>
-          <button class="refresh-btn" id="btn-refresh-preview" aria-label="Refresh log data">\uD83D\uDD04 Refresh Data</button>
+          <span>${this._t.emailPreview}</span>
+          <button class="refresh-btn" id="btn-refresh-preview" aria-label="${this._t.refreshData}">\uD83D\uDD04 ${this._t.refreshData}</button>
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${this._buildEmailPreview()}
@@ -1125,26 +1165,26 @@ class HALogEmail extends HTMLElement {
         <div class="send-grid">
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC5</div>
-            <div class="send-title">Daily Summary</div>
+            <div class="send-title">${this._t.dailySummary}</div>
             <div class="send-desc">Errors + warnings from last 24 hours</div>
             <div class="send-counts">
               <span class="count-badge error-badge">${totalErrors} errors</span>
               <span class="count-badge warn-badge">${totalWarnings} warnings</span>
             </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="Send daily log email">Send Daily Email</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}">${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
-            <div class="send-title">Weekly Digest</div>
+            <div class="send-title">${this._t.weeklyDigest}</div>
             <div class="send-desc">Full week log summary</div>
             <div class="send-counts">
               <span class="count-badge info-badge">7 days</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="Send weekly log email">Send Weekly Email</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}">${this._t.sendWeekly}</button>
           </div>
         </div>
         ${sendStatusHTML}
-        <div class="section-header" style="margin-top:16px">Recipient</div>
+        <div class="section-header" style="margin-top:16px">${this._t.recipient}</div>
         <div class="info-card">\uD83D\uDCE7 ${_esc(this._config.email_recipient || '')}</div>
         <div class="info-note" style="margin-top:8px">
           ${this._lang === 'pl' ? 'ℹ️ Wysyła email bezpośrednio przez ha_tools_email (centralna konfiguracja). Nie wymaga osobnych automatyzacji.' : 'ℹ️ Sends email directly via ha_tools_email (central config). No separate automations required.'}

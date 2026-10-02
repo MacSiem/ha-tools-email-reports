@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:84cf38024d667f12bf1ed4839670a8f6b4518a08980ddb19fd7101b36340f715
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:ba03d67a52a9948bfb0791aeddffef4d3acf8b35ed866b02c5ddd3af3da450c2
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:041b3a7978cca384065962c657f24ea9b8d4f605d9e117b763ba2423a2a5fa88
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1175,8 +1175,8 @@ class HALogEmail extends HTMLElement {
 
     const sendStatusHTML = this._sendStatus ? (() => {
       const s = this._sendStatus;
-      if (s.status === 'sending') return `<div class="send-status sending">\u23F3 Sending ${s.period} log email...</div>`;
-      if (s.status === 'success') return `<div class="send-status success">\u2705 ${s.period} log email sent at ${s.time}</div>`;
+      if (s.status === 'sending') return `<div class="send-status sending">\u23F3 ${this._lang === 'pl' ? 'Wysyłanie raportu dziennika' : 'Sending log email'} (${s.period === 'daily' ? this._t.dailyReport : this._t.weeklyReport})...</div>`;
+      if (s.status === 'success') return `<div class="send-status success">\u2705 ${this._lang === 'pl' ? 'Raport dziennika wysłany o' : 'Log email sent at'} ${s.time}</div>`;
       if (s.status === 'error') return `<div class="send-status error">\u274C ${this._t.emailFailed}: ${_esc(s.error)}</div>`;
       return '';
     })() : '';
@@ -1237,7 +1237,7 @@ class HALogEmail extends HTMLElement {
           `).join('')
         }
 
-        ${data && data.fetchedAt ? `<div class="last-updated">Last fetched: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
+        ${data && data.fetchedAt ? `<div class="last-updated">${this._t.lastFetch}: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
         ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${_esc(data.note)}</div>` : ''}
       `;
     } else if (this._activeTab === 'schedule') {
@@ -1321,11 +1321,11 @@ class HALogEmail extends HTMLElement {
           ${this._lang === 'pl' ? 'ℹ️ Wysyła email bezpośrednio przez ha_tools_email (centralna konfiguracja). Nie wymaga osobnych automatyzacji.' : 'ℹ️ Sends email directly via ha_tools_email (central config). No separate automations required.'}
         </div>
 
-        <div class="section-header" style="margin-top:20px">Instant Error Notification</div>
+        <div class="section-header" style="margin-top:20px">${this._lang === 'pl' ? 'Natychmiastowe powiadomienie o błędzie' : 'Instant Error Notification'}</div>
         <div class="info-card" style="padding:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div>
-              <p style="margin:0;font-weight:600;font-size:13px">🔔 Live error polling</p>
+              <p style="margin:0;font-weight:600;font-size:13px">🔔 ${this._lang === 'pl' ? 'Bieżące sprawdzanie błędów' : 'Live error polling'}</p>
               <p style="margin:4px 0 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">
                 ${this._pollingEnabled ? (this._lang === 'pl' ? '🟢 Aktywne — sprawdzanie co ' : '🟢 Active — checking every ') + this._pollingIntervalSec + 's' : (this._lang === 'pl' ? '⚫ Wyłączone' : '⚫ Disabled')}
               </p>
@@ -1337,13 +1337,13 @@ class HALogEmail extends HTMLElement {
               <button class="toggle-btn" id="btn-poll-toggle" style="padding:6px 14px;font-size:11px;">
                 ${this._pollingEnabled ? (this._lang === 'pl' ? 'Wyłącz' : 'Disable') : (this._lang === 'pl' ? 'Włącz' : 'Enable')}
               </button>
-              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">last: ' + new Date(this._lastPollTime).toLocaleTimeString() + '</span>' : ''}
+              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">' + (this._lang === 'pl' ? 'ostatnio: ' : 'last: ') + new Date(this._lastPollTime).toLocaleTimeString(this._t.locale) + '</span>' : ''}
             </div>
           </div>
           <p style="margin:0 0 8px 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">
             ${this._lang === 'pl' ? 'Polling wysyła persistent_notification w HA przy wykryciu nowego ERROR. Alternatywnie użyj automatyzacji:' : 'Polling sends a persistent_notification in HA when a new ERROR is detected. Alternatively, use an automation:'}
           </p>
-          <p style="margin:0 0 8px 0;font-weight:600;font-size:13px">${this._lang === 'pl' ? 'Automatyczne powiadomienia przy nowym bledzie' : 'Automatic notifications on new errors'}</p>
+          <p style="margin:0 0 8px 0;font-weight:600;font-size:13px">${this._lang === 'pl' ? 'Automatyczne powiadomienia przy nowym błędzie' : 'Automatic notifications on new errors'}</p>
           <p style="margin:0 0 12px 0;font-size:12px;color:var(--bento-text-secondary)">
             ${this._lang === 'pl' ? 'Skopiuj poniższą automatyzację do <code>automations.yaml</code> aby otrzymywać natychmiastowy email/powiadomienie przy każdym nowym ERROR w system_log.' : 'Copy the automation below into <code>automations.yaml</code> to receive an instant email/notification for every new ERROR in system_log.'}
           </p>
@@ -1700,11 +1700,11 @@ max: 3</pre>
 
   _renderHistory() {
     if (!this._logHistory || this._logHistory.length === 0) {
-      return '<div class="empty-state"><div style="font-size:48px;opacity:0.5;margin-bottom:12px;">📜</div><h3 style="margin:8px 0 4px;">No History Yet</h3><p>Log snapshots are saved each time data is fetched. History persists during the browser session.</p></div>';
+      return `<div class="empty-state"><div style="font-size:48px;opacity:0.5;margin-bottom:12px;">📜</div><h3 style="margin:8px 0 4px;">${this._lang === 'pl' ? 'Brak historii' : 'No History Yet'}</h3><p>${this._lang === 'pl' ? 'Każde pobranie danych zapisuje odczyt dziennika. Historia jest dostępna podczas sesji przeglądarki.' : 'Log snapshots are saved each time data is fetched. History persists during the browser session.'}</p></div>`;
     }
-    let html = '<div class="section-title">📊 Log Fetch History (last ' + this._logHistory.length + ' snapshots)</div>';
+    let html = `<div class="section-title">📊 ${this._lang === 'pl' ? 'Historia odczytów dziennika' : 'Log Fetch History'} (${this._logHistory.length})</div>`;
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Time</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Errors</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Warnings</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Total</th></tr></thead><tbody>';
+    html += `<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Czas' : 'Time'}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.errors}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.warnings}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Razem' : 'Total'}</th></tr></thead><tbody>`;
     this._logHistory.forEach(s => {
       const dt = new Date(s.ts);
       const time = dt.toLocaleTimeString() + ' ' + dt.toLocaleDateString();
@@ -1715,7 +1715,7 @@ max: 3</pre>
       html += '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);">' + s.total + '</td></tr>';
     });
     html += '</tbody></table>';
-    html += '<div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">💡 History is stored in browser sessionStorage and resets when the tab is closed. Each automatic/manual refresh adds a snapshot.</div>';
+    html += '<div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">💡 ' + (this._lang === 'pl' ? 'Historia jest przechowywana w bieżącej sesji przeglądarki i znika po zamknięciu karty. Każde automatyczne lub ręczne odświeżenie dodaje odczyt.' : 'History is stored in browser sessionStorage and resets when the tab is closed. Each automatic/manual refresh adds a snapshot.') + '</div>';
     return html;
   }
 
@@ -1761,12 +1761,12 @@ class HaLogEmailEditor extends HTMLElement {
         </style>
       <h3>Log Email Summary</h3>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">Title</label>
+              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Tytuł' : 'Title'}</label>
               <input type="text" id="cf_title" value="${_esc(this._config?.title || 'Log Email Summary')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
             </div>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">Email recipient (override)</label>
+              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Odbiorca email (zamiast ustawienia centralnego)' : 'Email recipient (override)'}</label>
               <input type="text" id="cf_email_recipient" value="${_esc(this._config?.email_recipient || '')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
               <div style="font-size:11px;color:var(--bento-text-secondary);margin-top:4px;">${this._lang === 'pl' ? 'Pozostaw puste, aby u\u017cy\u0107 ustawienia centralnego' : 'Leave empty to use central setting'}</div>

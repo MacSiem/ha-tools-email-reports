@@ -1,8 +1,15 @@
 'use strict';
 
-const test = require('node:test');
+const nodeTest = require('node:test');
 const assert = require('node:assert/strict');
-const { loadRuntime, metadata, makeHass, mountCard, calendarSeries } = require('./helpers/smart-reports-harness.cjs');
+const path = require('node:path');
+const { loadRuntime: loadSourceRuntime, metadata, makeHass, mountCard: mountSourceCard, calendarSeries } = require('./helpers/smart-reports-harness.cjs');
+
+for (const filename of ['ha-smart-reports.js', 'ha-tools-email-reports.js']) {
+const sourcePath = path.resolve(__dirname, '..', filename);
+const test = (name, run) => nodeTest(`${filename}: ${name}`, run);
+const loadRuntime = () => loadSourceRuntime(sourcePath);
+const mountCard = (options) => mountSourceCard({ ...options, sourcePath });
 
 for (const [label, start, end] of [
   ['first completed hour is missing', '2026-08-30T01:00:00Z', '2026-08-30T02:00:00Z'],
@@ -81,3 +88,4 @@ test('today has an empty, forward calendar range before its first complete UTC h
     assert.equal(hass.calls.some((call) => call.type === 'recorder/statistics_during_period'), false);
   } finally { card.remove(); dom.window.close(); }
 });
+}

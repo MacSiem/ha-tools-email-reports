@@ -515,7 +515,7 @@ class HALogEmail extends HTMLElement {
   constructor() {
     super();
     this._toolId = this.tagName.toLowerCase().replace('ha-', '');
-    this._lang = (navigator.language || '').startsWith('pl') ? 'pl' : 'en';
+    this._lang = /^pl(?:[-_]|$)/i.test(navigator.language || 'en') ? 'pl' : 'en';
     this.attachShadow({ mode: 'open' });
     this._hass = null;
     this._config = {};
@@ -564,7 +564,11 @@ class HALogEmail extends HTMLElement {
     } catch (e) {}
 
     const previousAdmin = this._hass?.user?.is_admin;
-    if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
+    const language = hass?.locale?.language || hass?.language || navigator.language || 'en';
+    const nextLang = /^pl(?:[-_]|$)/i.test(language) ? 'pl' : 'en';
+    const languageChanged = nextLang !== this._lang;
+    this._lang = nextLang;
+    this._hass = hass;
     if (!hass) return;
     if (hass.user?.is_admin !== true) {
       this._logData = null;
@@ -581,6 +585,7 @@ class HALogEmail extends HTMLElement {
       if (hass.user?.is_admin === true) this._fetchLogData();
       this._render();
     }
+    else if (languageChanged) this._render();
   }
 
   get _t() {
@@ -665,6 +670,13 @@ class HALogEmail extends HTMLElement {
       },
     };
     return T[this._lang] || T.en;
+  }
+
+  _countLabel(count, kind) {
+    if (this._lang !== 'pl') return `${count} ${kind}${count === 1 ? '' : 's'}`;
+    const forms = kind === 'error' ? ['błąd', 'błędy', 'błędów'] : ['ostrzeżenie', 'ostrzeżenia', 'ostrzeżeń'];
+    const few = count % 10 >= 2 && count % 10 <= 4 && !(count % 100 >= 12 && count % 100 <= 14);
+    return `${count} ${forms[count === 1 ? 0 : few ? 1 : 2]}`;
   }
 
   setConfig(config) {
@@ -1037,8 +1049,8 @@ class HALogEmail extends HTMLElement {
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
     const statusColor = totalErrors > 0 ? '#ef4444' : totalWarnings > 5 ? '#f59e0b' : '#10b981';
-    const statusLabel = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') : totalErrors > 0 ? `${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'error' + (totalErrors > 1 ? 's' : '')}` :
-                        totalWarnings > 0 ? `${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warning' + (totalWarnings > 1 ? 's' : '')}` : (this._lang === 'pl' ? 'Bez błędów' : 'Clean');
+    const statusLabel = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') : totalErrors > 0 ? this._countLabel(totalErrors, 'error') :
+                        totalWarnings > 0 ? this._countLabel(totalWarnings, 'warning') : (this._lang === 'pl' ? 'Bez błędów' : 'Clean');
 
     const dailyEntityId = 'automation.ha_tools_log_email_daily';
     const weeklyEntityId = 'automation.ha_tools_log_email_weekly';
@@ -1179,8 +1191,8 @@ class HALogEmail extends HTMLElement {
             <div class="send-title">${this._t.dailySummary}</div>
             <div class="send-desc">${this._lang === 'pl' ? 'Błędy i ostrzeżenia z ostatnich 24 godzin' : 'Errors + warnings from last 24 hours'}</div>
             <div class="send-counts">
-              <span class="count-badge error-badge">${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'errors'}</span>
-              <span class="count-badge warn-badge">${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warnings'}</span>
+              <span class="count-badge error-badge">${this._lang === 'pl' ? this._countLabel(totalErrors, 'error') : totalErrors + ' errors'}</span>
+              <span class="count-badge warn-badge">${this._lang === 'pl' ? this._countLabel(totalWarnings, 'warning') : totalWarnings + ' warnings'}</span>
             </div>
             <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendDaily}</button>
           </div>

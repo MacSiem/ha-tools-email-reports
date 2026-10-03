@@ -9,12 +9,12 @@
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-log-email.js",
     "version": "4.4.1",
-    "sha256": "6a691c4a079e7cfcc753bb941fccc2364291db101575b9def6af8cac913d44de"
+    "sha256": "39757c88d6bf23fe83fc4f0c444e3793442c92097ff250adf8fccedc20f27432"
   },
   "ha-smart-reports.js": {
     "owner": "MacSiem/ha-smart-reports",
     "path": "ha-smart-reports.js",
     "version": "4.0.1",
-    "sha256": "0e2afda257159b217bf6caecdbd851d82d935d9cb14c54ce8674442698211673"
+    "sha256": "48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51"
   }
 }

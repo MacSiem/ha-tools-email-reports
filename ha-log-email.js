@@ -910,6 +910,7 @@ class HALogEmail extends HTMLElement {
   }
   async _sendEmailNow(period) {
     if (!this._hass?.user?.is_admin) return;
+    if (this._sendStatus?.status === 'sending') return;
     if (!this._logData || this._logData.unavailable) {
       this._sendStatus = { status: 'error', period, error: this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.' };
       this._render();
@@ -1171,7 +1172,7 @@ class HALogEmail extends HTMLElement {
               <span class="count-badge error-badge">${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'errors'}</span>
               <span class="count-badge warn-badge">${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warnings'}</span>
             </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}">${this._t.sendDaily}</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
@@ -1180,7 +1181,7 @@ class HALogEmail extends HTMLElement {
             <div class="send-counts">
               <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}">${this._t.sendWeekly}</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendWeekly}</button>
           </div>
         </div>
         ${sendStatusHTML}

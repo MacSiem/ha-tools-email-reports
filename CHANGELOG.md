@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Block repeated Log Email sends while a report is pending; disable both send buttons and restore them after success or failure.
+
 - Show missing Smart Reports automation trigger timestamps as Never, without inventing a Unix-epoch age.
 
 - Count Smart Reports automation triggers since Home Assistant local midnight, including long DST days, and exclude future timestamps.

@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:ba03d67a52a9948bfb0791aeddffef4d3acf8b35ed866b02c5ddd3af3da450c2
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:5f0786cf0a133db23f1629bf170d295828fe4b78530d5cbcc91fa5f23e16953f
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:0e2afda257159b217bf6caecdbd851d82d935d9cb14c54ce8674442698211673
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1041,6 +1041,7 @@ class HALogEmail extends HTMLElement {
   }
   async _sendEmailNow(period) {
     if (!this._hass?.user?.is_admin) return;
+    if (this._sendStatus?.status === 'sending') return;
     if (!this._logData || this._logData.unavailable) {
       this._sendStatus = { status: 'error', period, error: this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.' };
       this._render();
@@ -1302,7 +1303,7 @@ class HALogEmail extends HTMLElement {
               <span class="count-badge error-badge">${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'errors'}</span>
               <span class="count-badge warn-badge">${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warnings'}</span>
             </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}">${this._t.sendDaily}</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
@@ -1311,7 +1312,7 @@ class HALogEmail extends HTMLElement {
             <div class="send-counts">
               <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}">${this._t.sendWeekly}</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendWeekly}</button>
           </div>
         </div>
         ${sendStatusHTML}

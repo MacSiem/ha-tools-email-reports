@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:ba03d67a52a9948bfb0791aeddffef4d3acf8b35ed866b02c5ddd3af3da450c2
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:f251cdaad6ac9eb2031a0fc8a35a3de0bbdb710f1640b88d7d8d3066d8277002
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:32dd7a2ee54b20ca14e9e7b117328b29604f3b93a62d0d049e1a0d4811d67c76
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -2477,11 +2477,13 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         return left.label.localeCompare(right.label);
       });
       const now = asDate(this._now()) || new Date();
+      const timeZone = this._timeZone();
+      const todayStart = this._zonedDayBounds(this._partsInZone(now, timeZone), timeZone).start;
       const active = automations.filter((automation) => automation.state === 'on').length;
       const disabled = automations.filter((automation) => automation.state === 'off').length;
       const triggeredToday = automations.filter((automation) => {
         const triggered = asDate(automation.last_triggered);
-        return triggered && now - triggered < 86400000;
+        return triggered && triggered >= todayStart && triggered <= now;
       }).length;
       const summary = document.createElement('div'); summary.className = 'summary'; summary.append(this._metric('Total automations', String(automations.length)), this._metric('Active', String(active)), this._metric('Disabled', String(disabled)), this._metric('Triggered today', String(triggeredToday))); container.appendChild(summary);
       const heading = document.createElement('h3'); heading.className = 'section'; heading.textContent = 'Recent activity'; container.appendChild(heading); const list = document.createElement('div'); list.className = 'list';

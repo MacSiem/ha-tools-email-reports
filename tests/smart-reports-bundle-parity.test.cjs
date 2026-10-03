@@ -132,6 +132,22 @@ test('generated bundle passes shared behavior and rendered-theme contrast suites
   for (const id of ['N-01', 'N-02', 'N-03', 'N-04', 'N-05']) assert.ok(result.stdout.includes(id), `${id} must run against the generated bundle`);
 });
 
+test('generated bundle counts triggers in HA calendar days including DST and excludes future timestamps', () => {
+  const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap',
+    '--test-name-pattern=Triggered today uses HA local midnight', 'tests/smart-reports-lifecycle.test.cjs'], {
+    cwd: ROOT, encoding: 'utf8', env,
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /skipping running files/);
+  assert.match(result.stdout, /# tests 4(?:\r?\n|$)/);
+  assert.match(result.stdout, /# pass 4(?:\r?\n|$)/);
+  for (const name of ['Warsaw calendar boundary', 'Warsaw spring DST day', 'Warsaw autumn 25-hour day', 'Kathmandu fractional UTC offset']) {
+    assert.ok(result.stdout.includes(name), `${name} must execute against the bundle`);
+  }
+});
+
 test('F08 manifest owns all and only three sources with repository, path, version and digest', () => {
   assert.deepEqual(Object.keys(MANIFEST).sort(), SOURCE_NAMES.slice().sort());
   for (const name of SOURCE_NAMES) {

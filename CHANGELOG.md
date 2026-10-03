@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Count Smart Reports automation triggers since Home Assistant local midnight, including long DST days, and exclude future timestamps.
+
 - Sync canonical Smart Reports status contrast with the rendered Home Assistant card background, including custom dark themes and reconnects.
 
 - Vendor the exact Smart Reports completed-hour boundary fix; require complete energy coverage and preserve an empty forward range before the first hour.

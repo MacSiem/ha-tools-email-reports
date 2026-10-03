@@ -141,8 +141,8 @@ test('generated bundle counts triggers in HA calendar days including DST and exc
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.doesNotMatch(result.stderr, /skipping running files/);
-  assert.match(result.stdout, /# tests 4(?:\r?\n|$)/);
   assert.match(result.stdout, /# pass 4(?:\r?\n|$)/);
+  assert.match(result.stdout, /# fail 0(?:\r?\n|$)/);
   for (const name of ['Warsaw calendar boundary', 'Warsaw spring DST day', 'Warsaw autumn 25-hour day', 'Kathmandu fractional UTC offset']) {
     assert.ok(result.stdout.includes(name), `${name} must execute against the bundle`);
   }

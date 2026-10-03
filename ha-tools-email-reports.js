@@ -1,10 +1,10 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.5.0
- * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.0 sha256:f4c4f0d878d31dc801403bf5f47aecc321b8c9bdd380adb429fd08f7dcd4041b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.0 sha256:fb73c21ff51e92b08b4fc90b40a632cf4a52a7b425988f584c75c74942cc4f59
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.0 sha256:ccc4a958307c45b95a1934170b9a99eb9fb6502e69b780906ce621bc56ef0e68
+ * HA Tools Email Reports bundle v4.5.1
+ * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:6a691c4a079e7cfcc753bb941fccc2364291db101575b9def6af8cac913d44de
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:0e2afda257159b217bf6caecdbd851d82d935d9cb14c54ce8674442698211673
  */
-/* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
+/* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
 'use strict';
 
@@ -129,7 +129,7 @@ if (!window.customCards.some(c => c.type === TAG)) {
 }
 
 })();
-/* HA Tools split — ha-log-email v4.4.0 (2026-09-24) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.4.1 (2026-09-29) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -137,10 +137,12 @@ const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&
 
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
-const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></div>`;
+const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card" style="margin:8px 0 0;padding:4px 0;background:none;border:0;box-shadow:none;min-height:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-direction:row;justify-content:flex-start;text-align:left"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--secondary-text-color,#64748b);font-weight:400;text-decoration:underline">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;padding:2px 6px;min-height:0;line-height:1;border:0;background:none;color:var(--secondary-text-color,#64748b);cursor:pointer">×</button></div>`;
+const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
+const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.4.0
+ * HA Log Email Card v4.4.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -692,11 +694,22 @@ class HALogEmail extends HTMLElement {
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
 
+    const previousAdmin = this._hass?.user?.is_admin;
     if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
     if (!hass) return;
+    if (hass.user?.is_admin !== true) {
+      this._logData = null;
+      this._logHistory = [];
+      if (this._pollingTimer) clearInterval(this._pollingTimer);
+      this._pollingTimer = null;
+    }
     if (!this._firstRender) {
       this._firstRender = true;
-      this._fetchLogData();
+      if (hass.user?.is_admin === true) this._fetchLogData();
+      this._render();
+    }
+    else if (previousAdmin !== hass.user?.is_admin) {
+      if (hass.user?.is_admin === true) this._fetchLogData();
       this._render();
     }
   }
@@ -704,6 +717,26 @@ class HALogEmail extends HTMLElement {
   get _t() {
     const T = {
       pl: {
+        overview: "Przegląd",
+        schedule: "Harmonogram",
+        preview: "Podgląd",
+        sendNow: "Wyślij teraz",
+        history: "Historia",
+        dailyReport: "Raport dzienny",
+        weeklyReport: "Raport tygodniowy",
+        active: "Aktywny",
+        disabled: "Wyłączony",
+        notCreated: "Nie utworzono",
+        enable: "Włącz",
+        disable: "Wyłącz",
+        dailySummary: "Podsumowanie dnia",
+        weeklyDigest: "Podsumowanie tygodnia",
+        sendDaily: "Wyślij raport dzienny",
+        sendWeekly: "Wyślij raport tygodniowy",
+        recipient: "Odbiorca",
+        smtpService: "Konfiguracja SMTP",
+        emailPreview: "Podgląd wiadomości",
+        refreshData: "Odśwież dane",
         title: 'Log Email',
         loading: 'Wczytywanie...',
         noData: 'Brak danych',
@@ -723,6 +756,26 @@ class HALogEmail extends HTMLElement {
         locale: (this._lang === 'pl' ? 'pl-PL' : 'en-US'),
       },
       en: {
+        overview: "Overview",
+        schedule: "Schedule",
+        preview: "Preview",
+        sendNow: "Send Now",
+        history: "History",
+        dailyReport: "Daily Report",
+        weeklyReport: "Weekly Report",
+        active: "Active",
+        disabled: "Disabled",
+        notCreated: "Not created",
+        enable: "Enable",
+        disable: "Disable",
+        dailySummary: "Daily Summary",
+        weeklyDigest: "Weekly Digest",
+        sendDaily: "Send Daily Email",
+        sendWeekly: "Send Weekly Email",
+        recipient: "Recipient",
+        smtpService: "SMTP Service",
+        emailPreview: "Email Preview",
+        refreshData: "Refresh Data",
         title: 'Log Email',
         loading: 'Loading...',
         noData: 'No data',
@@ -755,10 +808,11 @@ class HALogEmail extends HTMLElement {
       ...config
     };
     this._loadCentralRecipient();
+    if (this._hass) this._render();
   }
 
   async _loadCentralRecipient() {
-    if (!this._hass || !this._hasHaToolsEmail()) return;
+    if (!this._hass?.user?.is_admin || !this._hasHaToolsEmail()) return;
     try {
       // get_config is SupportsResponse.ONLY — must pass returnResponse=true
       // (signature: callService(domain, service, data, target, notifyOnError, returnResponse))
@@ -773,7 +827,7 @@ class HALogEmail extends HTMLElement {
 
   getCardSize() { return 5; }
 
-  getGridOptions() { return { rows: 6, columns: 12, min_rows: 3, min_columns: 6 }; }
+  getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
   static getStubConfig() {
     return {
@@ -784,17 +838,18 @@ class HALogEmail extends HTMLElement {
   }
 
   async _fetchLogData() {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
     this._loading = true;
     this._render();
     try {
       const logs = await this._hass.callWS({ type: 'system_log/list' });
+      if (!this._hass?.user?.is_admin) return;
       if (Array.isArray(logs)) {
         const now = Date.now();
         const h24 = 24 * 60 * 60 * 1000;
         const recent = logs.filter(e => {
           const ts = e.timestamp ? e.timestamp * 1000 : 0;
-          return (now - ts) < h24;
+          return (now - ts) >= 0 && (now - ts) < h24;
         });
         const errors = recent.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL');
         const warnings = recent.filter(e => e.level === 'WARNING');
@@ -807,7 +862,16 @@ class HALogEmail extends HTMLElement {
             level: e.level
           };
         };
+        const weekly = logs.filter(e => {
+          const age = now - Number(e.timestamp) * 1000;
+          return e.timestamp != null && Number.isFinite(age) && age >= 0 && age < 7 * h24;
+        });
         this._logData = {
+          weekly: {
+            errors: weekly.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL').slice(0, this._config.max_entries).map(mapEntry),
+            warnings: weekly.filter(e => e.level === 'WARNING').slice(0, this._config.max_entries).map(mapEntry),
+            total: weekly.length
+          },
           errors: errors.slice(0, this._config.max_entries).map(mapEntry),
           warnings: warnings.slice(0, this._config.max_entries).map(mapEntry),
           total: recent.length,
@@ -816,6 +880,7 @@ class HALogEmail extends HTMLElement {
         };
       }
     } catch (err) {
+      if (!this._hass?.user?.is_admin) return;
       console.warn('[ha-log-email] system_log/list failed:', err);
       this._logData = this._getLogFromSensor();
     }
@@ -835,6 +900,7 @@ class HALogEmail extends HTMLElement {
 
   // FUNC-2: Real-time error polling
   _startPolling() {
+    if (!this._hass?.user?.is_admin) return;
     this._stopPolling();
     this._pollingEnabled = true;
     this._savePollingConfig();
@@ -865,9 +931,10 @@ class HALogEmail extends HTMLElement {
   }
 
   async _pollForNewErrors() {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
     try {
       const logs = await this._hass.callWS({ type: 'system_log/list' });
+      if (!this._hass?.user?.is_admin) return;
       if (!Array.isArray(logs)) return;
       const now = Date.now();
       const h1 = 60 * 60 * 1000;
@@ -904,9 +971,7 @@ class HALogEmail extends HTMLElement {
     if (!this._hass) return null;
     const sensor = this._hass.states['sensor.ha_log_summary'];
     if (!sensor) return {
-      errors: [],
-      warnings: [],
-      total: 0,
+      unavailable: true,
       note: 'Sensor sensor.ha_log_summary not found. Install log_email.yaml package.',
       fetchedAt: new Date().toISOString()
     };
@@ -955,13 +1020,13 @@ class HALogEmail extends HTMLElement {
       const statusBadge = this._smtpStatus
         ? (this._smtpStatus.ok
           ? '<span class="badge-ok">\u2705 Test OK (' + this._smtpStatus.time + ')</span>'
-          : '<span class="badge-er">\u274C ' + this._smtpStatus.error + '</span>')
+          : '<span class="badge-er">\u274C ' + _esc(this._smtpStatus.error) + '</span>')
         : '';
       return '<div class="smtp-section">' +
         '<div class="smtp-header">' +
           '<span class="smtp-icon">\u2709\uFE0F</span>' +
           '<div>' +
-            '<div class="smtp-title">' + (this._lang === 'pl' ? '\u2705 SMTP skonfigurowany (ha_tools_email)' : '\u2705 SMTP configured (ha_tools_email)') + '</div>' +
+            '<div class="smtp-title">' + (this._lang === 'pl' ? 'HA Tools Email dostępne' : 'HA Tools Email available') + '</div>' +
             '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Zmie\u0144 w <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Change in <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
           '</div>' +
         '</div>' +
@@ -984,7 +1049,14 @@ class HALogEmail extends HTMLElement {
     '</div>';
   }
   async _sendEmailNow(period) {
-    if (!this._hass) return;
+    if (!this._hass?.user?.is_admin) return;
+    if (this._sendStatus?.status === 'sending') return;
+    const data = period === 'weekly' ? this._logData?.weekly : this._logData;
+    if (!data || data.unavailable) {
+      this._sendStatus = { status: 'error', period, error: period === 'weekly' ? (this._lang === 'pl' ? 'Dane tygodniowe dziennika są niedostępne. Odśwież dziennik systemowy.' : 'Weekly log data is unavailable. Refresh the system log.') : (this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.') };
+      this._render();
+      return;
+    }
     if (!this._hasHaToolsEmail()) {
       this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
       this._render(); return;
@@ -992,7 +1064,6 @@ class HALogEmail extends HTMLElement {
     this._sendStatus = { status: 'sending', period };
     this._render();
     try {
-      const data = this._logData;
       const errors = data ? (data.errors || []) : [];
       const warnings = data ? (data.warnings || []) : [];
       const now = new Date().toLocaleString((this._lang === 'pl' ? 'pl-PL' : 'en-US'));
@@ -1000,15 +1071,16 @@ class HALogEmail extends HTMLElement {
         ? (this._lang === 'pl' ? 'HA Log - Raport dzienny (' + now + ')' : 'HA Log - Daily Report (' + now + ')')
         : (this._lang === 'pl' ? 'HA Log - Raport tygodniowy (' + now + ')' : 'HA Log - Weekly Report (' + now + ')');
       var body = '<h2>' + subject + '</h2>';
+      if (period === 'weekly') body += '<p>' + (this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni. Historia może być ograniczona przez Home Assistant; obowiązuje limit wpisów karty.' : 'Retained entries from the last 7 days. Home Assistant may limit history; the card entry limit applies.') + '</p>';
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + (e.domain||'') + '</b>: ' + (e.message||'').substring(0,200) + ' (x' + (e.count||1) + ')</li>'; });
+        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (warnings.length > 0) {
         body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + (e.domain||'') + '</b>: ' + (e.message||'').substring(0,200) + ' (x' + (e.count||1) + ')</li>'; });
+        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';
@@ -1043,7 +1115,7 @@ class HALogEmail extends HTMLElement {
 
   _buildEmailPreview() {
     const data = this._logData;
-    if (!data) return '<p style="color:var(--bento-text-secondary)">No log data loaded yet. Click refresh.</p>';
+    if (!data || data.unavailable) return '<p style="color:var(--bento-text-secondary)">Log data unavailable.</p>';
 
     const errors = data.errors || [];
     const warnings = data.warnings || [];
@@ -1060,8 +1132,8 @@ class HALogEmail extends HTMLElement {
             errors.slice(0, 10).map(e => `
               <div style="background:#2d1b1b;border-left:3px solid #ef4444;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
                 <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
-                ${e.domain ? `<span style="color:#f87171;font-size:11px"> [${e.domain}]</span>` : ''}
-                <div style="margin-top:2px">${(e.message || '').substring(0, 120)}${(e.message || '').length > 120 ? '...' : ''}</div>
+                ${e.domain ? `<span style="color:#f87171;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
+                <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
             `).join('') + (errors.length > 10 ? `<p style="color:#94a3b8;font-size:11px">...and ${errors.length - 10} more</p>` : '')
           }
@@ -1073,8 +1145,8 @@ class HALogEmail extends HTMLElement {
             warnings.slice(0, 10).map(e => `
               <div style="background:#2d2410;border-left:3px solid #f59e0b;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
                 <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
-                ${e.domain ? `<span style="color:#fbbf24;font-size:11px"> [${e.domain}]</span>` : ''}
-                <div style="margin-top:2px">${(e.message || '').substring(0, 120)}${(e.message || '').length > 120 ? '...' : ''}</div>
+                ${e.domain ? `<span style="color:#fbbf24;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
+                <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
             `).join('') + (warnings.length > 10 ? `<p style="color:#94a3b8;font-size:11px">...and ${warnings.length - 10} more</p>` : '')
           }
@@ -1085,14 +1157,19 @@ class HALogEmail extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
+    if (this._hass.user?.is_admin !== true) {
+      this.shadowRoot.innerHTML = `<ha-card style="padding:20px"><strong>${_esc(this._config.title || 'Log Email Summary')}</strong><p>${this._lang === 'pl' ? 'Dziennik systemowy i wysyłanie raportów są dostępne tylko dla administratora.' : 'System logs and report controls require an administrator.'}</p></ha-card>`;
+      return;
+    }
     const data = this._logData;
+    const unavailable = !data || data.unavailable;
     const errors = data ? (data.errors || []) : [];
     const warnings = data ? (data.warnings || []) : [];
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
     const statusColor = totalErrors > 0 ? '#ef4444' : totalWarnings > 5 ? '#f59e0b' : '#10b981';
-    const statusLabel = totalErrors > 0 ? `${totalErrors} error${totalErrors > 1 ? 's' : ''}` :
-                        totalWarnings > 0 ? `${totalWarnings} warning${totalWarnings > 1 ? 's' : ''}` : 'Clean';
+    const statusLabel = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') : totalErrors > 0 ? `${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'error' + (totalErrors > 1 ? 's' : '')}` :
+                        totalWarnings > 0 ? `${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warning' + (totalWarnings > 1 ? 's' : '')}` : (this._lang === 'pl' ? 'Bez błędów' : 'Clean');
 
     const dailyEntityId = 'automation.ha_tools_log_email_daily';
     const weeklyEntityId = 'automation.ha_tools_log_email_weekly';
@@ -1100,18 +1177,18 @@ class HALogEmail extends HTMLElement {
     const weeklyAuto = this._getScheduleState(weeklyEntityId);
 
     const tabs = [
-      { id: 'overview', label: 'Overview', icon: '\uD83D\uDCCA' },
-      { id: 'schedule', label: 'Schedule', icon: '\uD83D\uDCC5' },
-      { id: 'preview', label: 'Preview', icon: '\uD83D\uDC41\uFE0F' },
-      { id: 'send', label: 'Send Now', icon: '\uD83D\uDCE7' },
-      { id: 'history', label: 'History', icon: '\uD83D\uDCDC' }
+      { id: 'overview', label: this._t.overview, icon: '\uD83D\uDCCA' },
+      { id: 'schedule', label: this._t.schedule, icon: '\uD83D\uDCC5' },
+      { id: 'preview', label: this._t.preview, icon: '\uD83D\uDC41\uFE0F' },
+      { id: 'send', label: this._t.sendNow, icon: '\uD83D\uDCE7' },
+      { id: 'history', label: this._t.history, icon: '\uD83D\uDCDC' }
     ];
 
     const sendStatusHTML = this._sendStatus ? (() => {
       const s = this._sendStatus;
-      if (s.status === 'sending') return `<div class="send-status sending">\u23F3 Sending ${s.period} log email...</div>`;
-      if (s.status === 'success') return `<div class="send-status success">\u2705 ${s.period} log email sent at ${s.time}</div>`;
-      if (s.status === 'error') return `<div class="send-status error">\u274C Send failed: ${s.error}</div>`;
+      if (s.status === 'sending') return `<div class="send-status sending">\u23F3 ${this._lang === 'pl' ? 'Wysyłanie raportu dziennika' : 'Sending log email'} (${s.period === 'daily' ? this._t.dailyReport : this._t.weeklyReport})...</div>`;
+      if (s.status === 'success') return `<div class="send-status success">\u2705 ${this._lang === 'pl' ? 'Raport dziennika wysłany o' : 'Log email sent at'} ${s.time}</div>`;
+      if (s.status === 'error') return `<div class="send-status error">\u274C ${this._t.emailFailed}: ${_esc(s.error)}</div>`;
       return '';
     })() : '';
 
@@ -1123,18 +1200,18 @@ class HALogEmail extends HTMLElement {
         <div class="overview-grid">
           <div class="stat-card ${totalErrors > 0 ? 'stat-error' : 'stat-ok'}">
             <div class="stat-icon">\u274C</div>
-            <div class="stat-value">${totalErrors}</div>
-            <div class="stat-label">Errors (24h)</div>
+            <div class="stat-value">${unavailable ? '—' : totalErrors}</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Błędy (24 h)' : 'Errors (24h)'}</div>
           </div>
           <div class="stat-card ${totalWarnings > 5 ? 'stat-warn' : 'stat-ok'}">
             <div class="stat-icon">\u26A0\uFE0F</div>
-            <div class="stat-value">${totalWarnings}</div>
-            <div class="stat-label">Warnings (24h)</div>
+            <div class="stat-value">${unavailable ? '—' : totalWarnings}</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Ostrzeżenia (24 h)' : 'Warnings (24h)'}</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">\uD83D\uDCDD</div>
-            <div class="stat-value">${data ? (data.total || totalErrors + totalWarnings) : '—'}</div>
-            <div class="stat-label">Total entries</div>
+            <div class="stat-value">${unavailable ? '—' : (data.total || totalErrors + totalWarnings)}</div>
+            <div class="stat-label">${this._lang === 'pl' ? 'Wszystkie wpisy' : 'Total entries'}</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">\uD83D\uDFE2</div>
@@ -1144,58 +1221,58 @@ class HALogEmail extends HTMLElement {
         </div>
 
         <div class="section-header">
-          <span>Recent Errors</span>
+          <span>${this._lang === 'pl' ? 'Ostatnie błędy' : 'Recent Errors'}</span>
 
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${errors.length === 0 && !this._loading ?
-          '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>' :
+          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak błędów w dzienniku z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>')) :
           errors.slice(0, 5).map(e => `
             <div class="log-entry error-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain error-domain">${e.domain || 'unknown'}</span>
-              <span class="log-msg">${(e.message || '').substring(0, 100)}${(e.message || '').length > 100 ? '…' : ''}</span>
+              <span class="log-domain error-domain">${_esc(e.domain || 'unknown')}</span>
+              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
             </div>
           `).join('')
         }
 
-        <div class="section-header" style="margin-top:12px">Recent Warnings</div>
+        <div class="section-header" style="margin-top:12px">${this._lang === 'pl' ? 'Ostatnie ostrzeżenia' : 'Recent Warnings'}</div>
         ${warnings.length === 0 && !this._loading ?
-          '<div class="empty-state">\u2705 No warnings found in last 24h</div>' :
+          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak ostrzeżeń z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No warnings found in last 24h</div>')) :
           warnings.slice(0, 3).map(e => `
             <div class="log-entry warn-entry">
               <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain warn-domain">${e.domain || 'unknown'}</span>
-              <span class="log-msg">${(e.message || '').substring(0, 100)}${(e.message || '').length > 100 ? '…' : ''}</span>
+              <span class="log-domain warn-domain">${_esc(e.domain || 'unknown')}</span>
+              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
             </div>
           `).join('')
         }
 
-        ${data && data.fetchedAt ? `<div class="last-updated">Last fetched: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
-        ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${data.note}</div>` : ''}
+        ${data && data.fetchedAt ? `<div class="last-updated">${this._t.lastFetch}: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
+        ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${_esc(data.note)}</div>` : ''}
       `;
     } else if (this._activeTab === 'schedule') {
       tabContent = `
         <div class="schedule-grid">
           <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDDD3\uFE0F Daily Report</div>
-            <div class="schedule-desc">Every day at 07:00 — errors + warnings summary</div>
+            <div class="schedule-title">\uD83D\uDDD3\uFE0F ${this._t.dailyReport}</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Dzienny raport błędów i ostrzeżeń. Czas wysyłki ustala Twoja automatyzacja.' : 'Daily errors and warnings summary. Your automation sets the sending time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${dailyAuto === 'on' ? '\uD83D\uDFE2 Active' : dailyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
+                ${dailyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : dailyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
               </span>
-              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
+              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
             </div>
           </div>
 
           <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDCC6 Weekly Report</div>
-            <div class="schedule-desc">Every Monday at 07:30 — full week log digest</div>
+            <div class="schedule-title">\uD83D\uDCC6 ${this._t.weeklyReport}</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Zachowane wpisy dziennika z ostatnich 7 dni. Home Assistant może ograniczać historię. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Retained log entries from the last 7 days. Home Assistant may limit history. Your automation sets the sending day and time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 Active' : weeklyAuto === 'off' ? '\u26AB Disabled' : '\u2795 Not created'}
+                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : weeklyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
               </span>
-              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? 'Disable' : 'Enable'}</button>`}
+              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
             </div>
           </div>
         </div>
@@ -1205,10 +1282,10 @@ class HALogEmail extends HTMLElement {
             : 'The log-email card sends the digest, but does not create the schedule automation. Add an automation that calls ha_tools_email at your chosen time (see README) \u2014 it will then appear here to enable/disable.'}</div>
         ` : ''}
 
-        <div class="section-header">SMTP Service</div>
-        <div class="info-card" style="padding:12px">
+        <div class="section-header">${this._t.smtpService}</div>
+        <div class="info-card" style="padding:12px">${smtpHtml}
         </div>
-        <div class="section-header" style="margin-top:10px">Recipient</div>
+        <div class="section-header" style="margin-top:10px">${this._t.recipient}</div>
         <div class="info-card">
           <span>\uD83D\uDCE7 ${this._config.email_recipient ? _esc(this._config.email_recipient) : (this._centralRecipient ? '<span style="color:var(--bento-text-secondary)">' + (this._lang === 'pl' ? 'Domyślnie z Ustawień' : 'Default from Settings') + ' ' + _esc(this._centralRecipient) + '</span>' : '<span style="color:var(--bento-text-muted)">' + (this._lang === 'pl' ? 'Nie ustawiony \u2014 dodaj email_recipient w konfiguracji karty lub Ustawienia' : 'Not set \u2014 add email_recipient in card configuration or Settings') + '</span>')}</span>
         </div>
@@ -1218,48 +1295,48 @@ class HALogEmail extends HTMLElement {
     } else if (this._activeTab === 'preview') {
       tabContent = `
         <div class="section-header">
-          <span>Email Preview</span>
-          <button class="refresh-btn" id="btn-refresh-preview" aria-label="Refresh log data">\uD83D\uDD04 Refresh Data</button>
+          <span>${this._t.emailPreview}</span>
+          <button class="refresh-btn" id="btn-refresh-preview" aria-label="${this._t.refreshData}">\uD83D\uDD04 ${this._t.refreshData}</button>
         </div>
         ${this._loading ? '<div class="loading-bar"></div>' : ''}
         ${this._buildEmailPreview()}
-        ${data ? `<div class="last-updated">Based on data from: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
+        ${data ? `<div class="last-updated">${this._lang === 'pl' ? 'Dane odczytane o:' : 'Based on data from:'} ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
       `;
     } else if (this._activeTab === 'send') {
       tabContent = `
         <div class="send-grid">
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC5</div>
-            <div class="send-title">Daily Summary</div>
-            <div class="send-desc">Errors + warnings from last 24 hours</div>
+            <div class="send-title">${this._t.dailySummary}</div>
+            <div class="send-desc">${this._lang === 'pl' ? 'Błędy i ostrzeżenia z ostatnich 24 godzin' : 'Errors + warnings from last 24 hours'}</div>
             <div class="send-counts">
-              <span class="count-badge error-badge">${totalErrors} errors</span>
-              <span class="count-badge warn-badge">${totalWarnings} warnings</span>
+              <span class="count-badge error-badge">${totalErrors} ${this._lang === 'pl' ? 'błędów' : 'errors'}</span>
+              <span class="count-badge warn-badge">${totalWarnings} ${this._lang === 'pl' ? 'ostrzeżeń' : 'warnings'}</span>
             </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="Send daily log email">Send Daily Email</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
-            <div class="send-title">Weekly Digest</div>
-            <div class="send-desc">Full week log summary</div>
+            <div class="send-title">${this._t.weeklyDigest}</div>
+            <div class="send-desc">${this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni; historia może być ograniczona' : 'Retained entries from the last 7 days; history may be limited'}</div>
             <div class="send-counts">
-              <span class="count-badge info-badge">7 days</span>
+              <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="Send weekly log email">Send Weekly Email</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendWeekly}</button>
           </div>
         </div>
         ${sendStatusHTML}
-        <div class="section-header" style="margin-top:16px">Recipient</div>
+        <div class="section-header" style="margin-top:16px">${this._t.recipient}</div>
         <div class="info-card">\uD83D\uDCE7 ${_esc(this._config.email_recipient || '')}</div>
         <div class="info-note" style="margin-top:8px">
           ${this._lang === 'pl' ? 'ℹ️ Wysyła email bezpośrednio przez ha_tools_email (centralna konfiguracja). Nie wymaga osobnych automatyzacji.' : 'ℹ️ Sends email directly via ha_tools_email (central config). No separate automations required.'}
         </div>
 
-        <div class="section-header" style="margin-top:20px">Instant Error Notification</div>
+        <div class="section-header" style="margin-top:20px">${this._lang === 'pl' ? 'Natychmiastowe powiadomienie o błędzie' : 'Instant Error Notification'}</div>
         <div class="info-card" style="padding:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div>
-              <p style="margin:0;font-weight:600;font-size:13px">🔔 Live error polling</p>
+              <p style="margin:0;font-weight:600;font-size:13px">🔔 ${this._lang === 'pl' ? 'Bieżące sprawdzanie błędów' : 'Live error polling'}</p>
               <p style="margin:4px 0 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">
                 ${this._pollingEnabled ? (this._lang === 'pl' ? '🟢 Aktywne — sprawdzanie co ' : '🟢 Active — checking every ') + this._pollingIntervalSec + 's' : (this._lang === 'pl' ? '⚫ Wyłączone' : '⚫ Disabled')}
               </p>
@@ -1271,13 +1348,13 @@ class HALogEmail extends HTMLElement {
               <button class="toggle-btn" id="btn-poll-toggle" style="padding:6px 14px;font-size:11px;">
                 ${this._pollingEnabled ? (this._lang === 'pl' ? 'Wyłącz' : 'Disable') : (this._lang === 'pl' ? 'Włącz' : 'Enable')}
               </button>
-              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">last: ' + new Date(this._lastPollTime).toLocaleTimeString() + '</span>' : ''}
+              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">' + (this._lang === 'pl' ? 'ostatnio: ' : 'last: ') + new Date(this._lastPollTime).toLocaleTimeString(this._t.locale) + '</span>' : ''}
             </div>
           </div>
           <p style="margin:0 0 8px 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">
             ${this._lang === 'pl' ? 'Polling wysyła persistent_notification w HA przy wykryciu nowego ERROR. Alternatywnie użyj automatyzacji:' : 'Polling sends a persistent_notification in HA when a new ERROR is detected. Alternatively, use an automation:'}
           </p>
-          <p style="margin:0 0 8px 0;font-weight:600;font-size:13px">${this._lang === 'pl' ? 'Automatyczne powiadomienia przy nowym bledzie' : 'Automatic notifications on new errors'}</p>
+          <p style="margin:0 0 8px 0;font-weight:600;font-size:13px">${this._lang === 'pl' ? 'Automatyczne powiadomienia przy nowym błędzie' : 'Automatic notifications on new errors'}</p>
           <p style="margin:0 0 12px 0;font-size:12px;color:var(--bento-text-secondary)">
             ${this._lang === 'pl' ? 'Skopiuj poniższą automatyzację do <code>automations.yaml</code> aby otrzymywać natychmiastowy email/powiadomienie przy każdym nowym ERROR w system_log.' : 'Copy the automation below into <code>automations.yaml</code> to receive an instant email/notification for every new ERROR in system_log.'}
           </p>
@@ -1319,7 +1396,7 @@ max: 3</pre>
 
 /* Donation footer — diamond top */
 .donate-section {  margin: 24px 0 4px; padding: 20px 24px; position: relative; overflow: hidden;  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(236,72,153,0.06));  border: 1px solid rgba(99,102,241,0.18); border-radius: var(--bento-radius-md, 18px);  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px;  font-family: 'Inter', -apple-system, sans-serif;}
-.donate-section::before {  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);}
+.donate-section:not([data-source="own-card"])::before {  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);}
 .donate-section .donate-text { flex: 1; min-width: 240px; }
 .donate-section h3 {  margin: 0 0 6px; font-size: 16px; font-weight: 700; letter-spacing: -0.02em;  background: linear-gradient(135deg, #6366f1, #ec4899);  -webkit-background-clip: text; background-clip: text; color: transparent;}
 .donate-section p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--bento-text-secondary, #57534e); letter-spacing: -0.005em; }
@@ -1558,9 +1635,14 @@ max: 3</pre>
         <div class="content">
           ${tabContent}
         </div>
-        ${OWN_SUPPORT_FOOTER}
+        ${this._hass?.user?.is_admin && this._config?.show_support !== false && !logEmailSupportDismissed() ? OWN_SUPPORT_FOOTER : ''}
       </ha-card>
     `;
+
+    this.shadowRoot.querySelector('.support-dismiss')?.addEventListener('click', () => {
+      try { localStorage.setItem(LOG_EMAIL_SUPPORT_KEY, '1'); } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]')?.remove();
+    });
 
     // Restore tabs scroll position
     if (this._tabsScrollLeft) {
@@ -1629,11 +1711,11 @@ max: 3</pre>
 
   _renderHistory() {
     if (!this._logHistory || this._logHistory.length === 0) {
-      return '<div class="empty-state"><div style="font-size:48px;opacity:0.5;margin-bottom:12px;">📜</div><h3 style="margin:8px 0 4px;">No History Yet</h3><p>Log snapshots are saved each time data is fetched. History persists during the browser session.</p></div>';
+      return `<div class="empty-state"><div style="font-size:48px;opacity:0.5;margin-bottom:12px;">📜</div><h3 style="margin:8px 0 4px;">${this._lang === 'pl' ? 'Brak historii' : 'No History Yet'}</h3><p>${this._lang === 'pl' ? 'Każde pobranie danych zapisuje odczyt dziennika. Historia jest dostępna podczas sesji przeglądarki.' : 'Log snapshots are saved each time data is fetched. History persists during the browser session.'}</p></div>`;
     }
-    let html = '<div class="section-title">📊 Log Fetch History (last ' + this._logHistory.length + ' snapshots)</div>';
+    let html = `<div class="section-title">📊 ${this._lang === 'pl' ? 'Historia odczytów dziennika' : 'Log Fetch History'} (${this._logHistory.length})</div>`;
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    html += '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Time</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Errors</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Warnings</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">Total</th></tr></thead><tbody>';
+    html += `<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Czas' : 'Time'}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.errors}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.warnings}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Razem' : 'Total'}</th></tr></thead><tbody>`;
     this._logHistory.forEach(s => {
       const dt = new Date(s.ts);
       const time = dt.toLocaleTimeString() + ' ' + dt.toLocaleDateString();
@@ -1644,7 +1726,7 @@ max: 3</pre>
       html += '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);">' + s.total + '</td></tr>';
     });
     html += '</tbody></table>';
-    html += '<div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">💡 History is stored in browser sessionStorage and resets when the tab is closed. Each automatic/manual refresh adds a snapshot.</div>';
+    html += '<div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">💡 ' + (this._lang === 'pl' ? 'Historia jest przechowywana w bieżącej sesji przeglądarki i znika po zamknięciu karty. Każde automatyczne lub ręczne odświeżenie dodaje odczyt.' : 'History is stored in browser sessionStorage and resets when the tab is closed. Each automatic/manual refresh adds a snapshot.') + '</div>';
     return html;
   }
 
@@ -1664,7 +1746,7 @@ max: 3</pre>
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.4.0 registered');
+  console.log('[ha-log-email] v4.4.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {
@@ -1690,12 +1772,12 @@ class HaLogEmailEditor extends HTMLElement {
         </style>
       <h3>Log Email Summary</h3>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">Title</label>
+              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Tytuł' : 'Title'}</label>
               <input type="text" id="cf_title" value="${_esc(this._config?.title || 'Log Email Summary')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
             </div>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">Email recipient (override)</label>
+              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Odbiorca email (zamiast ustawienia centralnego)' : 'Email recipient (override)'}</label>
               <input type="text" id="cf_email_recipient" value="${_esc(this._config?.email_recipient || '')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
               <div style="font-size:11px;color:var(--bento-text-secondary);margin-top:4px;">${this._lang === 'pl' ? 'Pozostaw puste, aby u\u017cy\u0107 ustawienia centralnego' : 'Leave empty to use central setting'}</div>
@@ -1723,7 +1805,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.0.0
+ * Version: 4.0.1
  */
 
 (function registerHASmartReports() {
@@ -1731,7 +1813,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
   if (customElements.get('ha-smart-reports')) return;
 
-  const VERSION = '4.0.0';
+  const VERSION = '4.0.1';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 
@@ -1823,6 +1905,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     connectedCallback() {
       this._connected = true;
       this._renderScaffold();
+      this._syncTheme();
       this._syncTabs();
       if (this._hass) this._scheduleRefresh(true);
     }
@@ -1837,6 +1920,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     set hass(hass) {
       this._hass = hass;
       this._syncTheme();
+      this._syncSupport();
       if (this._connected && hass) this._scheduleRefresh(false);
     }
 
@@ -1853,6 +1937,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         show_energy: next.show_energy !== false,
         show_automations: next.show_automations !== false,
         show_system: next.show_system !== false,
+        show_support: next.show_support !== false,
         energy_source_mode: next.energy_source_mode === 'explicit' ? 'explicit' : 'dashboard',
         energy_total_statistics: Array.isArray(next.energy_total_statistics) ? next.energy_total_statistics : [],
         energy_device_statistics: Array.isArray(next.energy_device_statistics) ? next.energy_device_statistics : [],
@@ -1864,6 +1949,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         currency,
       };
       if (this._scaffoldRendered) {
+        this._syncSupport();
         this._invalidateEnergyRequest();
         this._syncTabs();
         this._scheduleRefresh(true);
@@ -1872,7 +1958,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
     getCardSize() { return 5; }
 
-    getGridOptions() { return { rows: 5, columns: 12, min_rows: 3, min_columns: 6 }; }
+    getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
     static getStubConfig() { return { title: 'Smart Reports', energy_source_mode: 'dashboard' }; }
 
@@ -1883,6 +1969,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
       this.shadowRoot.innerHTML = `
         <style>
           :host{--sr-primary:var(--primary-color,#3b82f6);--sr-card:var(--card-background-color,var(--ha-card-background,#fff));--sr-text:var(--primary-text-color,#172033);--sr-muted:var(--secondary-text-color,#667085);--sr-border:var(--divider-color,#d9e0ea);--sr-good:#15803d;--sr-warn:#b45309;--sr-bad:#b42318;display:block;color:var(--sr-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}.card{background:var(--sr-card);border:1px solid var(--sr-border);border-radius:16px;overflow:hidden}.header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 12px}h2,h3,p{margin:0}h2{font-size:20px}h3{font-size:15px}.tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--sr-border);overflow-x:auto}button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--sr-primary);outline-offset:2px}.tab{border:0;border-bottom:3px solid transparent;background:transparent;color:var(--sr-muted);padding:10px 12px}.tab.active{color:var(--sr-primary);border-bottom-color:var(--sr-primary);font-weight:650}.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px 0}.toolbar-actions{display:flex;flex-wrap:wrap;gap:8px}.control,.action{min-height:38px;border:1px solid var(--sr-border);border-radius:9px;background:var(--sr-card);color:var(--sr-text);padding:8px 11px}.action.primary{background:var(--sr-primary);border-color:var(--sr-primary);color:#fff}.action:disabled{cursor:not-allowed;opacity:.45}.pane{padding:20px;min-height:220px}.state{display:grid;gap:12px;place-items:start;padding:22px;border:1px solid var(--sr-border);border-radius:12px}.state[role="status"]{border-left:4px solid var(--sr-primary)}.state.partial{border-left-color:var(--sr-warn)}.state.error{border-left-color:var(--sr-bad)}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.metric{border:1px solid var(--sr-border);border-radius:12px;padding:14px}.metric-label,.muted{color:var(--sr-muted);font-size:12px}.metric-value{margin-top:5px;font-size:23px;font-weight:720}.section{margin-top:18px}.list{display:grid;gap:8px;margin-top:10px}.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border-bottom:1px solid var(--sr-border);padding:9px 2px}.row.child{padding-left:24px}.row-name{overflow-wrap:anywhere}.status-ready{color:var(--sr-good)}.warning{color:var(--sr-warn)}.fixed-link{color:var(--sr-primary)}.donate-section{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;border-top:1px solid var(--sr-border);padding:13px 18px;color:var(--sr-muted);font-size:12px}.donate-section a{color:var(--sr-primary);text-decoration:none}[hidden]{display:none!important}@media(max-width:520px){.header,.toolbar{align-items:stretch;flex-direction:column}.toolbar-actions{width:100%}.action{flex:1}}
+          :host(.bento-dark){--sr-good:#4ade80;--sr-warn:#fbbf24;--sr-bad:#f87171}
         </style>
         <ha-card class="card">
           <div class="header"><h2 id="title"></h2><span class="muted">Recorder-backed</span></div>
@@ -1896,9 +1983,14 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
             <div class="toolbar-actions"><button class="action" type="button" id="exportCsvBtn" disabled>Export CSV</button><button class="action primary" type="button" id="exportJsonBtn" disabled>Export JSON</button></div>
           </div>
           <main class="pane" id="content"></main>
-          <footer class="donate-section" data-source="own-card"><span>Support HA Tools</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy me a coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a></footer>
+          <footer class="donate-section" data-source="own-card" style="margin:8px 0 0;padding:4px 0;background:none;border:0;box-shadow:none;min-height:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-direction:row;justify-content:flex-start;text-align:left"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--secondary-text-color,#64748b);font-weight:400;text-decoration:underline">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;padding:2px 6px;min-height:0;line-height:1;border:0;background:none;color:var(--secondary-text-color,#64748b);cursor:pointer">×</button></footer>
         </ha-card>`;
       this._scaffoldRendered = true;
+      this.shadowRoot.querySelector('.support-dismiss').addEventListener('click', () => {
+        try { localStorage.setItem('ha-smart-reports-support-dismissed', '1'); } catch (_) {}
+        this._syncSupport();
+      });
+      this._syncSupport();
       this.shadowRoot.getElementById('periodSelect').value = this._period;
       this.shadowRoot.getElementById('periodSelect').addEventListener('change', (event) => {
         const period = VALID_PERIODS.has(event.target.value) ? event.target.value : '7d';
@@ -1913,7 +2005,26 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     }
 
     _syncTheme() {
-      if (this._hass) this.classList.toggle('bento-dark', Boolean(this._hass.themes && this._hass.themes.darkMode));
+      let dark = Boolean(this._hass && this._hass.themes && this._hass.themes.darkMode);
+      const surface = this.shadowRoot.querySelector('.card');
+      if (this.isConnected && surface) {
+        // HA custom themes can be dark while themes.darkMode remains false.
+        // Reading the rendered surface also resolves aliases and CSS color syntax.
+        const background = getComputedStyle(surface).backgroundColor;
+        const rgb = background.match(/^rgba?\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\s*\)$/);
+        if (rgb && (rgb[4] === undefined || Number(rgb[4]) === 1)) {
+          const brightness = (0.2126 * Number(rgb[1]) + 0.7152 * Number(rgb[2]) + 0.0722 * Number(rgb[3])) / 255;
+          dark = brightness < 0.5;
+        }
+      }
+      this.classList.toggle('bento-dark', dark);
+    }
+
+    _syncSupport() {
+      if (!this._scaffoldRendered) return;
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('ha-smart-reports-support-dismissed') === '1'; } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]').hidden = !this._hass?.user?.is_admin || this._config.show_support === false || dismissed;
     }
 
     _availableTabs() {
@@ -2047,7 +2158,9 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
       const local = this._partsInZone(now, timeZone);
       const daysBack = safeKey === '1d' ? 0 : (safeKey === '30d' ? 29 : 6);
       const startDate = this._addCalendarDays(local, -daysBack);
-      return { key: safeKey, start: this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone), end: now, time_zone: timeZone };
+      const start = this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone);
+      const end = new Date(Math.max(start.getTime(), Math.floor(now.getTime() / 3600000) * 3600000));
+      return { key: safeKey, start, end, time_zone: timeZone };
     }
 
     _periodDescriptor() {
@@ -2163,7 +2276,8 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         if (effectiveBuckets[index].start - effectiveBuckets[index - 1].end > 1000) return { status: 'partial', value: null, unit: normalizedUnit };
       }
       if (startMs !== null && endMs !== null) {
-        if (effectiveBuckets[0].start - startMs > 3601000 || endMs - effectiveBuckets[effectiveBuckets.length - 1].end > 3601000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
+        // A boundary gap or a straddling bucket cannot represent the requested total.
+        if (Math.abs(effectiveBuckets[0].start - startMs) > 1000 || Math.abs(endMs - effectiveBuckets[effectiveBuckets.length - 1].end) > 1000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
       }
       let value = effectiveBuckets.reduce((sum, bucket) => sum + bucket.change, 0);
       if (role !== 'cost') {
@@ -2239,7 +2353,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         const ids = selection.ordered.map((source) => source.statistic_id);
         const metadataResponse = await this._hass.callWS({ type: 'recorder/get_statistics_metadata', statistic_ids: ids });
         if (!this._isCurrentEnergyRequest(generation)) return;
-        const statisticsResponse = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
+        const statisticsResponse = new Date(period.end) <= new Date(period.start) ? {} : await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
         if (!this._isCurrentEnergyRequest(generation)) return;
         const metadataById = this._metadataMap(metadataResponse); const statisticsById = statisticsResponse && typeof statisticsResponse === 'object' ? statisticsResponse : {};
         const window = { start: new Date(period.start), end: new Date(period.end) };
@@ -2353,6 +2467,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     }
 
     _timeAgo(value) {
+      if (value == null) return 'Never';
       const date = asDate(value);
       if (!date) return 'Never';
       const now = asDate(this._now()) || new Date();
@@ -2374,11 +2489,13 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
         return left.label.localeCompare(right.label);
       });
       const now = asDate(this._now()) || new Date();
+      const timeZone = this._timeZone();
+      const todayStart = this._zonedDayBounds(this._partsInZone(now, timeZone), timeZone).start;
       const active = automations.filter((automation) => automation.state === 'on').length;
       const disabled = automations.filter((automation) => automation.state === 'off').length;
       const triggeredToday = automations.filter((automation) => {
         const triggered = asDate(automation.last_triggered);
-        return triggered && now - triggered < 86400000;
+        return triggered && triggered >= todayStart && triggered <= now;
       }).length;
       const summary = document.createElement('div'); summary.className = 'summary'; summary.append(this._metric('Total automations', String(automations.length)), this._metric('Active', String(active)), this._metric('Disabled', String(disabled)), this._metric('Triggered today', String(triggeredToday))); container.appendChild(summary);
       const heading = document.createElement('h3'); heading.className = 'section'; heading.textContent = 'Recent activity'; container.appendChild(heading); const list = document.createElement('div'); list.className = 'list';
@@ -2478,6 +2595,6 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.5.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.5.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

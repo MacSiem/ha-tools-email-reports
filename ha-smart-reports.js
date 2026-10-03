@@ -1,7 +1,7 @@
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.0.0
+ * Version: 4.0.1
  */
 
 (function registerHASmartReports() {
@@ -9,7 +9,7 @@
 
   if (customElements.get('ha-smart-reports')) return;
 
-  const VERSION = '4.0.0';
+  const VERSION = '4.0.1';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 
@@ -101,6 +101,7 @@
     connectedCallback() {
       this._connected = true;
       this._renderScaffold();
+      this._syncTheme();
       this._syncTabs();
       if (this._hass) this._scheduleRefresh(true);
     }
@@ -115,6 +116,7 @@
     set hass(hass) {
       this._hass = hass;
       this._syncTheme();
+      this._syncSupport();
       if (this._connected && hass) this._scheduleRefresh(false);
     }
 
@@ -131,6 +133,7 @@
         show_energy: next.show_energy !== false,
         show_automations: next.show_automations !== false,
         show_system: next.show_system !== false,
+        show_support: next.show_support !== false,
         energy_source_mode: next.energy_source_mode === 'explicit' ? 'explicit' : 'dashboard',
         energy_total_statistics: Array.isArray(next.energy_total_statistics) ? next.energy_total_statistics : [],
         energy_device_statistics: Array.isArray(next.energy_device_statistics) ? next.energy_device_statistics : [],
@@ -142,6 +145,7 @@
         currency,
       };
       if (this._scaffoldRendered) {
+        this._syncSupport();
         this._invalidateEnergyRequest();
         this._syncTabs();
         this._scheduleRefresh(true);
@@ -150,7 +154,7 @@
 
     getCardSize() { return 5; }
 
-    getGridOptions() { return { rows: 5, columns: 12, min_rows: 3, min_columns: 6 }; }
+    getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
     static getStubConfig() { return { title: 'Smart Reports', energy_source_mode: 'dashboard' }; }
 
@@ -161,6 +165,7 @@
       this.shadowRoot.innerHTML = `
         <style>
           :host{--sr-primary:var(--primary-color,#3b82f6);--sr-card:var(--card-background-color,var(--ha-card-background,#fff));--sr-text:var(--primary-text-color,#172033);--sr-muted:var(--secondary-text-color,#667085);--sr-border:var(--divider-color,#d9e0ea);--sr-good:#15803d;--sr-warn:#b45309;--sr-bad:#b42318;display:block;color:var(--sr-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}.card{background:var(--sr-card);border:1px solid var(--sr-border);border-radius:16px;overflow:hidden}.header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 12px}h2,h3,p{margin:0}h2{font-size:20px}h3{font-size:15px}.tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--sr-border);overflow-x:auto}button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--sr-primary);outline-offset:2px}.tab{border:0;border-bottom:3px solid transparent;background:transparent;color:var(--sr-muted);padding:10px 12px}.tab.active{color:var(--sr-primary);border-bottom-color:var(--sr-primary);font-weight:650}.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px 0}.toolbar-actions{display:flex;flex-wrap:wrap;gap:8px}.control,.action{min-height:38px;border:1px solid var(--sr-border);border-radius:9px;background:var(--sr-card);color:var(--sr-text);padding:8px 11px}.action.primary{background:var(--sr-primary);border-color:var(--sr-primary);color:#fff}.action:disabled{cursor:not-allowed;opacity:.45}.pane{padding:20px;min-height:220px}.state{display:grid;gap:12px;place-items:start;padding:22px;border:1px solid var(--sr-border);border-radius:12px}.state[role="status"]{border-left:4px solid var(--sr-primary)}.state.partial{border-left-color:var(--sr-warn)}.state.error{border-left-color:var(--sr-bad)}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.metric{border:1px solid var(--sr-border);border-radius:12px;padding:14px}.metric-label,.muted{color:var(--sr-muted);font-size:12px}.metric-value{margin-top:5px;font-size:23px;font-weight:720}.section{margin-top:18px}.list{display:grid;gap:8px;margin-top:10px}.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border-bottom:1px solid var(--sr-border);padding:9px 2px}.row.child{padding-left:24px}.row-name{overflow-wrap:anywhere}.status-ready{color:var(--sr-good)}.warning{color:var(--sr-warn)}.fixed-link{color:var(--sr-primary)}.donate-section{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;border-top:1px solid var(--sr-border);padding:13px 18px;color:var(--sr-muted);font-size:12px}.donate-section a{color:var(--sr-primary);text-decoration:none}[hidden]{display:none!important}@media(max-width:520px){.header,.toolbar{align-items:stretch;flex-direction:column}.toolbar-actions{width:100%}.action{flex:1}}
+          :host(.bento-dark){--sr-good:#4ade80;--sr-warn:#fbbf24;--sr-bad:#f87171}
         </style>
         <ha-card class="card">
           <div class="header"><h2 id="title"></h2><span class="muted">Recorder-backed</span></div>
@@ -174,9 +179,14 @@
             <div class="toolbar-actions"><button class="action" type="button" id="exportCsvBtn" disabled>Export CSV</button><button class="action primary" type="button" id="exportJsonBtn" disabled>Export JSON</button></div>
           </div>
           <main class="pane" id="content"></main>
-          <footer class="donate-section" data-source="own-card"><span>Support HA Tools</span><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Buy me a coffee</a><a href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">PayPal</a></footer>
+          <footer class="donate-section" data-source="own-card" style="margin:8px 0 0;padding:4px 0;background:none;border:0;box-shadow:none;min-height:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-direction:row;justify-content:flex-start;text-align:left"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--secondary-text-color,#64748b);font-weight:400;text-decoration:underline">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;padding:2px 6px;min-height:0;line-height:1;border:0;background:none;color:var(--secondary-text-color,#64748b);cursor:pointer">×</button></footer>
         </ha-card>`;
       this._scaffoldRendered = true;
+      this.shadowRoot.querySelector('.support-dismiss').addEventListener('click', () => {
+        try { localStorage.setItem('ha-smart-reports-support-dismissed', '1'); } catch (_) {}
+        this._syncSupport();
+      });
+      this._syncSupport();
       this.shadowRoot.getElementById('periodSelect').value = this._period;
       this.shadowRoot.getElementById('periodSelect').addEventListener('change', (event) => {
         const period = VALID_PERIODS.has(event.target.value) ? event.target.value : '7d';
@@ -191,7 +201,26 @@
     }
 
     _syncTheme() {
-      if (this._hass) this.classList.toggle('bento-dark', Boolean(this._hass.themes && this._hass.themes.darkMode));
+      let dark = Boolean(this._hass && this._hass.themes && this._hass.themes.darkMode);
+      const surface = this.shadowRoot.querySelector('.card');
+      if (this.isConnected && surface) {
+        // HA custom themes can be dark while themes.darkMode remains false.
+        // Reading the rendered surface also resolves aliases and CSS color syntax.
+        const background = getComputedStyle(surface).backgroundColor;
+        const rgb = background.match(/^rgba?\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\s*\)$/);
+        if (rgb && (rgb[4] === undefined || Number(rgb[4]) === 1)) {
+          const brightness = (0.2126 * Number(rgb[1]) + 0.7152 * Number(rgb[2]) + 0.0722 * Number(rgb[3])) / 255;
+          dark = brightness < 0.5;
+        }
+      }
+      this.classList.toggle('bento-dark', dark);
+    }
+
+    _syncSupport() {
+      if (!this._scaffoldRendered) return;
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('ha-smart-reports-support-dismissed') === '1'; } catch (_) {}
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]').hidden = !this._hass?.user?.is_admin || this._config.show_support === false || dismissed;
     }
 
     _availableTabs() {
@@ -325,7 +354,9 @@
       const local = this._partsInZone(now, timeZone);
       const daysBack = safeKey === '1d' ? 0 : (safeKey === '30d' ? 29 : 6);
       const startDate = this._addCalendarDays(local, -daysBack);
-      return { key: safeKey, start: this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone), end: now, time_zone: timeZone };
+      const start = this._zonedDateTimeToUtc({ ...startDate, hour: 0, minute: 0, second: 0 }, timeZone);
+      const end = new Date(Math.max(start.getTime(), Math.floor(now.getTime() / 3600000) * 3600000));
+      return { key: safeKey, start, end, time_zone: timeZone };
     }
 
     _periodDescriptor() {
@@ -441,7 +472,8 @@
         if (effectiveBuckets[index].start - effectiveBuckets[index - 1].end > 1000) return { status: 'partial', value: null, unit: normalizedUnit };
       }
       if (startMs !== null && endMs !== null) {
-        if (effectiveBuckets[0].start - startMs > 3601000 || endMs - effectiveBuckets[effectiveBuckets.length - 1].end > 3601000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
+        // A boundary gap or a straddling bucket cannot represent the requested total.
+        if (Math.abs(effectiveBuckets[0].start - startMs) > 1000 || Math.abs(endMs - effectiveBuckets[effectiveBuckets.length - 1].end) > 1000) return { status: 'partial', value: null, unit: normalizedUnit, reason: 'incomplete_coverage' };
       }
       let value = effectiveBuckets.reduce((sum, bucket) => sum + bucket.change, 0);
       if (role !== 'cost') {
@@ -517,7 +549,7 @@
         const ids = selection.ordered.map((source) => source.statistic_id);
         const metadataResponse = await this._hass.callWS({ type: 'recorder/get_statistics_metadata', statistic_ids: ids });
         if (!this._isCurrentEnergyRequest(generation)) return;
-        const statisticsResponse = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
+        const statisticsResponse = new Date(period.end) <= new Date(period.start) ? {} : await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: period.start, end_time: period.end, statistic_ids: ids, period: 'hour', types: ['change'] });
         if (!this._isCurrentEnergyRequest(generation)) return;
         const metadataById = this._metadataMap(metadataResponse); const statisticsById = statisticsResponse && typeof statisticsResponse === 'object' ? statisticsResponse : {};
         const window = { start: new Date(period.start), end: new Date(period.end) };
@@ -631,6 +663,7 @@
     }
 
     _timeAgo(value) {
+      if (value == null) return 'Never';
       const date = asDate(value);
       if (!date) return 'Never';
       const now = asDate(this._now()) || new Date();
@@ -652,11 +685,13 @@
         return left.label.localeCompare(right.label);
       });
       const now = asDate(this._now()) || new Date();
+      const timeZone = this._timeZone();
+      const todayStart = this._zonedDayBounds(this._partsInZone(now, timeZone), timeZone).start;
       const active = automations.filter((automation) => automation.state === 'on').length;
       const disabled = automations.filter((automation) => automation.state === 'off').length;
       const triggeredToday = automations.filter((automation) => {
         const triggered = asDate(automation.last_triggered);
-        return triggered && now - triggered < 86400000;
+        return triggered && triggered >= todayStart && triggered <= now;
       }).length;
       const summary = document.createElement('div'); summary.className = 'summary'; summary.append(this._metric('Total automations', String(automations.length)), this._metric('Active', String(active)), this._metric('Disabled', String(disabled)), this._metric('Triggered today', String(triggeredToday))); container.appendChild(summary);
       const heading = document.createElement('h3'); heading.className = 'section'; heading.textContent = 'Recent activity'; container.appendChild(heading); const list = document.createElement('div'); list.className = 'list';

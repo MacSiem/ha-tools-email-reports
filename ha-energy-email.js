@@ -1,4 +1,4 @@
-/* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
+/* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
 'use strict';
 

@@ -1,3 +1,26 @@
+# Changelog — HA Tools — Email & Reports
+
+## [4.5.1] - Unreleased
+
+- Clarify that Log Email toggles existing daily/weekly automations; their action supplies its own subject/body and cannot use the card's cached log snapshot. Energy Email scheduling remains in Energy Optimizer.
+
+- Build weekly Log Email digests from retained entries in the actual seven-day window, exclude future timestamps, and withhold weekly sends when only a current fallback sensor snapshot is available. Disclose Home Assistant retention and card entry limits.
+
+- Block repeated Log Email sends while a report is pending; disable both send buttons and restore them after success or failure.
+
+- Show missing Smart Reports automation trigger timestamps as Never, without inventing a Unix-epoch age.
+
+- Count Smart Reports automation triggers since Home Assistant local midnight, including long DST days, and exclude future timestamps.
+
+- Sync canonical Smart Reports status contrast with the rendered Home Assistant card background, including custom dark themes and reconnects.
+
+- Vendor the exact Smart Reports completed-hour boundary fix; require complete energy coverage and preserve an empty forward range before the first hour.
+- Test the same period cases directly in standalone and generated bundle runtimes.
+
+- Keep household users from reading administrator logs through the Log Email card; unavailable logs show an explicit state and an empty digest cannot be sent.
+- Escape log content before rendering; keep Smart Reports at natural height in Sections and use compact administrator-only support links.
+- Sync the vendored Smart Reports 4.0.1 source and regenerate the bundle with exact source digests.
+
 ## 4.5.0 (2026-09-24)
 
 - Energy Email moved: `custom:ha-energy-email` is now maintained only in Energy Optimizer (HACS default). This plugin no longer ships its own copy, which removes the race where whichever bundle loaded first decided which version of the card you got.
@@ -35,8 +58,6 @@
 ## 4.2.1 (2026-07-18)
 
 - Fix (UI): responsive tab bar, donate-footer anti-flicker, and section accent-dot alignment. This bundle was missed by the earlier family-wide UI fix waves; all three fixes are now applied to each of the three bundled cards.
-
-# Changelog — HA Tools — Email & Reports
 
 ## [4.2.0] - 2026-07-12
 

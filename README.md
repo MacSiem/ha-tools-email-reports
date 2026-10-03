@@ -32,7 +32,8 @@ want by their own tag:
    install it from HACS to use energy-usage emails.
 2. **`ha-log-email`** — sends a daily digest of `system_log` errors and
    warnings (`system_log/list`), with a configurable entry limit and a
-   history tab.
+   history tab. Logs and report controls are available to administrators only;
+   household users see an explanation without reading logs or SMTP settings.
 3. **`ha-smart-reports`** — an on-demand energy / automations / system-health
    report. Energy periods use exact Recorder `change` statistics declared by
    Home Assistant Energy (or explicit statistic IDs); Automations and System
@@ -52,21 +53,26 @@ talk to it purely through HA services:
 - `ha_tools_email.test` — sends a test email to verify SMTP.
 - `ha_tools_email.send` — sends the actual report.
 
-Scheduling does **not** rely on a browser tab staying open: clicking
-"Create Automation" on the Schedule tab has the card write an ordinary Home
-Assistant automation (e.g. `automation.send_daily_energy_report`) whose
-action calls `ha_tools_email.send` with a Jinja-templated subject/body. HA's
-own automation engine fires it, so it keeps working after the dashboard is
-closed. The card only creates/updates/enables/disables that automation and
-reflects its `on`/`off` state — the send itself happens server-side.
+The Log Email card's Schedule tab shows and toggles existing
+`automation.ha_tools_log_email_daily` and
+`automation.ha_tools_log_email_weekly` automations. It does not create them.
+Add an automation that calls `ha_tools_email.send` at the chosen time; Home
+Assistant runs it even when the dashboard is closed. Set the automation
+entity IDs to `automation.ha_tools_log_email_daily` and
+`automation.ha_tools_log_email_weekly` so they appear in this tab. The
+automation must provide its own subject and body; it cannot call the card's
+daily/weekly button or reuse its browser-cached log snapshot. Energy Email
+scheduling is provided by Energy Optimizer.
+
+Log Email daily and weekly sends use the retained `system_log/list` snapshot from the latest refresh, filtered to rolling 24-hour and seven-day windows respectively. Future-dated entries are excluded. Home Assistant retention and the card `max_entries` setting can limit the report; this is not a guarantee of complete historical coverage. A fallback current sensor snapshot cannot produce a weekly digest.
 
 ### What is automatic vs. manual
 
 | Automatic | Manual (optional) |
 |---|---|
 | Home Assistant Energy source mapping (`ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
-| Integration-presence detection + install banner | Creating/enabling the daily / weekly / monthly report automations |
-| Error/warning digest from `system_log` (`ha-log-email`) | Choosing send time, weekday, currency and tariff mode |
+| Integration-presence detection + install banner | Creating the Log Email daily / weekly automations; Energy Email scheduling is handled by Energy Optimizer |
+| Error/warning digest from `system_log` (`ha-log-email`) | Creating the Log Email schedule automations; choosing a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
 | Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Exporting Smart Reports schema-v2 JSON or flat CSV |
 
@@ -74,13 +80,11 @@ reflects its `on`/`off` state — the send itself happens server-side.
 
 | Light | Dark |
 |---|---|
-| ![ha-energy-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-energy-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
+| ![ha-log-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-log-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
 
-*The Energy Email Schedule tab (screenshot from before 4.5.0; the card now
-lives in Energy Optimizer) with the HA Tools Email integration
-detected (SMTP-configured banner) and the daily and weekly report
-automations already created and active. Dark mode follows your Home
-Assistant theme automatically.*
+*The current Log Email Schedule tab with synthetic data: HA Tools Email is
+available, the daily automation is active, and the weekly automation is
+disabled. No real address, log entry, or household data is shown.*
 
 ## Installation
 
@@ -174,8 +178,12 @@ integration is required and linking to it — it doesn't fail silently or send
 through your `notify:` platform instead.
 
 **Does scheduled sending require a browser tab to stay open?**
-No. Creating a schedule writes a normal Home Assistant automation that calls
-`ha_tools_email.send`; HA's automation engine runs it, not the card.
+The Log Email card only enables or disables existing daily and weekly
+automations. Create those automations separately in Home Assistant with
+`ha_tools_email.send` and your own subject and body. Home Assistant runs them
+even when the dashboard is closed. The card does not create automations,
+register a server-side digest job, or supply its cached log snapshot to a
+scheduled action. Energy Email scheduling belongs to Energy Optimizer.
 
 **Where do the emails actually go out through?**
 Your own SMTP server, configured once in the HA Tools Email integration.
@@ -210,6 +218,16 @@ development:
 - [☕ Buy Me a Coffee](https://buymeacoffee.com/macsiem)
 - [💳 PayPal](https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W)
 
+The optional support link in Log Email and Smart Reports is shown only to administrators. Dismiss it in the card or set `show_support: false` in the card configuration.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Privacy and data
+
+The cards read Home Assistant logs and configured energy statistics. Reports and logs can reveal household activity, entity identifiers and error details. Sending through HA Tools Email transmits the selected content to your configured SMTP destination. Review recipients and content, and redact exports before sharing.
+
+See [SECURITY.md](SECURITY.md) for safe vulnerability reporting and [NOTICE](NOTICE) for licensing notices.
+
+Smart Reports energy ranges end at the last completed Recorder UTC hour. Missing boundary hours or buckets extending beyond the range withhold the total and estimated cost. Before the first completed hour, Today has an empty range and no data, including timezones with fractional-hour offsets. The exported range matches the report exactly.

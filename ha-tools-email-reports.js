@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:ba03d67a52a9948bfb0791aeddffef4d3acf8b35ed866b02c5ddd3af3da450c2
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:32dd7a2ee54b20ca14e9e7b117328b29604f3b93a62d0d049e1a0d4811d67c76
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:0e2afda257159b217bf6caecdbd851d82d935d9cb14c54ce8674442698211673
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -2456,6 +2456,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     }
 
     _timeAgo(value) {
+      if (value == null) return 'Never';
       const date = asDate(value);
       if (!date) return 'Never';
       const now = asDate(this._now()) || new Date();

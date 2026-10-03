@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show missing Smart Reports automation trigger timestamps as Never, without inventing a Unix-epoch age.
+
 - Count Smart Reports automation triggers since Home Assistant local midnight, including long DST days, and exclude future timestamps.
 
 - Sync canonical Smart Reports status contrast with the rendered Home Assistant card background, including custom dark themes and reconnects.

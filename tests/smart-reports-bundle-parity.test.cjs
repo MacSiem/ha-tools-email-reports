@@ -136,14 +136,14 @@ test('generated bundle counts triggers in HA calendar days including DST and exc
   const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
   delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap',
-    '--test-name-pattern=Triggered today uses HA local midnight', 'tests/smart-reports-lifecycle.test.cjs'], {
+    '--test-name-pattern=Triggered today uses HA local midnight|Automations renders absent', 'tests/smart-reports-lifecycle.test.cjs'], {
     cwd: ROOT, encoding: 'utf8', env,
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.doesNotMatch(result.stderr, /skipping running files/);
-  assert.match(result.stdout, /# pass 4(?:\r?\n|$)/);
+  assert.match(result.stdout, /# pass 5(?:\r?\n|$)/);
   assert.match(result.stdout, /# fail 0(?:\r?\n|$)/);
-  for (const name of ['Warsaw calendar boundary', 'Warsaw spring DST day', 'Warsaw autumn 25-hour day', 'Kathmandu fractional UTC offset']) {
+  for (const name of ['Warsaw calendar boundary', 'Warsaw spring DST day', 'Warsaw autumn 25-hour day', 'Kathmandu fractional UTC offset', 'Automations renders absent']) {
     assert.ok(result.stdout.includes(name), `${name} must execute against the bundle`);
   }
 });

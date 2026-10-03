@@ -4,6 +4,17 @@
 
 const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
+// Keep the 200 UTF-16-unit limit without emitting half of a valid pair.
+// Raw JSON strings can also contain lone surrogates; replace those for UTF-8 MIME.
+const _logEmailExcerpt = (text) => {
+  let end = Math.min(text.length, 200);
+  const last = text.charCodeAt(end - 1);
+  const next = text.charCodeAt(end);
+  if (end < text.length && last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end--;
+  return text.substring(0, end).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g,
+    pair => pair.length === 2 ? pair : '\uFFFD');
+};
+
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
 const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card" style="margin:8px 0 0;padding:4px 0;background:none;border:0;box-shadow:none;min-height:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-direction:row;justify-content:flex-start;text-align:left"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--secondary-text-color,#64748b);font-weight:400;text-decoration:underline">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;padding:2px 6px;min-height:0;line-height:1;border:0;background:none;color:var(--secondary-text-color,#64748b);cursor:pointer">×</button></div>`;
@@ -956,12 +967,12 @@ class HALogEmail extends HTMLElement {
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (warnings.length > 0) {
         body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';

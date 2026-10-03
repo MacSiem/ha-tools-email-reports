@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:39757c88d6bf23fe83fc4f0c444e3793442c92097ff250adf8fccedc20f27432
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:d7684109ca0937edea3957bc87ee6a8b69271d68f25ee90fd353dc2a5bff3415
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -134,6 +134,17 @@ if (!window.customCards.some(c => c.type === TAG)) {
 'use strict';
 
 const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+// Keep the 200 UTF-16-unit limit without emitting half of a valid pair.
+// Raw JSON strings can also contain lone surrogates; replace those for UTF-8 MIME.
+const _logEmailExcerpt = (text) => {
+  let end = Math.min(text.length, 200);
+  const last = text.charCodeAt(end - 1);
+  const next = text.charCodeAt(end);
+  if (end < text.length && last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end--;
+  return text.substring(0, end).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g,
+    pair => pair.length === 2 ? pair : '\uFFFD');
+};
 
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
@@ -1087,12 +1098,12 @@ class HALogEmail extends HTMLElement {
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (warnings.length > 0) {
         body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc((e.message||'').substring(0,200)) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
         body += '</ul>';
       }
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';

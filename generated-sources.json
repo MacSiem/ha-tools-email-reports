@@ -9,7 +9,7 @@
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-log-email.js",
     "version": "4.4.1",
-    "sha256": "39757c88d6bf23fe83fc4f0c444e3793442c92097ff250adf8fccedc20f27432"
+    "sha256": "d7684109ca0937edea3957bc87ee6a8b69271d68f25ee90fd353dc2a5bff3415"
   },
   "ha-smart-reports.js": {
     "owner": "MacSiem/ha-smart-reports",

@@ -2,6 +2,8 @@
 
 ## [4.5.1] - Unreleased
 
+- Keep log email excerpts valid UTF-8 when the 200 UTF-16-unit limit crosses an emoji; retain escaping and replace malformed input surrogates.
+
 - Use the Home Assistant profile language for Log Email and vendored Smart Reports. Translate Smart Reports views and correct Polish log counts such as “1 błąd” and “2 błędy” without changing report data or export fields.
 
 - Clarify that Log Email toggles existing daily/weekly automations; their action supplies its own subject/body and cannot use the card's cached log snapshot. Energy Email scheduling remains in Energy Optimizer.

@@ -1,6 +1,8 @@
-## 4.5.1 (2026-09-29)
+# Changelog — HA Tools — Email & Reports
 
-## Unreleased
+## [4.5.1] - Unreleased
+
+- Clarify that Log Email toggles existing daily/weekly automations; their action supplies its own subject/body and cannot use the card's cached log snapshot. Energy Email scheduling remains in Energy Optimizer.
 
 - Build weekly Log Email digests from retained entries in the actual seven-day window, exclude future timestamps, and withhold weekly sends when only a current fallback sensor snapshot is available. Disclose Home Assistant retention and card entry limits.
 
@@ -56,8 +58,6 @@
 ## 4.2.1 (2026-07-18)
 
 - Fix (UI): responsive tab bar, donate-footer anti-flicker, and section accent-dot alignment. This bundle was missed by the earlier family-wide UI fix waves; all three fixes are now applied to each of the three bundled cards.
-
-# Changelog — HA Tools — Email & Reports
 
 ## [4.2.0] - 2026-07-12
 

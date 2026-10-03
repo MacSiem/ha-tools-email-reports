@@ -32,7 +32,8 @@ want by their own tag:
    install it from HACS to use energy-usage emails.
 2. **`ha-log-email`** — sends a daily digest of `system_log` errors and
    warnings (`system_log/list`), with a configurable entry limit and a
-   history tab.
+   history tab. Logs and report controls are available to administrators only;
+   household users see an explanation without reading logs or SMTP settings.
 3. **`ha-smart-reports`** — an on-demand energy / automations / system-health
    report. Energy periods use exact Recorder `change` statistics declared by
    Home Assistant Energy (or explicit statistic IDs); Automations and System
@@ -56,8 +57,12 @@ The Log Email card's Schedule tab shows and toggles existing
 `automation.ha_tools_log_email_daily` and
 `automation.ha_tools_log_email_weekly` automations. It does not create them.
 Add an automation that calls `ha_tools_email.send` at the chosen time; Home
-Assistant runs it even when the dashboard is closed. Energy Email scheduling
-is provided by Energy Optimizer.
+Assistant runs it even when the dashboard is closed. Set the automation
+entity IDs to `automation.ha_tools_log_email_daily` and
+`automation.ha_tools_log_email_weekly` so they appear in this tab. The
+automation must provide its own subject and body; it cannot call the card's
+daily/weekly button or reuse its browser-cached log snapshot. Energy Email
+scheduling is provided by Energy Optimizer.
 
 Log Email daily and weekly sends use the retained `system_log/list` snapshot from the latest refresh, filtered to rolling 24-hour and seven-day windows respectively. Future-dated entries are excluded. Home Assistant retention and the card `max_entries` setting can limit the report; this is not a guarantee of complete historical coverage. A fallback current sensor snapshot cannot produce a weekly digest.
 
@@ -66,7 +71,7 @@ Log Email daily and weekly sends use the retained `system_log/list` snapshot fro
 | Automatic | Manual (optional) |
 |---|---|
 | Home Assistant Energy source mapping (`ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
-| Integration-presence detection + install banner | Creating/enabling the daily / weekly / monthly report automations |
+| Integration-presence detection + install banner | Creating the Log Email daily / weekly automations; Energy Email scheduling is handled by Energy Optimizer |
 | Error/warning digest from `system_log` (`ha-log-email`) | Creating the Log Email schedule automations; choosing a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
 | Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Exporting Smart Reports schema-v2 JSON or flat CSV |
@@ -173,8 +178,12 @@ integration is required and linking to it — it doesn't fail silently or send
 through your `notify:` platform instead.
 
 **Does scheduled sending require a browser tab to stay open?**
-No. Creating a schedule writes a normal Home Assistant automation that calls
-`ha_tools_email.send`; HA's automation engine runs it, not the card.
+The Log Email card only enables or disables existing daily and weekly
+automations. Create those automations separately in Home Assistant with
+`ha_tools_email.send` and your own subject and body. Home Assistant runs them
+even when the dashboard is closed. The card does not create automations,
+register a server-side digest job, or supply its cached log snapshot to a
+scheduled action. Energy Email scheduling belongs to Energy Optimizer.
 
 **Where do the emails actually go out through?**
 Your own SMTP server, configured once in the HA Tools Email integration.

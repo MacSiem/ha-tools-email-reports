@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:5f0786cf0a133db23f1629bf170d295828fe4b78530d5cbcc91fa5f23e16953f
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:6a691c4a079e7cfcc753bb941fccc2364291db101575b9def6af8cac913d44de
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:0e2afda257159b217bf6caecdbd851d82d935d9cb14c54ce8674442698211673
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -849,7 +849,7 @@ class HALogEmail extends HTMLElement {
         const h24 = 24 * 60 * 60 * 1000;
         const recent = logs.filter(e => {
           const ts = e.timestamp ? e.timestamp * 1000 : 0;
-          return (now - ts) < h24;
+          return (now - ts) >= 0 && (now - ts) < h24;
         });
         const errors = recent.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL');
         const warnings = recent.filter(e => e.level === 'WARNING');
@@ -862,7 +862,16 @@ class HALogEmail extends HTMLElement {
             level: e.level
           };
         };
+        const weekly = logs.filter(e => {
+          const age = now - Number(e.timestamp) * 1000;
+          return e.timestamp != null && Number.isFinite(age) && age >= 0 && age < 7 * h24;
+        });
         this._logData = {
+          weekly: {
+            errors: weekly.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL').slice(0, this._config.max_entries).map(mapEntry),
+            warnings: weekly.filter(e => e.level === 'WARNING').slice(0, this._config.max_entries).map(mapEntry),
+            total: weekly.length
+          },
           errors: errors.slice(0, this._config.max_entries).map(mapEntry),
           warnings: warnings.slice(0, this._config.max_entries).map(mapEntry),
           total: recent.length,
@@ -1042,8 +1051,9 @@ class HALogEmail extends HTMLElement {
   async _sendEmailNow(period) {
     if (!this._hass?.user?.is_admin) return;
     if (this._sendStatus?.status === 'sending') return;
-    if (!this._logData || this._logData.unavailable) {
-      this._sendStatus = { status: 'error', period, error: this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.' };
+    const data = period === 'weekly' ? this._logData?.weekly : this._logData;
+    if (!data || data.unavailable) {
+      this._sendStatus = { status: 'error', period, error: period === 'weekly' ? (this._lang === 'pl' ? 'Dane tygodniowe dziennika są niedostępne. Odśwież dziennik systemowy.' : 'Weekly log data is unavailable. Refresh the system log.') : (this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.') };
       this._render();
       return;
     }
@@ -1054,7 +1064,6 @@ class HALogEmail extends HTMLElement {
     this._sendStatus = { status: 'sending', period };
     this._render();
     try {
-      const data = this._logData;
       const errors = data ? (data.errors || []) : [];
       const warnings = data ? (data.warnings || []) : [];
       const now = new Date().toLocaleString((this._lang === 'pl' ? 'pl-PL' : 'en-US'));
@@ -1062,6 +1071,7 @@ class HALogEmail extends HTMLElement {
         ? (this._lang === 'pl' ? 'HA Log - Raport dzienny (' + now + ')' : 'HA Log - Daily Report (' + now + ')')
         : (this._lang === 'pl' ? 'HA Log - Raport tygodniowy (' + now + ')' : 'HA Log - Weekly Report (' + now + ')');
       var body = '<h2>' + subject + '</h2>';
+      if (period === 'weekly') body += '<p>' + (this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni. Historia może być ograniczona przez Home Assistant; obowiązuje limit wpisów karty.' : 'Retained entries from the last 7 days. Home Assistant may limit history; the card entry limit applies.') + '</p>';
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
@@ -1257,7 +1267,7 @@ class HALogEmail extends HTMLElement {
 
           <div class="schedule-card">
             <div class="schedule-title">\uD83D\uDCC6 ${this._t.weeklyReport}</div>
-            <div class="schedule-desc">${this._lang === 'pl' ? 'Raport dziennika z ostatniego tygodnia. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Full-week log digest. Your automation sets the sending day and time.'}</div>
+            <div class="schedule-desc">${this._lang === 'pl' ? 'Zachowane wpisy dziennika z ostatnich 7 dni. Home Assistant może ograniczać historię. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Retained log entries from the last 7 days. Home Assistant may limit history. Your automation sets the sending day and time.'}</div>
             <div class="schedule-row">
               <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
                 ${weeklyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : weeklyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
@@ -1308,7 +1318,7 @@ class HALogEmail extends HTMLElement {
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
             <div class="send-title">${this._t.weeklyDigest}</div>
-            <div class="send-desc">${this._lang === 'pl' ? 'Podsumowanie dziennika z całego tygodnia' : 'Full week log summary'}</div>
+            <div class="send-desc">${this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni; historia może być ograniczona' : 'Retained entries from the last 7 days; history may be limited'}</div>
             <div class="send-counts">
               <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>

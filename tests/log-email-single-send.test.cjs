@@ -30,7 +30,7 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
           return {};
         },
       };
-      card._logData = { errors: [{ message: 'Fixture error', domain: 'fixture', count: 1 }], warnings: [], total: 1 };
+      card._logData = { errors: [{ message: 'Fixture error', domain: 'fixture', count: 1 }], warnings: [], total: 1, weekly: { errors: [{ message: 'Fixture error', domain: 'fixture', count: 1 }], warnings: [], total: 1 } };
       card._activeTab = 'send';
       let first;
       try {

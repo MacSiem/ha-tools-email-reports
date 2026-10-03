@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build weekly Log Email digests from retained entries in the actual seven-day window, exclude future timestamps, and withhold weekly sends when only a current fallback sensor snapshot is available. Disclose Home Assistant retention and card entry limits.
+
 - Block repeated Log Email sends while a report is pending; disable both send buttons and restore them after success or failure.
 
 - Show missing Smart Reports automation trigger timestamps as Never, without inventing a Unix-epoch age.

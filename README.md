@@ -59,6 +59,8 @@ Add an automation that calls `ha_tools_email.send` at the chosen time; Home
 Assistant runs it even when the dashboard is closed. Energy Email scheduling
 is provided by Energy Optimizer.
 
+Log Email daily and weekly sends use the retained `system_log/list` snapshot from the latest refresh, filtered to rolling 24-hour and seven-day windows respectively. Future-dated entries are excluded. Home Assistant retention and the card `max_entries` setting can limit the report; this is not a guarantee of complete historical coverage. A fallback current sensor snapshot cannot produce a weekly digest.
+
 ### What is automatic vs. manual
 
 | Automatic | Manual (optional) |

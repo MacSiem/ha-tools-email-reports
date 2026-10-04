@@ -1506,6 +1506,35 @@ max: 3</pre>
         }
       
 
+/* Text controls use readable foregrounds in both HA themes. Muted colour is
+   reserved for disabled controls, not the current schedule state or links. */
+:host {
+  --log-email-action-bg: #1d4ed8;
+  --log-email-link: #1d4ed8;
+  --log-email-error: #b91c1c;
+  --log-email-warning: #92400e;
+  --log-email-success: #047857;
+}
+:host(.bento-dark) {
+  --log-email-action-bg: #4338ca;
+  --log-email-link: #c7d2fe;
+  --log-email-error: #fecaca;
+  --log-email-warning: #fde68a;
+  --log-email-success: #a7f3d0;
+}
+.content a, .content a:visited, .tab-btn.active, .tab-btn:hover,
+.setup-steps pre, .send-status.sending, .info-badge { color: var(--log-email-link); }
+.content a { text-decoration: underline; }
+.tab-btn.active, .tab-btn:hover { color: var(--log-email-link) !important; }
+.toggle-btn, .send-btn, .send-btn:hover, .refresh-btn:hover {
+  background: var(--log-email-action-bg); color: #fff;
+}
+.toggle-btn:hover { opacity: 1; }
+.status-on, .badge-ok, .send-status.success { color: var(--log-email-success); }
+.badge-er, .error-domain, .error-badge, .send-status.error { color: var(--log-email-error); }
+.warn-domain, .warn-badge { color: var(--log-email-warning); }
+.status-off, .log-time, .last-updated, .stat-sub { color: var(--bento-text); }
+.header-badge { color: var(--bento-text) !important; }
 </style>
 
       <ha-card class="card">

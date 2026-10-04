@@ -2,6 +2,8 @@
 
 ## [4.5.1] - Unreleased
 
+- Keep schedule states, SMTP settings links, report badges and action labels readable in light and dark themes.
+
 - Keep log email excerpts valid UTF-8 when the 200 UTF-16-unit limit crosses an emoji; retain escaping and replace malformed input surrogates.
 
 - Use the Home Assistant profile language for Log Email and vendored Smart Reports. Translate Smart Reports views and correct Polish log counts such as “1 błąd” and “2 błędy” without changing report data or export fields.

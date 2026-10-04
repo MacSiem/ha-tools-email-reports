@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:d7684109ca0937edea3957bc87ee6a8b69271d68f25ee90fd353dc2a5bff3415
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:e76e1d03a4d0c2dac2d1fccbbb84ea1fc30c57f91800d73a91ac405ad4b4d585
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1637,6 +1637,35 @@ max: 3</pre>
         }
       
 
+/* Text controls use readable foregrounds in both HA themes. Muted colour is
+   reserved for disabled controls, not the current schedule state or links. */
+:host {
+  --log-email-action-bg: #1d4ed8;
+  --log-email-link: #1d4ed8;
+  --log-email-error: #b91c1c;
+  --log-email-warning: #92400e;
+  --log-email-success: #047857;
+}
+:host(.bento-dark) {
+  --log-email-action-bg: #4338ca;
+  --log-email-link: #c7d2fe;
+  --log-email-error: #fecaca;
+  --log-email-warning: #fde68a;
+  --log-email-success: #a7f3d0;
+}
+.content a, .content a:visited, .tab-btn.active, .tab-btn:hover,
+.setup-steps pre, .send-status.sending, .info-badge { color: var(--log-email-link); }
+.content a { text-decoration: underline; }
+.tab-btn.active, .tab-btn:hover { color: var(--log-email-link) !important; }
+.toggle-btn, .send-btn, .send-btn:hover, .refresh-btn:hover {
+  background: var(--log-email-action-bg); color: #fff;
+}
+.toggle-btn:hover { opacity: 1; }
+.status-on, .badge-ok, .send-status.success { color: var(--log-email-success); }
+.badge-er, .error-domain, .error-badge, .send-status.error { color: var(--log-email-error); }
+.warn-domain, .warn-badge { color: var(--log-email-warning); }
+.status-off, .log-time, .last-updated, .stat-sub { color: var(--bento-text); }
+.header-badge { color: var(--bento-text) !important; }
 </style>
 
       <ha-card class="card">

@@ -2,6 +2,8 @@
 
 ## [4.5.1] - Unreleased
 
+- Keep Energy Email compatibility cards at their natural Sections height while Energy Optimizer loads, so later cards remain below the report.
+
 - Guide missing Log Email integrations through HACS installation and Add integration before SMTP Configure, in English and Polish.
 
 - Keep schedule states, SMTP settings links, report badges and action labels readable in light and dark themes.

@@ -3,7 +3,7 @@
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-energy-email.js",
     "version": "4.5.1",
-    "sha256": "4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b"
+    "sha256": "e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5"
   },
   "ha-log-email.js": {
     "owner": "MacSiem/ha-tools-email-reports",

@@ -1,6 +1,6 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
- * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
+ * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a69817a8740d0e45507fdffd0c99816e107b4b9eaef7ff355bd8b3ff9afb01e4
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51
  */
@@ -117,7 +117,7 @@ class HAEnergyEmailShim extends HTMLElement {
   getGridOptions() {
     return this._inner && typeof this._inner.getGridOptions === 'function'
       ? this._inner.getGridOptions()
-      : { rows: 2, columns: 12, min_rows: 2, min_columns: 6 };
+      : { columns: 12, min_rows: 2, min_columns: 6 };
   }
 }
 

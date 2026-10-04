@@ -19,17 +19,17 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
       card._activeTab = 'schedule';
       try {
         card._render();
-        assert.match(card.shadowRoot.textContent, language === 'pl' ? /Integracja HA Tools Email nie jest zainstalowana/ : /HA Tools Email integration is not installed/);
-        assert.match(card.shadowRoot.textContent, /HACS/);
+        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, language === 'pl' ? /Integracja HA Tools Email nie jest zainstalowana/ : /HA Tools Email integration is not installed/);
+        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, /HACS/);
         assert.equal(card.shadowRoot.querySelector('.smtp-section a[href="/hacs"]').textContent, 'HACS');
         assert.equal(card.shadowRoot.querySelector('.smtp-section a[href="/config/integrations"]').textContent, language === 'pl' ? 'Urządzenia i usługi' : 'Devices & services');
-        assert.doesNotMatch(card.shadowRoot.textContent, /SMTP not configured|SMTP nie skonfigurowany/);
+        assert.doesNotMatch(card.shadowRoot.querySelector('.smtp-section').textContent, /SMTP not configured|SMTP nie skonfigurowany/);
         card._hass.services = { ha_tools_email: { send: {} } };
         card._smtpStatus = { ok: false, error: 'SMTP not configured' };
         card._render();
-        assert.match(card.shadowRoot.textContent, language === 'pl' ? /HA Tools Email dostępne/ : /HA Tools Email available/);
-        assert.match(card.shadowRoot.textContent, /SMTP not configured/);
-        assert.doesNotMatch(card.shadowRoot.textContent, /integration is not installed|Integracja HA Tools Email nie jest zainstalowana|SMTP configured/);
+        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, language === 'pl' ? /HA Tools Email dostępne/ : /HA Tools Email available/);
+        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, /SMTP not configured/);
+        assert.doesNotMatch(card.shadowRoot.querySelector('.smtp-section').textContent, /integration is not installed|Integracja HA Tools Email nie jest zainstalowana|SMTP configured/);
       } finally { dom.window.close(); }
     });
   }

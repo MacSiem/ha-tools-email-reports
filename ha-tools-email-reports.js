@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:4ff06726650fff4720ea27af63aacb5839c1afd1f9acd254ee82cf90a653045b
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:e76e1d03a4d0c2dac2d1fccbbb84ea1fc30c57f91800d73a91ac405ad4b4d585
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a69817a8740d0e45507fdffd0c99816e107b4b9eaef7ff355bd8b3ff9afb01e4
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1065,8 +1065,8 @@ class HALogEmail extends HTMLElement {
       '<div class="smtp-header">' +
         '<span class="smtp-icon">\u26A0\uFE0F</span>' +
         '<div class="smtp-info">' +
-          '<div class="smtp-title">' + (this._lang === 'pl' ? '\u26A0\uFE0F SMTP nie skonfigurowany' : '\u26A0\uFE0F SMTP not configured') + '</div>' +
-          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Otw\u00F3rz <b><a href="/config/integrations/integration/ha_tools_email">Ustawienia \u2192 Urz\u0105dzenia i us\u0142ugi \u2192 HA Tools Email \u2192 Konfiguruj</a></b>' : 'Open <b><a href="/config/integrations/integration/ha_tools_email">Settings \u2192 Devices &amp; services \u2192 HA Tools Email \u2192 Configure</a></b>') + '</div>' +
+          '<div class="smtp-title">' + (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana.' : 'The HA Tools Email integration is not installed.') + '</div>' +
+          '<div class="smtp-sub">' + (this._lang === 'pl' ? 'Zainstaluj ją z <a href="/hacs">HACS</a>, dodaj w <a href="/config/integrations">Urządzenia i usługi</a>, następnie ustaw SMTP w Konfiguruj.' : 'Install it from <a href="/hacs">HACS</a>, add it in <a href="/config/integrations">Devices &amp; services</a>, then set up SMTP in Configure.') + '</div>' +
         '</div>' +
       '</div>' +
     '</div>';

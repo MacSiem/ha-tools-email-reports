@@ -2,6 +2,8 @@
 
 ## [4.5.1] - Unreleased
 
+- Guide missing Log Email integrations through HACS installation and Add integration before SMTP Configure, in English and Polish.
+
 - Keep schedule states, SMTP settings links, report badges and action labels readable in light and dark themes.
 
 - Keep log email excerpts valid UTF-8 when the 200 UTF-16-unit limit crosses an emoji; retain escaping and replace malformed input surrogates.

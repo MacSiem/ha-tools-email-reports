@@ -1,4 +1,4 @@
-/* HA Tools split — ha-energy-email compatibility shim v4.5.0 (2026-09-24) */
+/* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
 'use strict';
 
@@ -111,7 +111,7 @@ class HAEnergyEmailShim extends HTMLElement {
   getGridOptions() {
     return this._inner && typeof this._inner.getGridOptions === 'function'
       ? this._inner.getGridOptions()
-      : { rows: 2, columns: 12, min_rows: 2, min_columns: 6 };
+      : { columns: 12, min_rows: 2, min_columns: 6 };
   }
 }
 

@@ -117,13 +117,35 @@ test('version banner, customCards metadata and editor exist once per loaded runt
   }
 });
 
-test('generated bundle passes the shared N-01 through N-05 fix-pass-2 behavior suite', () => {
-  const result = spawnSync(process.execPath, ['--test', 'tests/smart-reports-fix-pass-2.test.cjs'], {
+test('generated bundle passes shared behavior and rendered-theme contrast suites', () => {
+  // A nested runner inherits child-v8 and skips files unless its runner context is removed.
+  const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/smart-reports-fix-pass-2.test.cjs', 'tests/smart-reports-theme-contrast.test.cjs'], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE },
+    env,
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /skipping running files/, 'shared behavior suite must execute');
+  assert.match(result.stdout, /# tests 23(?:\r?\n|$)/, 'all fifteen behavior and eight contrast cases must run');
+  for (const id of ['N-01', 'N-02', 'N-03', 'N-04', 'N-05']) assert.ok(result.stdout.includes(id), `${id} must run against the generated bundle`);
+});
+
+test('generated bundle counts triggers in HA calendar days including DST and excludes future timestamps', () => {
+  const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap',
+    '--test-name-pattern=Triggered today uses HA local midnight|Automations renders absent', 'tests/smart-reports-lifecycle.test.cjs'], {
+    cwd: ROOT, encoding: 'utf8', env,
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /skipping running files/);
+  assert.match(result.stdout, /# pass 5(?:\r?\n|$)/);
+  assert.match(result.stdout, /# fail 0(?:\r?\n|$)/);
+  for (const name of ['Warsaw calendar boundary', 'Warsaw spring DST day', 'Warsaw autumn 25-hour day', 'Kathmandu fractional UTC offset', 'Automations renders absent']) {
+    assert.ok(result.stdout.includes(name), `${name} must execute against the bundle`);
+  }
 });
 
 test('F08 manifest owns all and only three sources with repository, path, version and digest', () => {

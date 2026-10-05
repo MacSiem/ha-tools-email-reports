@@ -97,3 +97,18 @@ test('the email card source no longer carries its own implementation', () => {
   assert.ok(SHIM.length < 12000, 'shim stays thin');
   assert.doesNotMatch(SHIM, /ha_tools_email\.send|callService\(/);
 });
+
+for (const [label, source] of [['source', SHIM], ['bundle', BUNDLE]]) {
+  test(`${label}: pending Sections sizing does not cap a later Energy card to fixed rows`, () => {
+    const { window } = makeWindow();
+    try {
+      window.eval(source);
+      const card = window.document.createElement('ha-energy-email');
+      card.setConfig({ type: 'custom:ha-energy-email' });
+      const options = card.getGridOptions();
+      assert.equal(options.rows, undefined, 'Sections must retain intrinsic height before optimizer mounts');
+      assert.equal(options.columns, 12);
+      assert.ok(options.min_rows >= 2);
+    } finally { window.close(); }
+  });
+}

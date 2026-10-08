@@ -1,5 +1,5 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.5.1
+ * HA Tools Email Reports bundle v4.5.2
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a69817a8740d0e45507fdffd0c99816e107b4b9eaef7ff355bd8b3ff9afb01e4
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.0.1 sha256:48e2e89e04cf4b5d5c4056d6e70c7921ff2e9f0851b741a10fc94de3ce997c51
@@ -2791,6 +2791,6 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.5.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.5.2 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

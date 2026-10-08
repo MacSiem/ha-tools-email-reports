@@ -1,6 +1,12 @@
 # Changelog — HA Tools — Email & Reports
 
-## [4.5.1] - Unreleased
+## [4.5.2] - 2026-10-08
+
+- Correct the Dashboard minimum to Home Assistant Core 2024.5.0, matching the service-response frontend API used for the central Log Email recipient.
+- Document the separate Core 2024.7.0 requirement of HA Tools Email and the independent Energy Optimizer dependency.
+- Date the already published 4.5.1 notes. Card behavior, settings, data, exports and embedded component sources are unchanged.
+
+## [4.5.1] - 2026-10-05
 
 - Keep Energy Email compatibility cards at their natural Sections height while Energy Optimizer loads, so later cards remain below the report.
 

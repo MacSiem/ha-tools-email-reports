@@ -209,3 +209,14 @@ test('F08 CI runs Python persistence tests as well as JavaScript tests', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/validate.yml'), 'utf8');
   assert.match(workflow, /python3\s+-m\s+unittest\s+discover/);
 });
+
+
+test('generated bundle handles missing Energy preferences without hiding Recorder failures', () => {
+  const env = { ...process.env, SMART_REPORTS_SOURCE_PATH: BUNDLE };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/smart-reports-unconfigured-energy.test.cjs'], { cwd: ROOT, encoding: 'utf8', env });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /skipping running files/);
+  assert.match(result.stdout, /# tests 7(?:\r?\n|$)/);
+  assert.match(result.stdout, /# fail 0(?:\r?\n|$)/);
+});

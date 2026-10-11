@@ -2,7 +2,8 @@
 
 ## [4.5.3] - 2026-10-11
 
-- Update vendored Smart Reports to the exact 4.1.1 source. The bundle now retains measured consumption/cost summaries with partial history and provides the current Summary, Devices and Costs views, regardless of which card resource loads first.
+- Update vendored Smart Reports to the exact 4.1.2 source. The bundle now retains measured consumption/cost summaries with partial history and provides the current Summary, Devices and Costs views, regardless of which card resource loads first.
+- A fresh Home Assistant instance without Energy preferences now shows configuration guidance; real Recorder and other preferences errors retain Retry.
 - Exercise recorded subtotals, same-period refresh, daily history, labels and separate cost coverage directly in both the vendored source and generated bundle.
 
 ## [4.5.2] - 2026-10-08

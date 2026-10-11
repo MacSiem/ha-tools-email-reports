@@ -17,7 +17,7 @@ not send email.
 
 Part of the [HA Tools](https://github.com/MacSiem) ecosystem.
 
-The generated bundle includes the exact Smart Reports 4.1.1 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card.
+The generated bundle includes the exact Smart Reports 4.1.2 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card.
 
 ## How it works
 

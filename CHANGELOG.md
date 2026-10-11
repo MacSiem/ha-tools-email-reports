@@ -1,5 +1,10 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.5.3] - 2026-10-11
+
+- Update vendored Smart Reports to the exact 4.1.1 source. The bundle now retains measured consumption/cost summaries with partial history and provides the current Summary, Devices and Costs views, regardless of which card resource loads first.
+- Exercise recorded subtotals, same-period refresh, daily history, labels and separate cost coverage directly in both the vendored source and generated bundle.
+
 ## [4.5.2] - 2026-10-08
 
 - Correct the Dashboard minimum to Home Assistant Core 2024.5.0, matching the service-response frontend API used for the central Log Email recipient.

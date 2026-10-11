@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a69817a8740d0e45507fdffd0c99816e107b4b9eaef7ff355bd8b3ff9afb01e4
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.1 sha256:eee01974e7e72b0a693fc6d05c891308ebde4bebe45bc228bc6605385aa75fde
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:2b6421a515e8209e9a115c80f2659a842fe58359441cb669f7795a8908e44ed8
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -1857,7 +1857,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.1.1
+ * Version: 4.1.2
  */
 
 (function registerHASmartReports() {
@@ -1865,7 +1865,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 
   if (customElements.get('ha-smart-reports')) return;
 
-  const VERSION = '4.1.1';
+  const VERSION = '4.1.2';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 
@@ -2392,7 +2392,15 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
     }
 
     async _dashboardSources(generation) {
-      const prefs = await this._hass.callWS({ type: 'energy/get_prefs' });
+      let prefs;
+      try {
+        prefs = await this._hass.callWS({ type: 'energy/get_prefs' });
+      } catch (error) {
+        // Core reports an unconfigured Energy Dashboard as not_found / No prefs.
+        // This applies only to preference discovery, never Recorder failures.
+        if (!error || error.code !== 'not_found') throw error;
+        prefs = null;
+      }
       if (!this._isCurrentEnergyRequest(generation)) return null;
       const totals = []; const costs = []; const devices = []; const costCoverage = new Map();
       const costParents = new Map();

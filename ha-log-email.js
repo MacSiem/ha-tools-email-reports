@@ -1784,7 +1784,7 @@ max: 3</pre>
 }
 @container log-email-card (max-width: 279px) {
   .native-tabs { display: block; }
-  .card .tabs { display: none; }
+  .card .tabs { display: none !important; }
   .history-records td { grid-template-columns: 1fr; }
   .history-actions button { width: 100%; }
 }

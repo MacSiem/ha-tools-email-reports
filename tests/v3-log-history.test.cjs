@@ -48,7 +48,9 @@ test('history opens without reads or writes; refresh uses the one persisted meta
     assert.deepEqual(JSON.parse(JSON.stringify(f.reads)), [{ type: 'ha_tools_email/get_attempt_history' }]);
     const content = f.card.shadowRoot.querySelector('.attempt-history').textContent;
     assert.match(content, /Accepted by SMTP server/); assert.match(content, /does not confirm delivery/);
-    assert.match(content, /schedule/); assert.match(content, /log_digest/); assert.match(content, /daily:2026-10-11/);
+    assert.match(content, /Scheduled/); assert.match(content, /Log digest/); assert.match(content, /Day 2026-10-11/);
+    const row = f.card.shadowRoot.querySelector('.attempt-history tbody tr');
+    assert.equal(row.dataset.source, 'schedule'); assert.equal(row.dataset.kind, 'log_digest'); assert.equal(row.dataset.period, 'daily:2026-10-11');
     assert.match(content, /128/); assert.match(content, /90/); assert.match(content, /Oldest/); assert.match(content, /Newest/);
     assert.equal(f.writes.length, 0);
     assert.equal(f.card._config.untouched.future, true);
@@ -81,8 +83,11 @@ test('test/manual and scheduled energy rows retain exact metadata and neutral no
     for(const lang of ['en','pl']) {
       f.card._lang=lang; f.card._render();
       const text=f.card.shadowRoot.querySelector('.attempt-history').textContent;
-      assert.match(text,/manual/); assert.match(text,/test/); assert.match(text,/energy_report/); assert.match(text,/monthly:2026-10/);
-      assert.match(text,/transport_outcome_unknown/); assert.match(text,/partial_acceptance/);
+      assert.match(text, lang === 'pl' ? /Ręcznie.*Test.*Raport energii/s : /Manual.*Test.*Energy report/s);
+      assert.match(text, lang === 'pl' ? /Miesiąc 2026-10/ : /Month 2026-10/);
+      const rows = f.card.shadowRoot.querySelectorAll('.attempt-history tbody tr');
+      assert.equal(rows[0].dataset.source,'manual'); assert.equal(rows[0].dataset.kind,'test');
+      assert.equal(rows[0].dataset.outcome,'transport_outcome_unknown'); assert.equal(rows[1].dataset.outcome,'partial_acceptance');
       assert.doesNotMatch(text,/Email sent|Email wysłany|Delivered|Dostarczono/);
     }
   } finally {f.close();}

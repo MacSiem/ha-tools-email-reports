@@ -23,7 +23,8 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
   controller.setContext = hass => {
     const next = { admin: hass?.user?.is_admin === true,
       user: hass?.user?.id ?? hass?.user, connection: hass?.connection ?? null,
-      online: !!hass && hass.connected !== false && hass.connection?.connected !== false };
+      online: !!hass && hass.connected !== false && hass.connection?.connected !== false,
+      timezone: typeof hass?.config?.time_zone === 'string' ? hass.config.time_zone : null };
     if (context && (context.admin !== next.admin || context.user !== next.user ||
       context.connection !== next.connection || context.online !== next.online)) controller.discard();
     context = next;
@@ -82,6 +83,9 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
   };
   controller.render = (language = 'en') => {
     const pl = language === 'pl', state = controller.state;
+    let timezone = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(); }
+    catch (_) { timezone = 'UTC'; }
     const labels = pl ? ['Data', 'Źródło', 'Rodzaj', 'Częstotliwość', 'Okres', 'Odbiorcy (liczba)', 'Wynik'] :
       ['Date', 'Source', 'Kind', 'Cadence', 'Period', 'Recipient count', 'Outcome'];
     const text = {
@@ -95,7 +99,7 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
     };
     const date = stamp => {
       const dt = new Date(stamp);
-      return `${dt.toLocaleString(pl ? 'pl-PL' : 'en-US')} (${stamp})`;
+      return `${dt.toLocaleString(pl ? 'pl-PL' : 'en-US', { timeZone: timezone })} (${stamp})`;
     };
     const range = state.attempts.map(row => row.timestamp).sort((a, b) => Date.parse(a) - Date.parse(b));
     const outcomeLabels = pl ? {
@@ -111,13 +115,26 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
       transport_outcome_unknown: 'Transport outcome unknown', send_failed: 'Send failed',
       cancelled_outcome_unknown: 'Cancelled; outcome unknown', outcome_unknown: 'Outcome unknown'
     };
-    const outcome = code => `${outcomeLabels[code]} (${code})`;
-    const rows = state.attempts.map(row => [date(row.timestamp), row.source, row.kind ?? '—', row.cadence ?? '—',
-      row.period ?? '—', row.recipient_count ?? '—', outcome(row.outcome)]);
+    const sourceLabels = pl ? { manual: 'Ręcznie', schedule: 'Harmonogram', unknown: 'Nieznane' } :
+      { manual: 'Manual', schedule: 'Scheduled', unknown: 'Unknown' };
+    const kindLabels = pl ? { manual: 'Wiadomość', test: 'Test', log_digest: 'Raport dziennika', energy_report: 'Raport energii' } :
+      { manual: 'Message', test: 'Test', log_digest: 'Log digest', energy_report: 'Energy report' };
+    const cadenceLabels = pl ? { daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc' } :
+      { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+    const periodLabel = value => {
+      if (value === null) return '—';
+      const [cadence, key] = value.split(':');
+      const prefix = pl ? { daily: 'Dzień', weekly: 'Tydzień', monthly: 'Miesiąc' } :
+        { daily: 'Day', weekly: 'Week', monthly: 'Month' };
+      return `${prefix[cadence]} ${key}`;
+    };
+    const rows = state.attempts.map(row => [date(row.timestamp), sourceLabels[row.source], kindLabels[row.kind] ?? '—', cadenceLabels[row.cadence] ?? '—',
+      periodLabel(row.period), row.recipient_count ?? '—', outcomeLabels[row.outcome]]);
     return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
       <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}</h3>
-      <p>${pl ? 'Jedna historia metadanych: ha_tools_email/get_attempt_history. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
-        'One metadata history: ha_tools_email/get_attempt_history. SMTP acceptance does not confirm delivery. Unknown and partial outcomes do not trigger another send.'}</p>
+      <p>${pl ? 'Metadane prób z serwera Home Assistant. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
+        'Attempt metadata from your Home Assistant server. SMTP acceptance does not confirm delivery. Unknown and partial outcomes do not trigger another send.'}</p>
+      <p>${pl ? 'Strefa czasu widoku' : 'Display timezone'}: ${escape(timezone)}.</p>
       <p>${pl ? 'Maksymalnie 128 prób / 90 dni. To zachowany zakres, nie pełna historia.' : 'At most 128 attempts / 90 days. This is the retained range, not a complete history.'}</p>
       <p>${pl ? 'Odczytano o' : 'Read at'}: ${state.observedAt ? escape(date(state.observedAt)) : '—'}. ${pl ? 'Zakres dotyczy chwili odczytu.' : 'The range describes the time of this read.'}</p>
       <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>
@@ -125,7 +142,10 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
       <button type="button" id="history-discard">${pl ? 'Odrzuć odczyt' : 'Discard read'}</button></div>
       <p role="status" aria-live="polite">${text[state.status]}</p>
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Zachowane metadane prób' : 'Retained attempt metadata'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead>
-        <tbody role="rowgroup">${rows.map(cells => `<tr role="row">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+        <tbody role="rowgroup">${rows.map((cells, index) => {
+          const row = state.attempts[index];
+          return `<tr role="row" data-attempt-id="${escape(row.id)}" data-source="${escape(row.source)}" data-kind="${escape(row.kind ?? '')}" data-cadence="${escape(row.cadence ?? '')}" data-period="${escape(row.period ?? '')}" data-outcome="${escape(row.outcome)}">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}</td>`).join('')}</tr>`;
+        }).join('')}</tbody></table>` : ''}
     </section>`;
   };
   return controller;

@@ -204,7 +204,7 @@ test('filter and native tab focus survives filter/locale/hass updates; records s
     f.card.hass={...f.hass,locale:{language:'en'}};assert.equal(f.card.shadowRoot.activeElement.id,'log-period');
     const tabs=f.card.shadowRoot.getElementById('log-tab-select');tabs.focus();tabs.value='history';tabs.dispatchEvent(new f.w.Event('change'));
     assert.equal(f.card.shadowRoot.activeElement.id,'log-tab-select');
-    f.hass.callWS=async()=>response(); await f.card._refreshAttemptHistory();
+    f.card._hass.callWS=async()=>response(); await f.card._refreshAttemptHistory();
     const table=f.card.shadowRoot.querySelector('.attempt-history .history-records');
     assert.equal(table.querySelectorAll('tbody tr').length,1); assert.equal(table.querySelectorAll('tbody td[data-label]').length,7);
     assert.match(f.card.shadowRoot.querySelector('style').textContent,/@container log-email-card \(max-width: 499px\)/);

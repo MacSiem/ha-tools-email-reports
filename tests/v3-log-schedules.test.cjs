@@ -240,3 +240,9 @@ test('optional backend count completeness metadata keeps unknown occurrences as 
   const preview = f.root.querySelector('.schedule-preview'); assert.ok(preview);
   assert.match(preview.textContent, /Partial/); assert.match(preview.textContent, /2 \/ 2 \/ No data/);
 });
+test('confirmed Save returns keyboard focus to the edited row after its busy phase', async t => {
+  const f = await fixture(t); await f.open(); f.edit();
+  const save = f.root.getElementById('schedule-save'); save.focus(); save.click(); await settle();
+  assert.match(f.root.querySelector('.server-schedules').textContent, /Success/);
+  assert.equal(f.root.activeElement?.id, 'schedule-edit-0');
+});

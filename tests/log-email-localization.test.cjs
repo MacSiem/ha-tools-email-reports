@@ -32,7 +32,9 @@ for (const language of ['pl', 'en']) {
           card._activeTab = 'overview'; card._render();
           const header = card.shadowRoot.querySelector('.header-badge').textContent;
           const expected = language === 'pl' ? `${count} ${kind === 'error' ? errorsWord : warningsWord}` : `${count} ${kind}${count === 1 ? '' : 's'}`;
-          assert.equal(header, count === 0 ? (language === 'pl' ? 'Bez błędów' : 'Clean') : expected);
+          // This fixture is a current snapshot, with no confirmed retained API
+          // history. Empty partial data cannot claim a verified clean system.
+          assert.equal(header, count === 0 ? (language === 'pl' ? 'Częściowe dane' : 'Partial data') : expected);
           assert.equal(card.shadowRoot.querySelector('img'), null);
           card._activeTab = 'send'; card._render();
           const badge = card.shadowRoot.querySelector(kind === 'error' ? '.error-badge' : '.warn-badge');

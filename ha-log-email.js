@@ -847,7 +847,12 @@ class HALogEmail extends HTMLElement {
 
   _countLabel(count, kind) {
     if (this._lang !== 'pl') return `${count} ${kind}${count === 1 ? '' : 's'}`;
-    const forms = kind === 'error' ? ['błąd', 'błędy', 'błędów'] : ['ostrzeżenie', 'ostrzeżenia', 'ostrzeżeń'];
+    const forms = ({
+      error: ['błąd', 'błędy', 'błędów'], warning: ['ostrzeżenie', 'ostrzeżenia', 'ostrzeżeń'],
+      'unique problem': ['unikalny problem', 'unikalne problemy', 'unikalnych problemów'],
+      occurrence: ['wystąpienie', 'wystąpienia', 'wystąpień'],
+      'current snapshot row': ['wiersz bieżącego odczytu', 'wiersze bieżącego odczytu', 'wierszy bieżącego odczytu']
+    })[kind];
     const few = count % 10 >= 2 && count % 10 <= 4 && !(count % 100 >= 12 && count % 100 <= 14);
     return `${count} ${forms[count === 1 ? 0 : few ? 1 : 2]}`;
   }
@@ -1326,8 +1331,10 @@ class HALogEmail extends HTMLElement {
     let statusLabel;
     if (this._activeTab === 'history') statusLabel = this._lang === 'pl' ? 'Historia prób SMTP' : 'SMTP attempt history';
     else if (unavailable) statusLabel = this._lang === 'pl' ? 'Niedostępne' : 'Unavailable';
+    else if (retained && totalErrors > 0) statusLabel = this._countLabel(totalErrors, 'error');
+    else if (retained && totalWarnings > 0) statusLabel = this._countLabel(totalWarnings, 'warning');
     else if (retained?.partial) statusLabel = this._lang === 'pl' ? 'Częściowe dane' : 'Partial data';
-    else if (retained) statusLabel = `${retained.unique} ${this._lang === 'pl' ? 'unikalnych problemów' : 'unique problem' + (retained.unique === 1 ? '' : 's')}`;
+    else if (retained) statusLabel = this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems';
     else statusLabel = totalErrors > 0 ? this._countLabel(totalErrors, 'error') : totalWarnings > 0 ? this._countLabel(totalWarnings, 'warning') :
       (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
 
@@ -1918,7 +1925,7 @@ max: 3</pre>
       <p>${model.partial && (!this._logData || this._logData.unavailable) ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : model.partial ? (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.') :
         (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
         'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
-      <p class="log-model-counts">${model.unavailable ? '—' : model.unique} ${model.partial ? (pl ? 'wierszy bieżącego odczytu' : 'current snapshot rows') : (pl ? 'unikalnych problemów' : 'unique problem' + (model.unique === 1 ? '' : 's'))} · ${model.unavailable || model.occurrences == null ? '—' : model.occurrences} ${pl ? 'wystąpień' : 'occurrences'}
+      <p class="log-model-counts">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')} · ${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}
         ${model.filteredUnique > model.unique ? ` · ${pl ? 'pokazano' : 'shown'} ${model.unique}/${model.filteredUnique} (${pl ? 'limit karty' : 'card cap'})` : ''}</p>
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :

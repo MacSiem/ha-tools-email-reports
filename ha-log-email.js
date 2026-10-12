@@ -15,6 +15,141 @@ const _logEmailExcerpt = (text) => {
     pair => pair.length === 2 ? pair : '\uFFFD');
 };
 
+// BEGIN vendored ha-tools-email-history factory
+// Pure ES-module factory. Vendor this function inside each consumer's own IIFE.
+// Neither the controller nor renderer sends, saves, retries, or reads on open.
+function createHaToolsEmailHistory({ escape = value => String(value == null ? '' : value).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]), clock = () => Date.now(),
+  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {} } = {}) {
+  const kinds = new Set(['manual', 'test', 'log_digest', 'energy_report']);
+  const cadences = new Set(['daily', 'weekly', 'monthly']);
+  const outcomes = new Set(['accepted_by_smtp', 'preparation_failed', 'authentication_failed',
+    'recipients_refused', 'partial_acceptance', 'tls_failed', 'transport_outcome_unknown',
+    'send_failed', 'cancelled_outcome_unknown', 'outcome_unknown']);
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const periodPattern = /^(daily:\d{4}-\d{2}-\d{2}|weekly:\d{4}-W\d{2}|monthly:\d{4}-\d{2})$/;
+  let epoch = 0, context = null, pending = null, cancelPending = null;
+  const empty = status => ({ status, attempts: [], limit: 128, retentionDays: 90, observedAt: null });
+  const controller = { state: empty('idle'), timeoutMs: 10000 };
+  const publish = state => { controller.state = state; changed(); };
+  controller.discard = () => {
+    epoch++;
+    if (cancelPending) cancelPending();
+    cancelPending = null; pending = null;
+    publish(empty('idle'));
+  };
+  controller.setContext = hass => {
+    const next = { admin: hass?.user?.is_admin === true,
+      user: hass?.user?.id ?? hass?.user, connection: hass?.connection ?? null,
+      online: !!hass && hass.connected !== false && hass.connection?.connected !== false };
+    if (context && (context.admin !== next.admin || context.user !== next.user ||
+      context.connection !== next.connection || context.online !== next.online)) controller.discard();
+    context = next;
+    return next.admin && next.online;
+  };
+  function decode(value) {
+    if (!value || value.schema !== 1 || value.limit !== 128 || value.retention_days !== 90 ||
+      !Array.isArray(value.attempts)) return empty('unconfirmed');
+    const now = clock(), cutoff = now - 90 * 86400000, seen = new Set(), rows = [];
+    let partial = value.attempts.length > 128;
+    for (const raw of value.attempts.slice(0, 128)) {
+      const stamp = typeof raw?.timestamp === 'string' && raw.timestamp.length <= 64 &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(raw.timestamp) ? Date.parse(raw.timestamp) : NaN;
+      if (!raw || typeof raw.id !== 'string' || !uuid.test(raw.id) ||
+        !Number.isFinite(stamp) || stamp < cutoff || stamp > now || seen.has(raw.id.toLowerCase())) {
+        partial = true; continue;
+      }
+      seen.add(raw.id.toLowerCase());
+      const source = ['manual', 'schedule', 'unknown'].includes(raw.source) ? raw.source : 'unknown';
+      const kind = kinds.has(raw.kind) ? raw.kind : null;
+      const cadence = cadences.has(raw.cadence) ? raw.cadence : null;
+      const period = typeof raw.period === 'string' && periodPattern.test(raw.period) ? raw.period : null;
+      const scheduleRef = typeof raw.schedule_ref === 'string' && /^[0-9a-f]{64}$/.test(raw.schedule_ref) ? raw.schedule_ref : null;
+      const recipientCount = Number.isInteger(raw.recipient_count) && raw.recipient_count >= 0 && raw.recipient_count <= 100000 ? raw.recipient_count : null;
+      const outcome = outcomes.has(raw.outcome) ? raw.outcome : 'outcome_unknown';
+      if (source !== raw.source || kind !== raw.kind || cadence !== raw.cadence || period !== raw.period ||
+        scheduleRef !== raw.schedule_ref || recipientCount !== raw.recipient_count || outcome !== raw.outcome) partial = true;
+      rows.push({ id: raw.id, timestamp: raw.timestamp, source, kind, cadence, period,
+        schedule_ref: scheduleRef, recipient_count: recipientCount, outcome });
+    }
+    return { ...empty(partial ? 'partial' : 'ready'), attempts: rows, observedAt: new Date(now).toISOString() };
+  }
+  controller.refresh = hass => {
+    if (!controller.setContext(hass)) return Promise.resolve(controller.state);
+    if (pending) return pending;
+    const token = ++epoch;
+    publish(empty('loading'));
+    let timer;
+    const invalidated = new Promise(resolve => { cancelPending = () => resolve({ stale: true }); });
+    const deadline = new Promise(resolve => { timer = setTimer(() => resolve({ timeout: true }), controller.timeoutMs); });
+    const read = Promise.resolve().then(() => {
+      if (token !== epoch) return { stale: true };
+      return hass.callWS({ type: 'ha_tools_email/get_attempt_history' });
+    }).then(value => ({ value }), () => ({ failed: true }));
+    pending = Promise.race([read, deadline, invalidated]).then(result => {
+      clearTimer(timer);
+      if (token !== epoch) return controller.state;
+      pending = null; cancelPending = null;
+      if (result.stale) return controller.state;
+      publish(result.timeout ? empty('unconfirmed') : result.failed ? empty('error') : decode(result.value));
+      // The request epoch changes after the timeout; late results have no side effects.
+      epoch++;
+      return controller.state;
+    });
+    return pending;
+  };
+  controller.render = (language = 'en') => {
+    const pl = language === 'pl', state = controller.state;
+    const labels = pl ? ['Data', 'Źródło', 'Rodzaj', 'Częstotliwość', 'Okres', 'Odbiorcy (liczba)', 'Wynik'] :
+      ['Date', 'Source', 'Kind', 'Cadence', 'Period', 'Recipient count', 'Outcome'];
+    const text = {
+      idle: pl ? 'Nie sprawdzono. Odśwież, aby odczytać historię serwera.' : 'Not checked. Refresh to read server history.',
+      loading: pl ? 'Wczytywanie historii serwera…' : 'Loading server history…',
+      error: pl ? 'Historia niedostępna. Możesz ponownie odczytać dane.' : 'History unavailable. You can read the data again.',
+      unconfirmed: pl ? 'Odczyt niepotwierdzony. Nie pokazujemy wcześniejszych wierszy.' : 'Read unconfirmed. Previous rows are not shown.',
+      partial: pl ? 'Częściowy odczyt: pokazano wyłącznie poprawne metadane.' : 'Partial read: only valid metadata is shown.',
+      ready: state.attempts.length ? (pl ? 'Odczytano zachowaną historię.' : 'Retained history read.') :
+        (pl ? 'Brak zachowanych prób wysyłki.' : 'No retained send attempts.')
+    };
+    const date = stamp => {
+      const dt = new Date(stamp);
+      return `${dt.toLocaleString(pl ? 'pl-PL' : 'en-US')} (${stamp})`;
+    };
+    const range = state.attempts.map(row => row.timestamp).sort((a, b) => Date.parse(a) - Date.parse(b));
+    const outcomeLabels = pl ? {
+      accepted_by_smtp: 'Przyjęte przez serwer SMTP', preparation_failed: 'Błąd przygotowania',
+      authentication_failed: 'Błąd uwierzytelnienia', recipients_refused: 'Odbiorcy odrzuceni',
+      partial_acceptance: 'Częściowe przyjęcie przez SMTP', tls_failed: 'Błąd TLS',
+      transport_outcome_unknown: 'Nieznany wynik transportu', send_failed: 'Błąd wysyłania',
+      cancelled_outcome_unknown: 'Przerwano; wynik nieznany', outcome_unknown: 'Wynik nieznany'
+    } : {
+      accepted_by_smtp: 'Accepted by SMTP server', preparation_failed: 'Preparation failed',
+      authentication_failed: 'Authentication failed', recipients_refused: 'Recipients refused',
+      partial_acceptance: 'Partial SMTP acceptance', tls_failed: 'TLS failed',
+      transport_outcome_unknown: 'Transport outcome unknown', send_failed: 'Send failed',
+      cancelled_outcome_unknown: 'Cancelled; outcome unknown', outcome_unknown: 'Outcome unknown'
+    };
+    const outcome = code => `${outcomeLabels[code]} (${code})`;
+    const rows = state.attempts.map(row => [date(row.timestamp), row.source, row.kind ?? '—', row.cadence ?? '—',
+      row.period ?? '—', row.recipient_count ?? '—', outcome(row.outcome)]);
+    return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
+      <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}</h3>
+      <p>${pl ? 'Jedna historia metadanych: ha_tools_email/get_attempt_history. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
+        'One metadata history: ha_tools_email/get_attempt_history. SMTP acceptance does not confirm delivery. Unknown and partial outcomes do not trigger another send.'}</p>
+      <p>${pl ? 'Maksymalnie 128 prób / 90 dni. To zachowany zakres, nie pełna historia.' : 'At most 128 attempts / 90 days. This is the retained range, not a complete history.'}</p>
+      <p>${pl ? 'Odczytano o' : 'Read at'}: ${state.observedAt ? escape(date(state.observedAt)) : '—'}. ${pl ? 'Zakres dotyczy chwili odczytu.' : 'The range describes the time of this read.'}</p>
+      <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>
+      <div class="history-actions"><button type="button" id="history-refresh" ${state.status === 'loading' ? 'aria-busy="true"' : ''}>${pl ? 'Odśwież historię' : 'Refresh history'}</button>
+      <button type="button" id="history-discard">${pl ? 'Odrzuć odczyt' : 'Discard read'}</button></div>
+      <p role="status" aria-live="polite">${text[state.status]}</p>
+      ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Zachowane metadane prób' : 'Retained attempt metadata'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead>
+        <tbody role="rowgroup">${rows.map(cells => `<tr role="row">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}
+    </section>`;
+  };
+  return controller;
+}
+// END vendored ha-tools-email-history factory
+
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
 const OWN_SUPPORT_FOOTER = `<div class="donate-section" data-source="own-card" style="margin:8px 0 0;padding:4px 0;background:none;border:0;box-shadow:none;min-height:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-direction:row;justify-content:flex-start;text-align:left"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--secondary-text-color,#64748b);font-weight:400;text-decoration:underline">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link" style="margin-left:auto;padding:2px 6px;min-height:0;line-height:1;border:0;background:none;color:var(--secondary-text-color,#64748b);cursor:pointer">×</button></div>`;
@@ -535,7 +670,14 @@ class HALogEmail extends HTMLElement {
     this._tabsScrollLeft = 0;
     this._logData = null;
     this._logHistory = [];
-    try { const saved = sessionStorage.getItem('ha-log-email-history'); if (saved) this._logHistory = JSON.parse(saved); } catch(e) { console.debug('[ha-log-email] caught:', e); }
+    // Browser counts are separate from server SMTP metadata. Never restore raw objects.
+    this._legacyBrowserCounts = this._readBrowserCounts('ha-log-email-history');
+    this._retainedLogs = null;
+    this._logFilters = { severity: 'all', source: 'all', period: '24h' };
+    this._dataEpoch = 0;
+    this._dataContext = null;
+    this._logReadToken = 0;
+    this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
     this._maxHistory = 24;
     this._loading = false;
     this._firstRender = false;
@@ -574,29 +716,49 @@ class HALogEmail extends HTMLElement {
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
 
-    const previousAdmin = this._hass?.user?.is_admin;
+    const previous = this._hass;
+    const oldContext = this._dataContext || (previous ? this._captureLogContext(previous) : null);
+    const newContext = this._captureLogContext(hass);
+    const previousAdmin = oldContext?.admin;
+    const online = value => this._captureLogContext(value).online;
+    const identityChanged = !!oldContext && (oldContext.user !== newContext.user || oldContext.connection !== newContext.connection ||
+      oldContext.admin !== newContext.admin || oldContext.online !== newContext.online);
+    this._dataContext = newContext;
     const language = hass?.locale?.language || hass?.language || navigator.language || 'en';
     const nextLang = /^pl(?:[-_]|$)/i.test(language) ? 'pl' : 'en';
     const languageChanged = nextLang !== this._lang;
     this._lang = nextLang;
     this._hass = hass;
-    if (!hass) return;
-    if (hass.user?.is_admin !== true) {
+    if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
+      this._dataEpoch++;
+      this._logReadToken++;
+      this._loading = false;
       this._logData = null;
+      this._retainedLogs = null;
       this._logHistory = [];
+      this._browserCountsLegacy = false;
+      this._centralRecipient = null;
+      this._lastErrorKeys = new Set();
       if (this._pollingTimer) clearInterval(this._pollingTimer);
       this._pollingTimer = null;
     }
-    if (!this._firstRender) {
+    this._attemptHistory.setContext(hass);
+    if (!previous && hass?.user?.is_admin === true && online(hass)) {
+      const key = this._browserCountsKey();
+      this._logHistory = key ? this._readBrowserCounts(key) : [];
+      // Old unscoped counts remain useful only in this first browser context, with an explicit label.
+      if (!this._logHistory.length && this._legacyBrowserCounts.length) {
+        this._logHistory = this._legacyBrowserCounts;
+        this._browserCountsLegacy = true;
+      }
+    }
+    this._legacyBrowserCounts = [];
+    if (!this._firstRender && hass) {
       this._firstRender = true;
-      if (hass.user?.is_admin === true) this._fetchLogData();
+      if (hass.user?.is_admin === true && online(hass)) this._fetchLogData();
       this._render();
-    }
-    else if (previousAdmin !== hass.user?.is_admin) {
-      if (hass.user?.is_admin === true) this._fetchLogData();
-      this._render();
-    }
-    else if (languageChanged) this._render();
+    } else if (identityChanged || !hass || languageChanged) this._render();
+    else if (previousAdmin !== hass?.user?.is_admin) this._render();
   }
 
   get _t() {
@@ -729,64 +891,158 @@ class HALogEmail extends HTMLElement {
     };
   }
 
+  _browserCountsKey() {
+    return typeof this._hass?.user?.id === 'string' ? 'ha-log-email-history:' + this._hass.user.id : null;
+  }
+
+  _readBrowserCounts(key) {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(key) || '[]');
+      return Array.isArray(saved) ? saved.slice(0, 24).filter(row => row && typeof row.ts === 'string' &&
+        Number.isFinite(Date.parse(row.ts)) && Date.parse(row.ts) <= Date.now() && ['errors', 'warnings', 'total'].every(k => Number.isSafeInteger(row[k]) && row[k] >= 0))
+        .map(({ ts, errors, warnings, total }) => ({ ts, errors, warnings, total })) : [];
+    } catch (_) { return []; }
+  }
+
+  _captureLogContext(hass) {
+    return { admin: hass?.user?.is_admin === true, user: hass?.user?.id ?? hass?.user,
+      connection: hass?.connection ?? null, online: !!hass && hass.connected !== false && hass.connection?.connected !== false };
+  }
+
+  _refreshAttemptHistory() {
+    if (!this._dataContext) this._dataContext = this._captureLogContext(this._hass);
+    return this._attemptHistory.refresh(this._hass);
+  }
+  _discardAttemptHistory() { this._attemptHistory.discard(); }
+
+  // Identity uses exact structured values. Presentation excerpts never affect grouping.
+  _exactLogValue(value) {
+    if (value === undefined) return ['undefined'];
+    if (value === null) return ['null'];
+    if (Array.isArray(value)) return ['array', value.map(item => this._exactLogValue(item))];
+    if (typeof value === 'object') return ['object', Object.keys(value).sort().map(key => [key, this._exactLogValue(value[key])])];
+    return [typeof value, value];
+  }
+
+  _groupRetainedLogs(logs, now) {
+    const groups = new Map();
+    for (const raw of logs) {
+      if (!raw || typeof raw !== 'object') continue;
+      const stamp = typeof raw.timestamp === 'number' && Number.isFinite(raw.timestamp) ? raw.timestamp * 1000 : NaN;
+      if (!Number.isFinite(stamp) || !Number.isFinite(new Date(stamp).getTime()) || stamp > now) continue;
+      const supplied = ['id', 'entry_id', 'key', 'hash'].find(key =>
+        typeof raw[key] === 'string' || (typeof raw[key] === 'number' && Number.isFinite(raw[key])));
+      const backendIdentity = supplied ? raw[supplied] : null;
+      const identity = supplied ? JSON.stringify(['backend', supplied, backendIdentity]) :
+        JSON.stringify(['exact', ...['level', 'name', 'source', 'message', 'exception'].map(key =>
+          [Object.prototype.hasOwnProperty.call(raw, key), this._exactLogValue(raw[key])])]);
+      const sourceKey = JSON.stringify([this._exactLogValue(raw.name), this._exactLogValue(raw.source)]);
+      const source = [typeof raw.name === 'string' ? raw.name : '',
+        Array.isArray(raw.source) ? raw.source.map(value => String(value)).join(':') : typeof raw.source === 'string' ? raw.source : ''].filter(Boolean).join(' · ') || 'unknown';
+      const count = Number.isSafeInteger(raw.count) && raw.count >= 0 ? raw.count : null;
+      const first = typeof raw.first_occurred === 'number' && Number.isFinite(raw.first_occurred) ? raw.first_occurred * 1000 : stamp;
+      const firstStamp = first <= stamp && Number.isFinite(new Date(first).getTime()) ? first : stamp;
+      const existing = groups.get(identity);
+      if (existing) {
+        // A repeated stable backend row is the same HA aggregate, not another occurrence.
+        existing.count = existing.count == null || count == null ? null : supplied ? Math.max(existing.count, count) : existing.count + count;
+        if (!Number.isSafeInteger(existing.count)) existing.count = null;
+        if (supplied && stamp >= existing.stamp) {
+          existing.sourceKey = sourceKey;
+          existing.domain = source;
+          existing.level = typeof raw.level === 'string' ? raw.level : 'unknown';
+          existing.message = Array.isArray(raw.message) ? raw.message.map(value => String(value)).join(' ') : String(raw.message ?? '');
+        }
+        existing.firstStamp = Math.min(existing.firstStamp, firstStamp);
+        existing.stamp = Math.max(existing.stamp, stamp);
+        existing.when = new Date(existing.stamp).toISOString();
+      } else {
+        groups.set(identity, { identity, backendIdentity, sourceKey, domain: source, level: typeof raw.level === 'string' ? raw.level : 'unknown',
+          message: Array.isArray(raw.message) ? raw.message.map(value => String(value)).join(' ') : String(raw.message ?? ''),
+          count, stamp, firstStamp, when: new Date(stamp).toISOString() });
+      }
+    }
+    return [...groups.values()].sort((a, b) => b.stamp - a.stamp || a.identity.localeCompare(b.identity));
+  }
+
+  _logEntryCap() {
+    const cap = Number(this._config.max_entries);
+    return Number.isFinite(cap) && cap >= 1 ? Math.min(Math.floor(cap), 500) : 50;
+  }
+
+  _retainedModel(filters = this._logFilters, tab = this._activeTab) {
+    const duration = { '24h': 86400000, '7d': 7 * 86400000, '30d': 30 * 86400000 };
+    const period = Object.prototype.hasOwnProperty.call(duration, filters.period) ? filters.period : '24h';
+    const now = Date.now(), cap = this._logEntryCap();
+    if (!Array.isArray(this._retainedLogs)) {
+      const data = this._logData;
+      const canShow = !!data && !data.unavailable && period === '24h';
+      const rows = canShow ? [...(Array.isArray(data.errors) ? data.errors : []).map(row => ({ ...row, level: row.level || 'ERROR' })),
+        ...(Array.isArray(data.warnings) ? data.warnings : []).map(row => ({ ...row, level: row.level || 'WARNING' }))].map((row, index) => ({
+          identity: 'sensor:' + index, sourceKey: JSON.stringify(String(row.domain || row.name || 'unknown')),
+          domain: String(row.domain || row.name || 'unknown'), message: Array.isArray(row.message) ? row.message.join(' ') : String(row.message ?? ''),
+          level: row.level, count: Number.isSafeInteger(row.count) && row.count >= 0 ? row.count : null, when: typeof row.when === 'string' && Number.isFinite(Date.parse(row.when)) && Date.parse(row.when) <= now ? row.when : ''
+        })) : [];
+      return this._filterLogModel(rows, filters, tab, { period, cap, partial: true, source: data && !data.unavailable ? 'sensor.ha_log_summary' : 'system_log/list / sensor.ha_log_summary (unavailable)',
+        currentOnly: true, unavailable: !canShow, first: null, last: null });
+    }
+    const retained = this._retainedLogs.filter(row => row.stamp <= now);
+    const range = retained.flatMap(row => [row.firstStamp, row.stamp]).filter(stamp => Number.isFinite(stamp) && stamp <= now);
+    const candidates = retained.filter(row => row.stamp >= now - duration[period]);
+    return this._filterLogModel(candidates, filters, tab, { period, cap, partial: false, source: 'system_log/list', currentOnly: false,
+      unavailable: false, first: range.length ? Math.min(...range) : null, last: range.length ? Math.max(...range) : null });
+  }
+
+  _filterLogModel(candidates, filters, tab, metadata) {
+    const filtered = candidates.filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
+      (filters.source === 'all' || row.sourceKey === filters.source) &&
+      (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+    const rows = filtered.slice(0, metadata.cap);
+    const occurrences = rows.some(row => row.count == null) ? null : rows.reduce((sum, row) => sum + row.count, 0);
+    return { ...metadata, rows, unique: rows.length, occurrences: Number.isSafeInteger(occurrences) ? occurrences : null,
+      filteredUnique: filtered.length, sources: [...new Map(candidates.map(row => [row.sourceKey, row.domain])).entries()],
+      severities: [...new Set(candidates.map(row => row.level))].sort() };
+  }
+
   async _fetchLogData() {
-    if (!this._hass?.user?.is_admin) return;
+    const hass = this._hass;
+    if (hass?.user?.is_admin !== true || hass.connected === false || hass.connection?.connected === false) return;
+    if (!this._dataContext) this._dataContext = this._captureLogContext(hass);
+    const epoch = this._dataEpoch, readToken = ++this._logReadToken;
+    const current = () => epoch === this._dataEpoch && readToken === this._logReadToken && this._hass?.user?.is_admin === true;
     this._loading = true;
     this._render();
     try {
-      const logs = await this._hass.callWS({ type: 'system_log/list' });
-      if (!this._hass?.user?.is_admin) return;
-      if (Array.isArray(logs)) {
-        const now = Date.now();
-        const h24 = 24 * 60 * 60 * 1000;
-        const recent = logs.filter(e => {
-          const ts = e.timestamp ? e.timestamp * 1000 : 0;
-          return (now - ts) >= 0 && (now - ts) < h24;
-        });
-        const errors = recent.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL');
-        const warnings = recent.filter(e => e.level === 'WARNING');
-        const mapEntry = function(e) {
-          return {
-            message: Array.isArray(e.message) ? e.message.join(' ') : String(e.message || ''),
-            domain: e.name || (Array.isArray(e.source) ? e.source[0] : 'unknown'),
-            when: e.timestamp ? new Date(e.timestamp * 1000).toISOString() : '',
-            count: e.count || 1,
-            level: e.level
-          };
-        };
-        const weekly = logs.filter(e => {
-          const age = now - Number(e.timestamp) * 1000;
-          return e.timestamp != null && Number.isFinite(age) && age >= 0 && age < 7 * h24;
-        });
-        this._logData = {
-          weekly: {
-            errors: weekly.filter(e => e.level === 'ERROR' || e.level === 'CRITICAL').slice(0, this._config.max_entries).map(mapEntry),
-            warnings: weekly.filter(e => e.level === 'WARNING').slice(0, this._config.max_entries).map(mapEntry),
-            total: weekly.length
-          },
-          errors: errors.slice(0, this._config.max_entries).map(mapEntry),
-          warnings: warnings.slice(0, this._config.max_entries).map(mapEntry),
-          total: recent.length,
-          allLogs: logs.length,
-          fetchedAt: new Date().toISOString()
-        };
-      }
-    } catch (err) {
-      if (!this._hass?.user?.is_admin) return;
-      console.warn('[ha-log-email] system_log/list failed:', err);
+      const logs = await hass.callWS({ type: 'system_log/list' });
+      if (!current()) return;
+      if (!Array.isArray(logs)) throw new Error('invalid_log_response');
+      const now = Date.now();
+      this._retainedLogs = this._groupRetainedLogs(logs, now);
+      // Preserve daily/weekly report buckets and the existing per-severity send cap.
+      // UI filters do not change the prepared report periods or payload.
+      const split = duration => {
+        const rows = this._retainedLogs.filter(row => row.stamp >= now - duration && row.stamp <= now);
+        return { errors: rows.filter(row => ['ERROR', 'CRITICAL'].includes(row.level)).slice(0, this._logEntryCap()),
+          warnings: rows.filter(row => row.level === 'WARNING').slice(0, this._logEntryCap()), total: rows.length };
+      };
+      this._logData = { ...split(86400000), weekly: split(7 * 86400000), allLogs: logs.length, fetchedAt: new Date(now).toISOString() };
+    } catch (_) {
+      if (!current()) return;
+      this._retainedLogs = null;
       this._logData = this._getLogFromSensor();
     }
+    if (!current()) return;
     this._loading = false;
     this._lastFetch = Date.now();
-    // D2: Save snapshot to history
     if (this._logData && this._logData.errors) {
       const snapshot = { ts: new Date().toISOString(), errors: this._logData.errors.length, warnings: this._logData.warnings.length, total: this._logData.total };
       this._logHistory.unshift(snapshot);
-      if (this._logHistory.length > this._maxHistory) this._logHistory.pop();
-      try { sessionStorage.setItem('ha-log-email-history', JSON.stringify(this._logHistory)); } catch(e) { console.debug('[ha-log-email] caught:', e); }
+      this._logHistory = this._logHistory.slice(0, this._maxHistory);
+      const key = this._browserCountsKey();
+      if (key) try { sessionStorage.setItem(key, JSON.stringify(this._logHistory.map(({ ts, errors, warnings, total }) => ({ ts, errors, warnings, total })))); } catch (_) {}
     }
     this._render();
-    // FUNC-2: start polling if enabled on first successful fetch
+    // Preserve the existing explicitly enabled alerts setting.
     if (this._pollingEnabled && !this._pollingTimer) this._startPolling();
   }
 
@@ -862,16 +1118,16 @@ class HALogEmail extends HTMLElement {
     _getLogFromSensor() {
     if (!this._hass) return null;
     const sensor = this._hass.states['sensor.ha_log_summary'];
-    if (!sensor) return {
+    if (!sensor || sensor.state === 'unavailable' || sensor.state === 'unknown') return {
       unavailable: true,
       note: 'Sensor sensor.ha_log_summary not found. Install log_email.yaml package.',
       fetchedAt: new Date().toISOString()
     };
     const attrs = sensor.attributes || {};
     return {
-      errors: attrs.errors || [],
-      warnings: attrs.warnings || [],
-      total: attrs.total || 0,
+      errors: Array.isArray(attrs.errors) ? attrs.errors : [],
+      warnings: Array.isArray(attrs.warnings) ? attrs.warnings : [],
+      total: Number.isSafeInteger(attrs.total) && attrs.total >= 0 ? attrs.total : (Array.isArray(attrs.errors) ? attrs.errors.length : 0) + (Array.isArray(attrs.warnings) ? attrs.warnings.length : 0),
       lastUpdated: sensor.last_updated,
       fetchedAt: new Date().toISOString()
     };
@@ -967,12 +1223,12 @@ class HALogEmail extends HTMLElement {
       body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
       if (errors.length > 0) {
         body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count == null ? '—' : e.count) + ')</li>'; });
         body += '</ul>';
       }
       if (warnings.length > 0) {
         body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count||1) + ')</li>'; });
+        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count == null ? '—' : e.count) + ')</li>'; });
         body += '</ul>';
       }
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';
@@ -1048,20 +1304,32 @@ class HALogEmail extends HTMLElement {
   }
 
   _render() {
-    if (!this._hass) return;
+    const focused = this.shadowRoot.activeElement;
+    const focusId = focused?.id;
+    const focusTab = focused?.dataset?.tab;
+    if (!this._hass || this._hass.connected === false || this._hass.connection?.connected === false) {
+      this.shadowRoot.innerHTML = `<ha-card style="padding:20px"><p>${this._lang === 'pl' ? 'Brak połączenia. Dane odrzucono.' : 'Disconnected. Data discarded.'}</p></ha-card>`;
+      return;
+    }
     if (this._hass.user?.is_admin !== true) {
       this.shadowRoot.innerHTML = `<ha-card style="padding:20px"><strong>${_esc(this._config.title || 'Log Email Summary')}</strong><p>${this._lang === 'pl' ? 'Dziennik systemowy i wysyłanie raportów są dostępne tylko dla administratora.' : 'System logs and report controls require an administrator.'}</p></ha-card>`;
       return;
     }
+    const logView = ['overview', 'errors', 'warnings'].includes(this._activeTab);
     const data = this._logData;
-    const unavailable = !data || data.unavailable;
-    const errors = data ? (data.errors || []) : [];
-    const warnings = data ? (data.warnings || []) : [];
+    const retained = logView ? this._retainedModel() : null;
+    const unavailable = !data || data.unavailable || (logView && retained.unavailable);
+    const errors = retained ? retained.rows.filter(row => ['ERROR', 'CRITICAL'].includes(row.level)) : data ? (data.errors || []) : [];
+    const warnings = retained ? retained.rows.filter(row => row.level === 'WARNING') : data ? (data.warnings || []) : [];
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
-    const statusColor = totalErrors > 0 ? '#ef4444' : totalWarnings > 5 ? '#f59e0b' : '#10b981';
-    const statusLabel = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') : totalErrors > 0 ? this._countLabel(totalErrors, 'error') :
-                        totalWarnings > 0 ? this._countLabel(totalWarnings, 'warning') : (this._lang === 'pl' ? 'Bez błędów' : 'Clean');
+    let statusLabel;
+    if (this._activeTab === 'history') statusLabel = this._lang === 'pl' ? 'Historia prób SMTP' : 'SMTP attempt history';
+    else if (unavailable) statusLabel = this._lang === 'pl' ? 'Niedostępne' : 'Unavailable';
+    else if (retained?.partial) statusLabel = this._lang === 'pl' ? 'Częściowe dane' : 'Partial data';
+    else if (retained) statusLabel = `${retained.unique} ${this._lang === 'pl' ? 'unikalnych problemów' : 'unique problem' + (retained.unique === 1 ? '' : 's')}`;
+    else statusLabel = totalErrors > 0 ? this._countLabel(totalErrors, 'error') : totalWarnings > 0 ? this._countLabel(totalWarnings, 'warning') :
+      (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
 
     const dailyEntityId = 'automation.ha_tools_log_email_daily';
     const weeklyEntityId = 'automation.ha_tools_log_email_weekly';
@@ -1070,6 +1338,8 @@ class HALogEmail extends HTMLElement {
 
     const tabs = [
       { id: 'overview', label: this._t.overview, icon: '\uD83D\uDCCA' },
+      { id: 'errors', label: this._t.errors, icon: '❌' },
+      { id: 'warnings', label: this._t.warnings, icon: '⚠️' },
       { id: 'schedule', label: this._t.schedule, icon: '\uD83D\uDCC5' },
       { id: 'preview', label: this._t.preview, icon: '\uD83D\uDC41\uFE0F' },
       { id: 'send', label: this._t.sendNow, icon: '\uD83D\uDCE7' },
@@ -1087,62 +1357,8 @@ class HALogEmail extends HTMLElement {
     const smtpHtml = this._renderSmtpSection();
     let tabContent = '';
 
-    if (this._activeTab === 'overview') {
-      tabContent = `
-        <div class="overview-grid">
-          <div class="stat-card ${totalErrors > 0 ? 'stat-error' : 'stat-ok'}">
-            <div class="stat-icon">\u274C</div>
-            <div class="stat-value">${unavailable ? '—' : totalErrors}</div>
-            <div class="stat-label">${this._lang === 'pl' ? 'Błędy (24 h)' : 'Errors (24h)'}</div>
-          </div>
-          <div class="stat-card ${totalWarnings > 5 ? 'stat-warn' : 'stat-ok'}">
-            <div class="stat-icon">\u26A0\uFE0F</div>
-            <div class="stat-value">${unavailable ? '—' : totalWarnings}</div>
-            <div class="stat-label">${this._lang === 'pl' ? 'Ostrzeżenia (24 h)' : 'Warnings (24h)'}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">\uD83D\uDCDD</div>
-            <div class="stat-value">${unavailable ? '—' : (data.total || totalErrors + totalWarnings)}</div>
-            <div class="stat-label">${this._lang === 'pl' ? 'Wszystkie wpisy' : 'Total entries'}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">\uD83D\uDFE2</div>
-            <div class="stat-value" style="color:${statusColor}">${statusLabel}</div>
-            <div class="stat-label">Status</div>
-          </div>
-        </div>
-
-        <div class="section-header">
-          <span>${this._lang === 'pl' ? 'Ostatnie błędy' : 'Recent Errors'}</span>
-
-        </div>
-        ${this._loading ? '<div class="loading-bar"></div>' : ''}
-        ${errors.length === 0 && !this._loading ?
-          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak błędów w dzienniku z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No errors found in logbook for last 24h</div>')) :
-          errors.slice(0, 5).map(e => `
-            <div class="log-entry error-entry">
-              <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain error-domain">${_esc(e.domain || 'unknown')}</span>
-              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
-            </div>
-          `).join('')
-        }
-
-        <div class="section-header" style="margin-top:12px">${this._lang === 'pl' ? 'Ostatnie ostrzeżenia' : 'Recent Warnings'}</div>
-        ${warnings.length === 0 && !this._loading ?
-          (unavailable ? (this._lang === 'pl' ? '<div class="empty-state">Dane dziennika niedostępne</div>' : '<div class="empty-state">Log data unavailable</div>') : (this._lang === 'pl' ? '<div class="empty-state">✅ Brak ostrzeżeń z ostatnich 24 godzin</div>' : '<div class="empty-state">\u2705 No warnings found in last 24h</div>')) :
-          warnings.slice(0, 3).map(e => `
-            <div class="log-entry warn-entry">
-              <span class="log-time">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : 'unknown'}</span>
-              <span class="log-domain warn-domain">${_esc(e.domain || 'unknown')}</span>
-              <span class="log-msg">${_esc((e.message || '').substring(0, 100))}${(e.message || '').length > 100 ? '…' : ''}</span>
-            </div>
-          `).join('')
-        }
-
-        ${data && data.fetchedAt ? `<div class="last-updated">${this._t.lastFetch}: ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
-        ${data && data.note ? `<div class="info-note">\u2139\uFE0F ${_esc(data.note)}</div>` : ''}
-      `;
+    if (['overview', 'errors', 'warnings'].includes(this._activeTab)) {
+      tabContent = this._renderRetainedLogs();
     } else if (this._activeTab === 'schedule') {
       tabContent = `
         <div class="schedule-grid">
@@ -1535,19 +1751,50 @@ max: 3</pre>
 .warn-domain, .warn-badge { color: var(--log-email-warning); }
 .status-off, .log-time, .last-updated, .stat-sub { color: var(--bento-text); }
 .header-badge { color: var(--bento-text) !important; }
+
+/* Container width, not browser width, determines the alternate record layout. */
+.card { display: block; container: log-email-card / inline-size; min-width: 0; }
+.card .tabs { flex-wrap: wrap; overflow: visible; }
+.card button, .card select, .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
+.card :is(button, select, a):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
+.native-tabs { display: none; padding: 12px; color: var(--bento-text); }
+.native-tabs select { width: 100%; }
+.log-filters, .history-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 12px; }
+.log-filters label { display: grid; gap: 4px; min-width: 0; flex: 1 1 120px; }
+.card select, .history-actions button { border: 1px solid var(--bento-border); border-radius: 8px; padding: 8px; background: var(--bento-card); color: var(--bento-text); max-width: 100%; }
+.retained-logs, .attempt-history, .browser-snapshots { overflow-wrap: anywhere; min-width: 0; }
+.retained-logs p, .attempt-history p, .browser-snapshots p { color: var(--bento-text-secondary); line-height: 1.6; }
+.history-records { width: 100%; border-collapse: collapse; table-layout: fixed; color: var(--bento-text); }
+.history-records caption { text-align: left; font-weight: 600; padding-block: 12px; }
+.history-records th, .history-records td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--bento-border); vertical-align: top; overflow-wrap: anywhere; }
+.log-model-counts { font-weight: 600; }
+@container log-email-card (max-width: 499px) {
+  .history-records, .history-records tbody, .history-records tr, .history-records td { display: block; width: auto; }
+  .history-records thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+  .history-records tr { border: 1px solid var(--bento-border); border-radius: 10px; margin-block: 12px; padding: 8px; }
+  .history-records td { display: grid; grid-template-columns: minmax(80px, 35%) minmax(0, 1fr); gap: 8px; }
+  .history-records td::before { content: attr(data-label); font-weight: 600; }
+}
+@container log-email-card (max-width: 279px) {
+  .native-tabs { display: block; }
+  .card .tabs { display: none; }
+  .history-records td { grid-template-columns: 1fr; }
+  .history-actions button { width: 100%; }
+}
 </style>
 
       <ha-card class="card">
         <div class="header">
           <span class="header-icon">\uD83D\uDEA8</span>
           <span class="header-title">${_esc(this._config.title || 'Log Email Summary')}</span>
-          <span class="header-badge" style="background:${totalErrors > 0 ? '#ef444420' : '#10b98120'};color:${totalErrors > 0 ? '#ef4444' : '#10b981'}">${statusLabel}</span>
+          <span class="header-badge" style="background:var(--bento-bg-2);color:var(--bento-text)">${statusLabel}</span>
         
         </div>
 
-        <div class="tabs">
+        <label class="native-tabs" for="log-tab-select">${this._lang === 'pl' ? 'Widok' : 'View'}<select id="log-tab-select">${tabs.map(t => `<option value="${t.id}" ${this._activeTab === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select></label>
+        <div class="tabs" aria-label="${this._lang === 'pl' ? 'Widok' : 'View'}">
           ${tabs.map(t => `
-            <button class="tab-btn ${this._activeTab === t.id ? 'active' : ''}" data-tab="${t.id}">
+            <button type="button" class="tab-btn ${this._activeTab === t.id ? 'active' : ''}" data-tab="${t.id}" aria-pressed="${this._activeTab === t.id}">
               ${t.icon} ${t.label}
             </button>
           `).join('')}
@@ -1583,6 +1830,18 @@ max: 3</pre>
         this._render();
       });
     });
+
+    const tabSelect = this.shadowRoot.getElementById('log-tab-select');
+    tabSelect?.addEventListener('change', event => this.setActiveTab(event.target.value));
+    this.shadowRoot.getElementById('history-refresh')?.addEventListener('click', () => this._refreshAttemptHistory());
+    this.shadowRoot.getElementById('history-discard')?.addEventListener('click', () => this._discardAttemptHistory());
+    this.shadowRoot.getElementById('log-refresh')?.addEventListener('click', () => this._fetchLogData());
+    for (const key of ['severity', 'source', 'period']) {
+      this.shadowRoot.getElementById('log-' + key)?.addEventListener('change', event => {
+        this._logFilters = { ...this._logFilters, [key]: event.target.value };
+        this._render();
+      });
+    }
 
     // btn-refresh removed
 
@@ -1628,30 +1887,71 @@ max: 3</pre>
       });
     }
 
+    if (focusId) this.shadowRoot.getElementById(focusId)?.focus({ preventScroll: true });
+    else if (focusTab) {
+      const tab = [...this.shadowRoot.querySelectorAll('[data-tab]')].find(el => el.dataset.tab === focusTab);
+      const target = tab?.getBoundingClientRect().width ? tab : this.shadowRoot.getElementById('log-tab-select');
+      target?.focus({ preventScroll: true });
+    }
+
+  }
+
+  _renderRetainedLogs() {
+    const pl = this._lang === 'pl', model = this._retainedModel();
+    const rangeDate = stamp => stamp == null || !Number.isFinite(new Date(stamp).getTime()) ? '—' : new Date(stamp).toLocaleString(pl ? 'pl-PL' : 'en-US') + ' (' + new Date(stamp).toISOString() + ')';
+    const select = (key, label, options) => `<label for="log-${key}">${label}<select id="log-${key}">${options.map(([value, text]) =>
+      `<option value="${_esc(value)}" ${this._logFilters[key] === value ? 'selected' : ''}>${_esc(text)}</option>`).join('')}</select></label>`;
+    const severities = [...new Set(['ERROR', 'CRITICAL', 'WARNING', ...model.severities, this._logFilters.severity])].filter(value => value !== 'all');
+    const sources = [...model.sources];
+    if (this._logFilters.source !== 'all' && !sources.some(([value]) => value === this._logFilters.source)) sources.push([this._logFilters.source, pl ? 'Wybrane źródło (brak w tym okresie)' : 'Selected source (absent in this period)']);
+    const labels = pl ? ['Poziom', 'Źródło', 'Ostatnie wystąpienie', 'Komunikat', 'Wystąpienia (HA)'] :
+      ['Severity', 'Source', 'Last occurrence', 'Message', 'Occurrences (HA)'];
+    return `<section class="retained-logs" aria-label="${pl ? 'Zachowany dziennik' : 'Retained log'}">
+      <div class="log-filters">
+        ${select('severity', pl ? 'Poziom' : 'Severity', [['all', pl ? 'Wszystkie' : 'All'], ...severities.map(value => [value, value])])}
+        ${select('source', pl ? 'Źródło' : 'Source', [['all', pl ? 'Wszystkie źródła' : 'All sources'], ...sources])}
+        ${select('period', pl ? 'Zachowany okres' : 'Retained period', [['24h', '24 h'], ['7d', pl ? '7 dni' : '7 days'], ['30d', pl ? '30 dni' : '30 days']])}
+        <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
+      </div>
+      <p>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)}. ${pl ? 'Limit' : 'Limit'} max_entries: ${model.cap}. ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)}.</p>
+      <p>${pl ? 'Pierwszy zachowany' : 'First retained'}: ${_esc(rangeDate(model.first))} · ${pl ? 'Ostatni zachowany' : 'Last retained'}: ${_esc(rangeDate(model.last))}</p>
+      <p>${model.partial && (!this._logData || this._logData.unavailable) ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : model.partial ? (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.') :
+        (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
+        'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
+      <p class="log-model-counts">${model.unavailable ? '—' : model.unique} ${model.partial ? (pl ? 'wierszy bieżącego odczytu' : 'current snapshot rows') : (pl ? 'unikalnych problemów' : 'unique problem' + (model.unique === 1 ? '' : 's'))} · ${model.unavailable || model.occurrences == null ? '—' : model.occurrences} ${pl ? 'wystąpień' : 'occurrences'}
+        ${model.filteredUnique > model.unique ? ` · ${pl ? 'pokazano' : 'shown'} ${model.unique}/${model.filteredUnique} (${pl ? 'limit karty' : 'card cap'})` : ''}</p>
+      ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
+      ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
+        `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
+        ${model.rows.map(row => `<tr role="row">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
+        </tbody></table>`}
+    </section>`;
   }
 
   _renderHistory() {
-    if (!this._logHistory || this._logHistory.length === 0) {
-      return `<div class="empty-state"><div style="font-size:48px;opacity:0.5;margin-bottom:12px;">📜</div><h3 style="margin:8px 0 4px;">${this._lang === 'pl' ? 'Brak historii' : 'No History Yet'}</h3><p>${this._lang === 'pl' ? 'Każde pobranie danych zapisuje odczyt dziennika. Historia jest dostępna podczas sesji przeglądarki.' : 'Log snapshots are saved each time data is fetched. History persists during the browser session.'}</p></div>`;
-    }
-    let html = `<div class="section-title">📊 ${this._lang === 'pl' ? 'Historia odczytów dziennika' : 'Log Fetch History'} (${this._logHistory.length})</div>`;
-    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    html += `<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Czas' : 'Time'}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.errors}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._t.warnings}</th><th style="text-align:center;padding:8px;border-bottom:2px solid var(--bento-border,#e2e8f0);">${this._lang === 'pl' ? 'Razem' : 'Total'}</th></tr></thead><tbody>`;
-    this._logHistory.forEach(s => {
-      const dt = new Date(s.ts);
-      const time = dt.toLocaleTimeString() + ' ' + dt.toLocaleDateString();
-      const errColor = s.errors > 0 ? 'var(--bento-error,#ef4444)' : 'var(--bento-success,#22c55e)';
-      html += '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);">' + time + '</td>';
-      html += '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);color:' + errColor + ';font-weight:600;">' + s.errors + '</td>';
-      html += '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);color:var(--bento-warning,#f59e0b);font-weight:600;">' + s.warnings + '</td>';
-      html += '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--bento-border,#e2e8f0);">' + s.total + '</td></tr>';
-    });
-    html += '</tbody></table>';
-    html += '<div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.06);border-radius:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">💡 ' + (this._lang === 'pl' ? 'Historia jest przechowywana w bieżącej sesji przeglądarki i znika po zamknięciu karty. Każde automatyczne lub ręczne odświeżenie dodaje odczyt.' : 'History is stored in browser sessionStorage and resets when the tab is closed. Each automatic/manual refresh adds a snapshot.') + '</div>';
-    return html;
+    const pl = this._lang === 'pl';
+    const labels = pl ? ['Czas odczytu', 'Błędy (wpisy)', 'Ostrzeżenia (wpisy)', 'Razem (wpisy)'] :
+      ['Read time', 'Errors (entries)', 'Warnings (entries)', 'Total (entries)'];
+    const rows = (Array.isArray(this._logHistory) ? this._logHistory : []).filter(row => row && typeof row.ts === 'string' &&
+      Number.isFinite(Date.parse(row.ts)) && Date.parse(row.ts) <= Date.now() && ['errors', 'warnings', 'total'].every(key => Number.isSafeInteger(row[key]) && row[key] >= 0)).slice(0, 24);
+    return this._attemptHistory.render(this._lang) + `<section class="browser-snapshots">
+      <h3>${pl ? 'Odczyty dziennika w sesji przeglądarki' : 'Browser session log snapshots'} (${rows.length})</h3>
+      <p>${pl ? 'Lokalne liczniki odczytów, nie próby SMTP ani dowód dostarczenia. Maksymalnie 24 odczyty w sesji przeglądarki.' :
+        'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
+      ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
+      ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
+        `<tr role="row">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
+        `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}
+    </section>`;
   }
 
   disconnectedCallback() {
+    this._dataEpoch++;
+    this._logReadToken++;
+    this._retainedLogs = null;
+    this._logData = null;
+    this._logHistory = [];
+    this._attemptHistory.discard();
     if (this._pollingTimer) {
       clearInterval(this._pollingTimer);
       this._pollingTimer = null;

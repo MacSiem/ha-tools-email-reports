@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a6f5ec1a34aeb1468b2c6fd9db99746ff615a6e493367eb41e3eb07c7409924c
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:6408aa2be173a93c21cb70eae60a0047c392c2ace35671b3bb3709addb5d1abf
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:2b6421a515e8209e9a115c80f2659a842fe58359441cb669f7795a8908e44ed8
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1846,7 +1846,7 @@ class HALogEmail extends HTMLElement {
       tabContent = this._renderRetainedLogs();
     } else if (this._activeTab === 'schedule') {
       this._serverSchedules.ensureRead();
-      tabContent = this._renderServerSchedules();
+      tabContent = this._renderServerSchedules() + `<section aria-label="${this._t.smtpService}"><div class="section-header">${this._t.smtpService}</div>${smtpHtml}</section>`;
     } else if (this._activeTab === 'preview') {
       tabContent = `
         <div class="section-header">

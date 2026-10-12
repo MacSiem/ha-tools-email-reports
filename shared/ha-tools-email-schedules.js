@@ -82,17 +82,16 @@ export function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 80
     try {
       validate(draft);
       const existing = rows.find(row => row.id === draft.id);
-      // Store upsert merges omitted fields. Omitting an existing timezone cannot remove it.
-      if (existing?.timezone && !draft.timezone) throw { code: 'cannot_clear_timezone' };
       expected = { id: draft.id, kind: 'log_digest', cadence: draft.cadence, time: draft.time, enabled: draft.enabled === true };
       if (draft.timezone) expected.timezone = draft.timezone;
       if (draft.cadence === 'weekly') expected.weekday = draft.weekday;
       if (draft.cadence === 'monthly') expected.month_day = draft.month_day;
     } catch (error) { status = { state: 'error', reason: error.code || 'invalid_fields' }; notify(); return; }
+    const useHaTimezone = !!rows.find(row => row.id === draft.id)?.timezone && !draft.timezone;
     const requestEpoch = epoch, source = hass;
     pendingExpected = expected; writing = true; status = { state: 'not_checked', reason: 'saving' }; notify();
     try {
-      await request(source, { type: 'ha_tools_email/set_schedule', action: 'upsert', schedule: expected });
+      await request(source, { type: 'ha_tools_email/set_schedule', action: 'upsert', schedule: useHaTimezone ? { ...expected, use_ha_timezone: true } : expected });
       if (requestEpoch !== epoch || !allowed()) return;
       // The acknowledgement (and its embedded schedules) cannot confirm storage: use a separate read.
       await read();

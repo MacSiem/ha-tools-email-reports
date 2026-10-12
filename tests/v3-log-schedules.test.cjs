@@ -152,7 +152,7 @@ test('readonly preview is explicit and displays server period/source/retained li
   const preview = f.calls.find(x => x.type.endsWith('/preview_log_digest'));
   assert.equal(preview.cadence, 'monthly'); assert.equal(preview.timezone, 'America/New_York');
   assert.match(f.root.textContent, /Partial/); assert.match(f.root.textContent, /2026-09-01/); assert.match(f.root.textContent, /system_log/);
-  assert.match(f.root.textContent, /retained_aggregates/); assert.match(f.root.textContent, /full event history/i);
+  assert.match(f.root.textContent, /retained Home Assistant aggregates/); assert.match(f.root.textContent, /full event history/i);
   assert.equal(f.services.length, 0); assert.equal(f.types().filter(x => /set_schedule|send_now|history/.test(x)).length, 0);
 });
 test('PL/EN exact result names, container layout, focus and existing filters/history remain available', async t => {

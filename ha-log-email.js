@@ -15,6 +15,44 @@ const _logEmailExcerpt = (text) => {
     pair => pair.length === 2 ? pair : '\uFFFD');
 };
 
+// BEGIN vendored ha-tools-ui factory
+// HA Tools v3: vendored inside each consumer's own closure, never a window API.
+function createUiV3({ language = 'en' } = {}) {
+  const pl = String(language).startsWith('pl');
+  const states = {
+    success: ['Success', 'Sukces', '✓'],
+    partial: ['Partial', 'Częściowo', '½'],
+    unconfirmed: ['Unconfirmed', 'Niepotwierdzony', '?'],
+    error: ['Error', 'Błąd', '✕'],
+    not_checked: ['Not checked', 'Nie sprawdzono', '–'],
+    no_data: ['No data', 'Brak danych', '∅'],
+  };
+  const status = (value) => {
+    const code = typeof value === 'string' && Object.hasOwn(states, value) ? value : 'not_checked';
+    const row = states[code];
+    return { code, label: row[pl ? 1 : 0], icon: row[2], countsAsSuccess: code === 'success' };
+  };
+  const statusHtml = (value) => {
+    const result = status(value);
+    return `<span class="ht-result-state ht-result-state--${result.code}" data-result-state="${result.code}"><span aria-hidden="true">${result.icon}</span> ${result.label}</span>`;
+  };
+  const css = `
+.ht-result-state { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.4;white-space:normal; }
+.ht-result-state--success { color:#237b3d;background:rgba(35,123,61,.10); }
+.ht-result-state--partial { color:#966400;background:rgba(150,100,0,.10); }
+.ht-result-state--unconfirmed { color:#ad5200;background:rgba(173,82,0,.10); }
+.ht-result-state--error { color:#c32b2b;background:rgba(195,43,43,.10); }
+.ht-result-state--not_checked,.ht-result-state--no_data { color:var(--secondary-text-color,#666);background:transparent; }
+.ht-result-state--no_data { border-style:dashed; }
+:host(.bento-dark) .ht-result-state--success { color:#81cf99; }
+:host(.bento-dark) .ht-result-state--partial { color:#efd080; }
+:host(.bento-dark) .ht-result-state--unconfirmed { color:#ffb97b; }
+:host(.bento-dark) .ht-result-state--error { color:#ff9999; }
+`;
+  return { status, statusHtml, css };
+}
+// END vendored ha-tools-ui factory
+
 // BEGIN vendored ha-tools-email-schedules factory
 // Pure frontend controller; the existing integration owns scheduling and DST.
 // Vendor the exported factory inside consumer IIFEs; no global or second scheduler.
@@ -939,6 +977,7 @@ class HALogEmail extends HTMLElement {
     this._lang = nextLang;
     this._hass = hass;
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
+      this._scheduleSaveFocus = null;
       this._dataEpoch++;
       this._logReadToken++;
       this._loading = false;
@@ -1483,15 +1522,12 @@ class HALogEmail extends HTMLElement {
   _renderServerSchedules() {
     const m = this._serverSchedules.model(), pl = this._lang === 'pl';
     const tr = (polish, english) => pl ? polish : english;
-    const names = { success: tr('Sukces', 'Success'), partial: tr('Częściowo', 'Partial'),
-      unconfirmed: tr('Niepotwierdzony', 'Unconfirmed'), error: tr('Błąd', 'Error'),
-      not_checked: tr('Nie sprawdzono', 'Not checked'), no_data: tr('Brak danych', 'No data') };
-    const icons = { success: '✓', partial: '◐', unconfirmed: '?', error: '✕', not_checked: '○', no_data: '—' };
-    const state = status => `<p class="schedule-result" data-state="${status.state}" role="status" aria-live="polite">${icons[status.state]} ${names[status.state]}</p>`;
+    const statusUi = createUiV3({ language: this._lang });
+    const state = status => `<p class="schedule-result" data-state="${status.state}" role="status" aria-live="polite">${statusUi.statusHtml(status.state)}</p>`;
     const reason = { initial: tr('Nie odczytano harmonogramów.', 'Schedules have not been read.'),
       loading: tr('Odczytywanie…', 'Reading…'), loaded: tr('Dane odczytane z serwera.', 'Data read from the server.'),
       saved: tr('Zapis potwierdzony osobnym odczytem identycznego rekordu.', 'Save confirmed by a separate read of the exact expected row.'),
-      saving: tr('Zapisywanie…', 'Saving…'), unavailable: tr('Harmonogramy serwerowe niedostępne. Wymagana integracja HA Tools Email 2.1.2+. Odśwież po jej aktualizacji.', 'Server schedules unavailable. HA Tools Email 2.1.2+ is required. Refresh after updating.'),
+      saving: tr('Zapisywanie…', 'Saving…'), unavailable: tr('Harmonogramy serwerowe niedostępne. Wymagana integracja HA Tools Email 2.2.0+. Odśwież po jej aktualizacji.', 'Server schedules unavailable. HA Tools Email 2.2.0+ is required. Refresh after updating.'),
       read_timeout: tr('Odczyt przekroczył limit czasu. Odśwież świadomie.', 'Read timed out. Refresh explicitly.'),
       read_failed: tr('Nie udało się odczytać danych. Odśwież świadomie.', 'Data could not be read. Refresh explicitly.'),
       readback_mismatch: tr('Odczyt nie potwierdził zapisanego rekordu. Nie zapisuj ponownie; odśwież, aby sprawdzić.', 'Readback did not confirm the expected row. Do not repeat the save; refresh to check.'),
@@ -1514,7 +1550,7 @@ class HALogEmail extends HTMLElement {
       ${select('schedule-cadence', tr('Częstotliwość', 'Cadence'), ['daily', 'weekly', 'monthly'].map(v => [v, cadence(v)]), d.cadence)}
       <label for="schedule-time">${tr('Godzina lokalna (HH:MM)', 'Local wall time (HH:MM)')}<input id="schedule-time" type="time" value="${_esc(d.time)}" required ${busy ? 'disabled' : ''}></label>
       <label for="schedule-timezone">${tr('Strefa IANA (puste: strefa HA)', 'IANA timezone (blank: HA timezone)')}<input id="schedule-timezone" type="text" maxlength="128" value="${_esc(d.timezone)}" placeholder="Europe/Warsaw" ${busy ? 'disabled' : ''}></label>
-      ${d.cadence === 'weekly' ? select('schedule-weekday', tr('Dzień tygodnia (poniedziałek = 0)', 'Weekday (Monday = 0)'), days.map((v, i) => [i, v]), d.weekday) : ''}
+      ${d.cadence === 'weekly' ? select('schedule-weekday', tr('Dzień tygodnia', 'Weekday'), days.map((v, i) => [i, v]), d.weekday) : ''}
       ${d.cadence === 'monthly' ? `<label for="schedule-month-day">${tr('Dzień miesiąca (1–31)', 'Day of month (1–31)')}<input id="schedule-month-day" type="number" min="1" max="31" step="1" value="${_esc(d.month_day)}" ${busy ? 'disabled' : ''}></label>` : ''}
       <label class="schedule-checkbox" for="schedule-enabled"><input id="schedule-enabled" type="checkbox" ${d.enabled ? 'checked' : ''} ${busy ? 'disabled' : ''}>${tr('Włączony', 'Enabled')}</label>
       </div><p>${tr('Zapis włączonego harmonogramu uruchamia przyszłe wysyłki serwerowe. Nowy harmonogram jest domyślnie wyłączony.', 'Saving an enabled schedule activates future server deliveries. A new schedule is disabled by default.')}</p>
@@ -1527,7 +1563,7 @@ class HALogEmail extends HTMLElement {
       <p>${tr('Poprzedni zakończony okres kalendarzowy; do nie obejmuje końca przedziału.', 'Previous completed calendar period; the end is exclusive.')}</p>
       <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(p.period.from)} / ${_esc(p.period.to)}</dd>
       <dt>${tr('Efektywna strefa', 'Effective timezone')}</dt><dd>${_esc(p.effective_timezone)}</dd>
-      <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${_esc(p.source.count_semantics)}</dd>
+      <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${tr('zachowane agregaty Home Assistant', 'retained Home Assistant aggregates')}</dd>
       <dt>${tr('Zachowane wpisy / różne problemy / wystąpienia (HA)', 'Retained entries / unique problems / occurrences (HA)')}</dt><dd>${_esc(p.source.retained_entries)} / ${_esc(p.unique_problems ?? tr('Brak danych', 'No data'))} / ${_esc(p.total ?? tr('Brak danych', 'No data'))}</dd></dl>
       <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></section>` :
       m.previewStatus.reason !== 'initial' ? `<section class="schedule-preview">${state(m.previewStatus)}<p>${_esc(reason[m.previewStatus.reason] || reason.read_failed)}</p></section>` : '';
@@ -1548,7 +1584,7 @@ class HALogEmail extends HTMLElement {
       <div class="server-schedule-list">${logRows.map((row, i) => `<article class="schedule-card"><h4>${_esc(cadence(row.cadence))} — ${_esc(row.time)}</h4>
         <p>ID: <code>${_esc(row.id)}</code></p><p>${row.enabled ? tr('Włączony', 'Enabled') : tr('Wyłączony', 'Disabled')}</p>
         <p>${tr('Strefa', 'Timezone')}: ${_esc(row.timezone || tr('Podąża za HA', 'Follows HA'))}; ${tr('efektywna', 'effective')}: ${_esc(row.effective_timezone || tr('Brak danych', 'No data'))}</p>
-        ${row.cadence === 'weekly' ? `<p>${tr('Dzień tygodnia', 'Weekday')}: ${_esc(days[row.weekday ?? 0])} (${_esc(row.weekday ?? 0)})</p>` : ''}
+        ${row.cadence === 'weekly' ? `<p>${tr('Dzień tygodnia', 'Weekday')}: ${_esc(days[row.weekday ?? 0])}</p>` : ''}
         ${row.cadence === 'monthly' ? `<p>${tr('Dzień miesiąca', 'Day of month')}: ${_esc(row.month_day ?? 1)}</p>` : ''}
         <p>${tr('Następny termin z serwera', 'Next fire from server')}: ${row.enabled ? _esc(row.next_fire || tr('Brak danych', 'No data')) : tr('Wyłączony — brak następnego terminu', 'Disabled — no next fire')}</p>
         <button type="button" id="schedule-edit-${i}" data-schedule-edit="${i}" ${editable ? '' : 'disabled'}>${tr('Edytuj', 'Edit')}</button></article>`).join('')}</div>
@@ -1560,7 +1596,10 @@ class HALogEmail extends HTMLElement {
 
   _bindServerSchedules() {
     const controller = this._serverSchedules, root = this.shadowRoot;
-    const actions = { refresh: () => controller.refresh(), new: () => controller.create(), save: () => controller.save(),
+    const actions = { refresh: () => controller.refresh(), new: () => controller.create(), save: () => {
+      this._scheduleSaveFocus = root.activeElement?.id === 'schedule-save' ? controller.model().draft?.id : null;
+      return controller.save();
+    },
       cancel: () => controller.cancel(), preview: () => controller.preview() };
     for (const [id, action] of Object.entries(actions)) root.getElementById('schedule-' + id)?.addEventListener('click', action);
     const rows = controller.model().rows.filter(row => row.kind === 'log_digest');
@@ -2060,6 +2099,7 @@ max: 3</pre>
   .history-actions button { width: 100%; }
 }
 
+${createUiV3({ language: this._lang }).css}
 .server-schedules { min-width: 0; overflow-wrap: anywhere; }
 .server-schedules h3, .server-schedules h4 { margin: 12px 0 8px; }
 .server-schedule-list, .server-schedule-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -2077,9 +2117,7 @@ max: 3</pre>
 .schedule-checkbox input { width: 24px; height: 24px; }
 .schedule-editor { min-width: 0; margin: 12px 0; border: 1px solid var(--bento-border); border-radius: 8px; }
 .schedule-result { font-weight: 600; color: var(--bento-text); }
-.schedule-result[data-state="success"] { color: var(--log-email-success); }
-.schedule-result[data-state="error"] { color: var(--log-email-error); }
-.schedule-result[data-state="partial"], .schedule-result[data-state="unconfirmed"], .schedule-legacy-warning { color: var(--log-email-warning); }
+.schedule-legacy-warning { color: var(--log-email-warning); }
 .server-schedules dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; }
 .server-schedules dd { margin: 0; }
 @container log-email-card (max-width: 499px) {
@@ -2204,6 +2242,19 @@ max: 3</pre>
       target?.focus({ preventScroll: true });
     }
 
+    const scheduleModel = this._serverSchedules.model();
+    if (this._scheduleSaveFocus && !scheduleModel.writing && !scheduleModel.reading) {
+      const ownerRoot = this.getRootNode(), active = ownerRoot.activeElement;
+      if (!active || active === this || active === this.ownerDocument.body) {
+        const rows = scheduleModel.rows.filter(row => row.kind === 'log_digest');
+        const index = rows.findIndex(row => row.id === this._scheduleSaveFocus);
+        const target = scheduleModel.status.reason === 'saved' && index >= 0 ?
+          this.shadowRoot.getElementById('schedule-edit-' + index) : this.shadowRoot.getElementById('schedule-save');
+        if (target && !target.disabled) target.focus({ preventScroll: true });
+      }
+      this._scheduleSaveFocus = null;
+    }
+
   }
 
   _renderRetainedLogs() {
@@ -2236,6 +2287,8 @@ max: 3</pre>
         ${model.rows.map(row => `<tr role="row">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
     </section>`;
+
+
   }
 
   _renderHistory() {
@@ -2263,6 +2316,7 @@ max: 3</pre>
     this._logHistory = [];
     this._attemptHistory.discard();
     this._serverSchedules.discard();
+    this._scheduleSaveFocus = null;
     this.shadowRoot.innerHTML = '';
     if (this._pollingTimer) {
       clearInterval(this._pollingTimer);

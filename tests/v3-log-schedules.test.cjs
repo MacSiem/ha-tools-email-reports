@@ -28,14 +28,14 @@ async function fixture(t, options = {}) {
   let rows = options.rows || [row()], lists = 0;
   const hass = { user: { id: 'admin-a', is_admin: true }, connected: true, connection: { connected: true },
     locale: { language: options.lang || 'en' }, config: { time_zone: 'Europe/Warsaw' }, states: options.states || {}, services: {},
-    callService: async (...args) => { services.push(args); return {}; },
+    callService: async (...args) => { services.push(JSON.parse(JSON.stringify(args))); return {}; },
     callWS: async msg => {
       calls.push(JSON.parse(JSON.stringify(msg)));
       if (msg.type === 'system_log/list') return options.logs || [];
       if (msg.type === 'ha_tools_email/list_schedules') { lists++; return options.list ? options.list(lists, rows) : { schedules: rows }; }
       if (msg.type === 'ha_tools_email/set_schedule') {
         if (options.save) return options.save(msg);
-        rows = rows.map(r => r.id === msg.schedule.id ? { ...r, ...msg.schedule } : r);
+        rows = rows.map(r => { if (r.id !== msg.schedule.id) return r; const next = { ...r, ...msg.schedule }; if (next.use_ha_timezone === true) delete next.timezone; delete next.use_ha_timezone; return next; });
         if (!rows.some(r => r.id === msg.schedule.id)) rows.push(row({ ...msg.schedule }));
         return { schedule: rows.find(r => r.id === msg.schedule.id), schedules: rows };
       }
@@ -130,11 +130,15 @@ test('calendar fields Monday=0 and day=31; inherited timezone omitted; server DS
   const write = f.calls.find(c => c.type.endsWith('/set_schedule')); assert.equal(write.schedule.month_day, 31);
   assert.equal('timezone' in write.schedule, false); assert.match(f.root.textContent, /Success/);
 });
-test('explicit IANA timezone saved and existing merged timezone cannot silently be cleared', async t => {
+test('explicit IANA timezone can return to HA timezone and then choose another country', async t => {
   const f = await fixture(t, { rows: [row({ timezone: 'Europe/Warsaw' })] }); await f.open(); f.edit();
-  f.input('schedule-timezone', ''); f.click('schedule-save'); await settle(); assert.equal(f.types().filter(x => x.endsWith('/set_schedule')).length, 0);
-  assert.match(f.root.textContent, /Error/); f.input('schedule-timezone', 'America/New_York'); f.click('schedule-save'); await settle();
-  assert.equal(f.calls.find(c => c.type.endsWith('/set_schedule')).schedule.timezone, 'America/New_York');
+  f.input('schedule-timezone', ''); f.click('schedule-save'); await settle();
+  const first = f.calls.find(c => c.type.endsWith('/set_schedule')); assert.ok(first);
+  assert.equal(first.schedule.use_ha_timezone, true); assert.equal('timezone' in first.schedule, false);
+  assert.match(f.root.querySelector('.server-schedules').textContent, /Success/);
+  f.edit(); f.input('schedule-timezone', 'America/New_York'); f.click('schedule-save'); await settle();
+  const writes = f.calls.filter(c => c.type.endsWith('/set_schedule')); assert.equal(writes.length, 2);
+  assert.equal(writes[1].schedule.timezone, 'America/New_York');
 });
 test('known configured legacy IDs warn about duplicates; unknown state is never off or toggled', async t => {
   const f = await fixture(t, { states: { 'automation.ha_tools_log_email_daily': { state: 'unavailable' }, 'automation.ha_tools_log_email_weekly': { state: 'off' } } }); await f.open();
@@ -191,7 +195,7 @@ test('late preview from an old selection is discarded and preview requests coale
   const pending = deferred(); const f = await fixture(t, { preview: pending.promise }); await f.open(); f.edit(); f.click('schedule-preview'); f.click('schedule-preview'); await settle();
   assert.equal(f.types().filter(x => x.endsWith('/preview_log_digest')).length, 1);
   f.input('schedule-cadence', 'monthly'); pending.resolve({ cadence: 'weekly', total: 999 }); await settle();
-  assert.doesNotMatch(f.root.textContent, /999/); assert.equal(f.card._serverSchedules.model().preview, null);
+  assert.doesNotMatch(f.root.querySelector('.server-schedules').textContent, /999/); assert.equal(f.card._serverSchedules.model().preview, null);
 });
 test('other-kind and other-log fields are absent from mutation payloads and addresses absent from Schedule UI', async t => {
   const f = await fixture(t, { rows: [row(), row({ id: 'protected-energy', kind: 'energy_report' }), row({ id: 'protected-log' })] });

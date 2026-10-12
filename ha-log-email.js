@@ -1715,7 +1715,7 @@ class HALogEmail extends HTMLElement {
       tabContent = this._renderRetainedLogs();
     } else if (this._activeTab === 'schedule') {
       this._serverSchedules.ensureRead();
-      tabContent = this._renderServerSchedules();
+      tabContent = this._renderServerSchedules() + `<section aria-label="${this._t.smtpService}"><div class="section-header">${this._t.smtpService}</div>${smtpHtml}</section>`;
     } else if (this._activeTab === 'preview') {
       tabContent = `
         <div class="section-header">

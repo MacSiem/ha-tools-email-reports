@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:9c99d37b718ec97ea0a84fa13d3e260e614228716403835a36b64d0d54c8735f
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:a6f5ec1a34aeb1468b2c6fd9db99746ff615a6e493367eb41e3eb07c7409924c
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:2b6421a515e8209e9a115c80f2659a842fe58359441cb669f7795a8908e44ed8
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -145,6 +145,231 @@ const _logEmailExcerpt = (text) => {
   return text.substring(0, end).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g,
     pair => pair.length === 2 ? pair : '\uFFFD');
 };
+
+// BEGIN vendored ha-tools-ui factory
+// HA Tools v3: vendored inside each consumer's own closure, never a window API.
+function createUiV3({ language = 'en' } = {}) {
+  const pl = String(language).startsWith('pl');
+  const states = {
+    success: ['Success', 'Sukces', '✓'],
+    partial: ['Partial', 'Częściowo', '½'],
+    unconfirmed: ['Unconfirmed', 'Niepotwierdzony', '?'],
+    error: ['Error', 'Błąd', '✕'],
+    not_checked: ['Not checked', 'Nie sprawdzono', '–'],
+    no_data: ['No data', 'Brak danych', '∅'],
+  };
+  const status = (value) => {
+    const code = typeof value === 'string' && Object.hasOwn(states, value) ? value : 'not_checked';
+    const row = states[code];
+    return { code, label: row[pl ? 1 : 0], icon: row[2], countsAsSuccess: code === 'success' };
+  };
+  const statusHtml = (value) => {
+    const result = status(value);
+    return `<span class="ht-result-state ht-result-state--${result.code}" data-result-state="${result.code}"><span aria-hidden="true">${result.icon}</span> ${result.label}</span>`;
+  };
+  const css = `
+.ht-result-state { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.4;white-space:normal; }
+.ht-result-state--success { color:#237b3d;background:rgba(35,123,61,.10); }
+.ht-result-state--partial { color:#966400;background:rgba(150,100,0,.10); }
+.ht-result-state--unconfirmed { color:#ad5200;background:rgba(173,82,0,.10); }
+.ht-result-state--error { color:#c32b2b;background:rgba(195,43,43,.10); }
+.ht-result-state--not_checked,.ht-result-state--no_data { color:var(--secondary-text-color,#666);background:transparent; }
+.ht-result-state--no_data { border-style:dashed; }
+:host(.bento-dark) .ht-result-state--success { color:#81cf99; }
+:host(.bento-dark) .ht-result-state--partial { color:#efd080; }
+:host(.bento-dark) .ht-result-state--unconfirmed { color:#ffb97b; }
+:host(.bento-dark) .ht-result-state--error { color:#ff9999; }
+`;
+  return { status, statusHtml, css };
+}
+// END vendored ha-tools-ui factory
+
+// BEGIN vendored ha-tools-email-schedules factory
+// Pure frontend controller; the existing integration owns scheduling and DST.
+// Vendor the exported factory inside consumer IIFEs; no global or second scheduler.
+function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000 } = {}) {
+  const editable = ['id', 'kind', 'cadence', 'time', 'enabled', 'timezone', 'weekday', 'month_day'];
+  let hass = null, context = null, epoch = 0, checked = false, rows = [], draft = null;
+  let reading = null, writing = false, previewing = null, pendingExpected = null, preview = null;
+  let status = { state: 'not_checked', reason: 'initial' }, previewStatus = { state: 'not_checked', reason: 'initial' };
+  const cancellations = new Set();
+  const capture = value => ({ user: value?.user?.id ?? value?.user ?? null, admin: value?.user?.is_admin === true,
+    connection: value?.connection ?? null, online: !!value && value.connected !== false && value.connection?.connected !== false });
+  const allowed = () => !!hass && context?.admin && context?.online;
+  const notify = () => changed();
+  const reset = () => {
+    epoch++; for (const cancel of [...cancellations]) cancel(); cancellations.clear();
+    checked = false; rows = []; draft = null; reading = null; writing = false; previewing = null;
+    pendingExpected = null; preview = null; status = { state: 'not_checked', reason: 'initial' };
+    previewStatus = { state: 'not_checked', reason: 'initial' };
+  };
+  const request = (source, message, holder = null) => new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, value) => { if (done) return; done = true; clearTimeout(timer); cancellations.delete(cancel); fn(value); };
+    const cancel = () => finish(reject, { code: 'stale_context' });
+    const timer = setTimeout(() => finish(reject, { code: 'request_timeout' }), timeoutMs);
+    cancellations.add(cancel);
+    if (holder) holder.cancel = cancel;
+    Promise.resolve().then(() => { if (!done) return source.callWS(message); }).then(value => finish(resolve, value), error => finish(reject, error));
+  });
+  const same = (expected, actual) => !!actual && editable.every(key =>
+    Object.prototype.hasOwnProperty.call(expected, key) ? actual[key] === expected[key] : key !== 'timezone' || actual[key] === undefined);
+  const cleanRows = result => {
+    if (!result || !Array.isArray(result.schedules)) throw { code: 'invalid_response' };
+    const ids = new Set();
+    return result.schedules.map(raw => {
+      if (!raw || typeof raw.id !== 'string' || !raw.id || ids.has(raw.id) || typeof raw.kind !== 'string') throw { code: 'invalid_response' };
+      ids.add(raw.id);
+      // Keep only schedule/calendar fields in browser state. Recipients and arbitrary extras stay on the server.
+      const clean = {};
+      for (const key of [...editable, 'next_fire', 'effective_timezone']) if (Object.prototype.hasOwnProperty.call(raw, key)) clean[key] = raw[key];
+      if (raw.kind === 'log_digest' && (!['daily', 'weekly', 'monthly'].includes(raw.cadence) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(raw.time) || typeof raw.enabled !== 'boolean')) throw { code: 'invalid_response' };
+      return clean;
+    });
+  };
+  const unavailable = error => ['unknown_command', 'not_found'].includes(error?.code);
+  const read = () => {
+    if (!allowed()) return Promise.resolve();
+    if (typeof hass.callWS !== 'function') { checked = true; status = { state: 'not_checked', reason: 'unavailable' }; notify(); return Promise.resolve(); }
+    if (reading) return reading.promise;
+    const token = { epoch, promise: null }, source = hass;
+    reading = token; checked = true; status = { state: pendingExpected ? 'unconfirmed' : 'not_checked', reason: 'loading' };
+    token.promise = (async () => {
+      try {
+        const response = await request(source, { type: 'ha_tools_email/list_schedules' }, token);
+        if (epoch !== token.epoch || reading !== token || !allowed()) return;
+        rows = cleanRows(response);
+        if (pendingExpected) {
+          if (same(pendingExpected, rows.find(row => row.id === pendingExpected.id))) {
+            pendingExpected = null; draft = null; status = { state: 'success', reason: 'saved' };
+          } else status = { state: 'unconfirmed', reason: 'readback_mismatch' };
+        } else status = { state: rows.some(row => row.kind === 'log_digest') ? 'success' : 'no_data', reason: 'loaded' };
+      } catch (error) {
+        if (epoch !== token.epoch || reading !== token || !allowed()) return;
+        rows = [];
+        status = { state: pendingExpected ? 'unconfirmed' : 'not_checked',
+          reason: unavailable(error) ? 'unavailable' : error?.code === 'request_timeout' ? 'read_timeout' : 'read_failed' };
+      } finally { if (epoch === token.epoch && reading === token) { reading = null; notify(); } }
+    })();
+    notify(); return token.promise;
+  };
+  const validate = value => {
+    if (!['daily', 'weekly', 'monthly'].includes(value.cadence) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) throw { code: 'invalid_fields' };
+    if (value.timezone) {
+      if (value.timezone.length > 128 || /^(posix\/|right\/)|^(localtime|posixrules)$/.test(value.timezone)) throw { code: 'invalid_timezone' };
+      try { new Intl.DateTimeFormat('en', { timeZone: value.timezone }); } catch (_) { throw { code: 'invalid_timezone' }; }
+    }
+    if (value.cadence === 'weekly' && (!Number.isInteger(value.weekday) || value.weekday < 0 || value.weekday > 6)) throw { code: 'invalid_fields' };
+    if (value.cadence === 'monthly' && (!Number.isInteger(value.month_day) || value.month_day < 1 || value.month_day > 31)) throw { code: 'invalid_fields' };
+  };
+  const save = async () => {
+    if (!allowed() || !draft || writing || reading || pendingExpected || !['success', 'no_data', 'error'].includes(status.state)) return;
+    let expected;
+    try {
+      validate(draft);
+      const existing = rows.find(row => row.id === draft.id);
+      expected = { id: draft.id, kind: 'log_digest', cadence: draft.cadence, time: draft.time, enabled: draft.enabled === true };
+      if (draft.timezone) expected.timezone = draft.timezone;
+      if (draft.cadence === 'weekly') expected.weekday = draft.weekday;
+      if (draft.cadence === 'monthly') expected.month_day = draft.month_day;
+    } catch (error) { status = { state: 'error', reason: error.code || 'invalid_fields' }; notify(); return; }
+    const useHaTimezone = !!rows.find(row => row.id === draft.id)?.timezone && !draft.timezone;
+    const requestEpoch = epoch, source = hass;
+    pendingExpected = expected; writing = true; status = { state: 'not_checked', reason: 'saving' }; notify();
+    try {
+      await request(source, { type: 'ha_tools_email/set_schedule', action: 'upsert', schedule: useHaTimezone ? { ...expected, use_ha_timezone: true } : expected });
+      if (requestEpoch !== epoch || !allowed()) return;
+      // The acknowledgement (and its embedded schedules) cannot confirm storage: use a separate read.
+      await read();
+    } catch (error) {
+      if (requestEpoch !== epoch || !allowed()) return;
+      const rejected = ['invalid_payload', 'unauthorized', 'unknown_command', 'not_found'].includes(error?.code);
+      if (rejected) pendingExpected = null;
+      status = { state: rejected ? 'error' : 'unconfirmed', reason: rejected ? 'save_rejected' : 'write_unknown' };
+    } finally { if (requestEpoch === epoch) { writing = false; notify(); } }
+  };
+  const previewRead = () => {
+    if (!allowed() || previewing || writing) return previewing?.promise || Promise.resolve();
+    const selection = draft || rows.find(row => row.kind === 'log_digest');
+    if (!selection) return Promise.resolve();
+    try { validate(selection); } catch (error) { previewStatus = { state: 'error', reason: error.code }; notify(); return Promise.resolve(); }
+    const token = { epoch, promise: null }, source = hass;
+    const message = { type: 'ha_tools_email/preview_log_digest', cadence: selection.cadence };
+    if (selection.timezone) message.timezone = selection.timezone;
+    previewing = token; preview = null; previewStatus = { state: 'not_checked', reason: 'loading' };
+    token.promise = (async () => {
+      try {
+        const response = await request(source, message, token);
+        if (epoch !== token.epoch || previewing !== token || !allowed()) return;
+        if (!response || response.cadence !== message.cadence || !(response.total === null || (Number.isInteger(response.total) && response.total >= 0)) ||
+          typeof response.period?.from !== 'string' || typeof response.period?.to !== 'string' ||
+          response.period.semantics !== 'previous_completed_calendar_period' || typeof response.effective_timezone !== 'string' ||
+          response.source?.name !== 'system_log' || response.source.count_semantics !== 'retained_aggregates' ||
+          typeof response.source.complete !== 'boolean' || !Number.isInteger(response.source.retained_entries) ||
+          response.source.retained_entries < 0) throw { code: 'invalid_response' };
+        preview = { cadence: response.cadence, total: response.total,
+          unique_problems: Number.isInteger(response.unique_problems) && response.unique_problems >= 0 ? response.unique_problems : null,
+          counts_complete: response.counts_complete === true, period: { ...response.period },
+          effective_timezone: response.effective_timezone, source: { ...response.source } };
+        previewStatus = { state: response.source.complete ? (response.source.retained_entries ? 'success' : 'no_data') : 'partial', reason: 'loaded' };
+      } catch (error) {
+        if (epoch !== token.epoch || previewing !== token || !allowed()) return;
+        preview = null; previewStatus = { state: 'not_checked', reason: unavailable(error) ? 'unavailable' : 'read_failed' };
+      } finally { if (epoch === token.epoch && previewing === token) { previewing = null; notify(); } }
+    })();
+    notify(); return token.promise;
+  };
+  return {
+    setContext(value) {
+      const next = capture(value);
+      if (!context || Object.keys(next).some(key => next[key] !== context[key]) || !next.admin || !next.online) reset();
+      hass = value; context = next;
+    },
+    discard() { reset(); hass = null; context = null; },
+    ensureRead() { if (!checked && allowed()) return read(); },
+    refresh() { if (!writing) return read(); },
+    edit(id) {
+      if (!allowed() || writing || pendingExpected || reading || !['success', 'no_data', 'error'].includes(status.state)) return;
+      const row = rows.find(value => value.id === id && value.kind === 'log_digest');
+      if (!row) return;
+      previewing?.cancel?.(); previewing = null;
+      draft = { ...row, timezone: row.timezone || '', weekday: row.weekday ?? 0, month_day: row.month_day ?? 1 };
+      preview = null; previewStatus = { state: 'not_checked', reason: 'initial' }; notify();
+    },
+    create() {
+      if (!allowed() || reading || writing || pendingExpected || !['success', 'no_data'].includes(status.state)) return;
+      // New IDs are allocated only after the explicit New action, never on open.
+      let id;
+      try {
+        if (globalThis.crypto?.randomUUID) id = globalThis.crypto.randomUUID();
+        else {
+          const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+          bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+          const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+          id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        }
+      } catch (_) { status = { state: 'error', reason: 'id_unavailable' }; notify(); return; }
+      previewing?.cancel?.(); previewing = null;
+      draft = { id, kind: 'log_digest', cadence: 'daily', time: '08:00', enabled: false,
+        timezone: '', weekday: 0, month_day: 1 };
+      preview = null; previewStatus = { state: 'not_checked', reason: 'initial' }; notify();
+    },
+    update(key, value) {
+      if (!allowed() || !draft || writing || pendingExpected || !editable.includes(key) || ['id', 'kind'].includes(key)) return;
+      draft = { ...draft, [key]: value };
+      // A preview belongs to its exact selection; invalidate callbacks after an edit.
+      if (previewing) { previewing.cancel?.(); previewing = null; }
+      preview = null; previewStatus = { state: 'not_checked', reason: 'initial' };
+    },
+    cancel() { draft = null; preview = null; previewing?.cancel?.(); previewing = null; previewStatus = { state: 'not_checked', reason: 'initial' }; notify(); },
+    save, preview: previewRead,
+    model() { return { rows: rows.map(row => ({ ...row })), draft: draft ? { ...draft } : null, status: { ...status },
+      reading: !!reading, writing, locked: !!pendingExpected, previewing: !!previewing,
+      preview: preview ? { ...preview } : null, previewStatus: { ...previewStatus } }; }
+  };
+}
+// END vendored ha-tools-email-schedules factory
 
 // BEGIN vendored ha-tools-email-history factory
 // Pure ES-module factory. Vendor this function inside each consumer's own IIFE.
@@ -829,6 +1054,7 @@ class HALogEmail extends HTMLElement {
     this._dataContext = null;
     this._logReadToken = 0;
     this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
+    this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._maxHistory = 24;
     this._loading = false;
     this._firstRender = false;
@@ -881,6 +1107,7 @@ class HALogEmail extends HTMLElement {
     this._lang = nextLang;
     this._hass = hass;
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
+      this._scheduleSaveFocus = null;
       this._dataEpoch++;
       this._logReadToken++;
       this._loading = false;
@@ -894,6 +1121,7 @@ class HALogEmail extends HTMLElement {
       this._pollingTimer = null;
     }
     this._attemptHistory.setContext(hass);
+    this._serverSchedules.setContext(hass);
     if (!previous && hass?.user?.is_admin === true && online(hass)) {
       const key = this._browserCountsKey();
       this._logHistory = key ? this._readBrowserCounts(key) : [];
@@ -909,7 +1137,7 @@ class HALogEmail extends HTMLElement {
       if (hass.user?.is_admin === true && online(hass)) this._fetchLogData();
       this._render();
     } else if (identityChanged || !hass || languageChanged) this._render();
-    else if (previousAdmin !== hass?.user?.is_admin) this._render();
+    else if (previousAdmin !== hass?.user?.is_admin || (this._activeTab === 'schedule' && this._serverSchedules.model().status.reason === 'initial')) this._render();
   }
 
   get _t() {
@@ -1017,17 +1245,18 @@ class HALogEmail extends HTMLElement {
       max_entries: config.max_entries || 50,
       ...config
     };
-    this._loadCentralRecipient();
     if (this._hass) this._render();
   }
 
   async _loadCentralRecipient() {
-    if (!this._hass?.user?.is_admin || !this._hasHaToolsEmail()) return;
+    if (this._hass?.user?.is_admin !== true || !this._hasHaToolsEmail()) return;
+    const hass = this._hass, epoch = this._dataEpoch;
     try {
       // get_config is SupportsResponse.ONLY — must pass returnResponse=true
       // (signature: callService(domain, service, data, target, notifyOnError, returnResponse))
       // and read the payload from result.response.
-      const resp = await this._hass.callService('ha_tools_email', 'get_config', {}, undefined, false, true);
+      const resp = await hass.callService('ha_tools_email', 'get_config', {}, undefined, false, true);
+      if (epoch !== this._dataEpoch || this._hass?.user?.is_admin !== true) return;
       if (resp?.response?.default_recipient && !this._config.email_recipient) {
         this._centralRecipient = resp.response.default_recipient;
         this._render();
@@ -1404,16 +1633,117 @@ class HALogEmail extends HTMLElement {
   }
 
   async _toggleAutomation(entityId) {
-    if (!this._hass) return;
+    const hass = this._hass;
+    if (hass?.user?.is_admin !== true || hass.connected === false || hass.connection?.connected === false) return;
+    const epoch = this._dataEpoch;
     try {
       const state = this._getScheduleState(entityId);
-      await this._hass.callService('automation',
+      if (!['on', 'off'].includes(state)) return;
+      await hass.callService('automation',
         state === 'on' ? 'turn_off' : 'turn_on',
         { entity_id: entityId }
       );
-      setTimeout(() => this._render(), 500);
+      setTimeout(() => { if (epoch === this._dataEpoch && this._hass?.user?.is_admin === true) this._render(); }, 500);
     } catch (e) {
       console.error('[ha-log-email] Toggle automation failed:', e);
+    }
+  }
+
+  _renderServerSchedules() {
+    const m = this._serverSchedules.model(), pl = this._lang === 'pl';
+    const tr = (polish, english) => pl ? polish : english;
+    const statusUi = createUiV3({ language: this._lang });
+    const state = status => `<p class="schedule-result" data-state="${status.state}" role="status" aria-live="polite">${statusUi.statusHtml(status.state)}</p>`;
+    const reason = { initial: tr('Nie odczytano harmonogramów.', 'Schedules have not been read.'),
+      loading: tr('Odczytywanie…', 'Reading…'), loaded: tr('Dane odczytane z serwera.', 'Data read from the server.'),
+      saved: tr('Zapis potwierdzony osobnym odczytem identycznego rekordu.', 'Save confirmed by a separate read of the exact expected row.'),
+      saving: tr('Zapisywanie…', 'Saving…'), unavailable: tr('Harmonogramy serwerowe niedostępne. Wymagana integracja HA Tools Email 2.2.0+. Odśwież po jej aktualizacji.', 'Server schedules unavailable. HA Tools Email 2.2.0+ is required. Refresh after updating.'),
+      read_timeout: tr('Odczyt przekroczył limit czasu. Odśwież świadomie.', 'Read timed out. Refresh explicitly.'),
+      read_failed: tr('Nie udało się odczytać danych. Odśwież świadomie.', 'Data could not be read. Refresh explicitly.'),
+      readback_mismatch: tr('Odczyt nie potwierdził zapisanego rekordu. Nie zapisuj ponownie; odśwież, aby sprawdzić.', 'Readback did not confirm the expected row. Do not repeat the save; refresh to check.'),
+      write_unknown: tr('Wynik zapisu nieznany. Serwer mógł go wykonać. Nie ponawiaj zapisu; odśwież, aby sprawdzić.', 'Save outcome unknown. The server may have applied it. Do not repeat the write; refresh to check.'),
+      save_rejected: tr('Serwer odrzucił zapis. Sprawdź pola oraz dostępność integracji.', 'The server rejected the save. Check the fields and integration availability.'),
+      invalid_fields: tr('Sprawdź częstotliwość, godzinę i dzień.', 'Check cadence, time and day.'),
+      invalid_timezone: tr('Podaj poprawną strefę IANA, np. Europe/Warsaw.', 'Enter a valid IANA timezone, such as Europe/Warsaw.'),
+      cannot_clear_timezone: tr('Zapis scala pola. Istniejącej jawnej strefy nie można usunąć pustym polem; podaj strefę IANA.', 'Save merges fields. An existing explicit timezone cannot be cleared with a blank field; enter an IANA timezone.'),
+      id_unavailable: tr('Nie można utworzyć bezpiecznego ID w tej przeglądarce.', 'A safe ID cannot be created in this browser.') };
+    const cadence = value => ({ daily: tr('Codziennie', 'Daily'), weekly: tr('Co tydzień', 'Weekly'), monthly: tr('Co miesiąc', 'Monthly') })[value] || value;
+    const days = pl ? ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'] :
+      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const busy = m.reading || m.writing || m.locked;
+    const editable = !busy && ['success', 'no_data', 'error'].includes(m.status.state);
+    const logRows = m.rows.filter(row => row.kind === 'log_digest');
+    const d = m.draft;
+    const select = (id, label, options, selected) => `<label for="${id}">${label}<select id="${id}" ${busy ? 'disabled' : ''}>${options.map(([value, label]) => `<option value="${_esc(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${_esc(label)}</option>`).join('')}</select></label>`;
+    const editor = d ? `<fieldset class="schedule-editor"><legend>${tr('Edycja harmonogramu', 'Edit schedule')}</legend>
+      <p>ID: <code>${_esc(d.id)}</code></p><div class="server-schedule-fields">
+      ${select('schedule-cadence', tr('Częstotliwość', 'Cadence'), ['daily', 'weekly', 'monthly'].map(v => [v, cadence(v)]), d.cadence)}
+      <label for="schedule-time">${tr('Godzina lokalna (HH:MM)', 'Local wall time (HH:MM)')}<input id="schedule-time" type="time" value="${_esc(d.time)}" required ${busy ? 'disabled' : ''}></label>
+      <label for="schedule-timezone">${tr('Strefa IANA (puste: strefa HA)', 'IANA timezone (blank: HA timezone)')}<input id="schedule-timezone" type="text" maxlength="128" value="${_esc(d.timezone)}" placeholder="Europe/Warsaw" ${busy ? 'disabled' : ''}></label>
+      ${d.cadence === 'weekly' ? select('schedule-weekday', tr('Dzień tygodnia', 'Weekday'), days.map((v, i) => [i, v]), d.weekday) : ''}
+      ${d.cadence === 'monthly' ? `<label for="schedule-month-day">${tr('Dzień miesiąca (1–31)', 'Day of month (1–31)')}<input id="schedule-month-day" type="number" min="1" max="31" step="1" value="${_esc(d.month_day)}" ${busy ? 'disabled' : ''}></label>` : ''}
+      <label class="schedule-checkbox" for="schedule-enabled"><input id="schedule-enabled" type="checkbox" ${d.enabled ? 'checked' : ''} ${busy ? 'disabled' : ''}>${tr('Włączony', 'Enabled')}</label>
+      </div><p>${tr('Zapis włączonego harmonogramu uruchamia przyszłe wysyłki serwerowe. Nowy harmonogram jest domyślnie wyłączony.', 'Saving an enabled schedule activates future server deliveries. A new schedule is disabled by default.')}</p>
+      <p>${tr('Odbiorcy i inne zapisane ustawienia zostają na serwerze; brak odbiorców używa konfiguracji centralnej.', 'Recipients and other stored settings remain on the server; no recipients uses the central configuration.')}</p>
+      <div class="server-schedule-actions"><button type="button" id="schedule-save" ${editable ? '' : 'disabled'}>${tr('Zapisz', 'Save')}</button>
+      <button type="button" id="schedule-cancel">${tr('Anuluj edycję', 'Cancel edits')}</button>
+      <button type="button" id="schedule-preview" ${m.previewing || m.writing ? 'disabled' : ''}>${tr('Podgląd okresu z serwera (tylko odczyt)', 'Preview server period (readonly)')}</button></div></fieldset>` : '';
+    const p = m.preview;
+    const preview = p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
+      <p>${tr('Poprzedni zakończony okres kalendarzowy; do nie obejmuje końca przedziału.', 'Previous completed calendar period; the end is exclusive.')}</p>
+      <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(p.period.from)} / ${_esc(p.period.to)}</dd>
+      <dt>${tr('Efektywna strefa', 'Effective timezone')}</dt><dd>${_esc(p.effective_timezone)}</dd>
+      <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${tr('zachowane agregaty Home Assistant', 'retained Home Assistant aggregates')}</dd>
+      <dt>${tr('Zachowane wpisy / różne problemy / wystąpienia (HA)', 'Retained entries / unique problems / occurrences (HA)')}</dt><dd>${_esc(p.source.retained_entries)} / ${_esc(p.unique_problems ?? tr('Brak danych', 'No data'))} / ${_esc(p.total ?? tr('Brak danych', 'No data'))}</dd></dl>
+      <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></section>` :
+      m.previewStatus.reason !== 'initial' ? `<section class="schedule-preview">${state(m.previewStatus)}<p>${_esc(reason[m.previewStatus.reason] || reason.read_failed)}</p></section>` : '';
+    const legacy = ['daily', 'weekly'].map(c => {
+      const id = 'automation.ha_tools_log_email_' + c, entity = this._hass?.states?.[id], value = entity?.state;
+      const known = value === 'on' || value === 'off';
+      return `<article class="schedule-card"><strong>${_esc(cadence(c))}</strong><p><code>${id}</code></p>
+        <p>${known ? (value === 'on' ? tr('Włączona', 'Enabled') : tr('Wyłączona', 'Disabled')) : tr('Nieznany stan', 'Unknown state')}</p>
+        ${entity ? `<p class="schedule-legacy-warning">⚠ ${tr('Skonfigurowana starsza automatyzacja może wysyłać ten sam raport. Możliwe duplikaty po włączeniu obu torów. Sprawdź powyższe ID w HA.', 'A configured legacy automation may send the same report. Duplicate reports are possible if both paths are enabled. Inspect this ID in HA.')}</p>` :
+          `<p>${tr('Brak encji w odczycie; nie potwierdza to braku automatyzacji.', 'Entity absent from the read; this does not confirm that no automation exists.')}</p>`}
+        ${known ? `<button type="button" class="toggle-btn" id="btn-${c}-toggle" ${m.writing ? 'disabled' : ''}>${value === 'on' ? tr('Wyłącz starszą automatyzację', 'Disable legacy automation') : tr('Włącz starszą automatyzację', 'Enable legacy automation')}</button>` : ''}</article>`;
+    }).join('');
+    return `<section class="server-schedules"><h3>${tr('Harmonogramy serwerowe dziennika', 'Server log schedules')}</h3>
+      ${state(m.status)}<p>${_esc(reason[m.status.reason] || reason.read_failed)}</p>
+      <div class="server-schedule-actions"><button type="button" id="schedule-refresh" ${m.reading || m.writing ? 'disabled' : ''}>${tr('Odśwież harmonogramy', 'Refresh schedules')}</button>
+      <button type="button" id="schedule-new" ${!busy && ['success', 'no_data'].includes(m.status.state) ? '' : 'disabled'}>${tr('Nowy harmonogram', 'New schedule')}</button></div>
+      <p>${tr('Godzina dotyczy strefy IANA. Brak zapisanej strefy podąża za strefą Home Assistant. Luka DST: nieistniejąca godzina przesuwa się do przodu o zmianę offsetu. Powtórzona godzina: pierwszy (wcześniejszy) termin, jeden raz. Dzień 29–31 w krótszym miesiącu: ostatni dzień.', 'Wall time uses an IANA timezone. A missing stored timezone follows Home Assistant. DST gap: nonexistent wall time shifts forward by the offset change. Repeated time: the first (earlier) occurrence, once. Day 29–31 in a shorter month: the last day.')}</p>
+      <div class="server-schedule-list">${logRows.map((row, i) => `<article class="schedule-card"><h4>${_esc(cadence(row.cadence))} — ${_esc(row.time)}</h4>
+        <p>ID: <code>${_esc(row.id)}</code></p><p>${row.enabled ? tr('Włączony', 'Enabled') : tr('Wyłączony', 'Disabled')}</p>
+        <p>${tr('Strefa', 'Timezone')}: ${_esc(row.timezone || tr('Podąża za HA', 'Follows HA'))}; ${tr('efektywna', 'effective')}: ${_esc(row.effective_timezone || tr('Brak danych', 'No data'))}</p>
+        ${row.cadence === 'weekly' ? `<p>${tr('Dzień tygodnia', 'Weekday')}: ${_esc(days[row.weekday ?? 0])}</p>` : ''}
+        ${row.cadence === 'monthly' ? `<p>${tr('Dzień miesiąca', 'Day of month')}: ${_esc(row.month_day ?? 1)}</p>` : ''}
+        <p>${tr('Następny termin z serwera', 'Next fire from server')}: ${row.enabled ? _esc(row.next_fire || tr('Brak danych', 'No data')) : tr('Wyłączony — brak następnego terminu', 'Disabled — no next fire')}</p>
+        <button type="button" id="schedule-edit-${i}" data-schedule-edit="${i}" ${editable ? '' : 'disabled'}>${tr('Edytuj', 'Edit')}</button></article>`).join('')}</div>
+      ${!logRows.length ? `<p>${tr('Brak danych harmonogramów dziennika.', 'No data for log schedules.')}</p>` : ''}${editor}${preview}
+      <section class="schedule-legacy"><h3>${tr('Starsze automatyzacje HA — osobny tor', 'Legacy HA automations — separate path')}</h3>
+        <p>${tr('Otwarcie i zapis harmonogramu nie przełączają, nie usuwają i nie migrują automatyzacji. Ich przyciski działają tylko po świadomym wyborze. Ostrzeżenie nie sprawdza treści innych automatyzacji.', 'Opening or saving a schedule does not toggle, delete or migrate automations. Their buttons act only on explicit selection. This warning does not inspect other automation contents.')}</p>
+        <div class="server-schedule-list">${legacy}</div></section></section>`;
+  }
+
+  _bindServerSchedules() {
+    const controller = this._serverSchedules, root = this.shadowRoot;
+    const actions = { refresh: () => controller.refresh(), new: () => controller.create(), save: () => {
+      this._scheduleSaveFocus = root.activeElement?.id === 'schedule-save' ? controller.model().draft?.id : null;
+      return controller.save();
+    },
+      cancel: () => controller.cancel(), preview: () => controller.preview() };
+    for (const [id, action] of Object.entries(actions)) root.getElementById('schedule-' + id)?.addEventListener('click', action);
+    const rows = controller.model().rows.filter(row => row.kind === 'log_digest');
+    root.querySelectorAll('[data-schedule-edit]').forEach(button => button.addEventListener('click', () => controller.edit(rows[Number(button.dataset.scheduleEdit)]?.id)));
+    for (const [id, key] of [['cadence', 'cadence'], ['time', 'time'], ['timezone', 'timezone'], ['weekday', 'weekday'], ['month-day', 'month_day'], ['enabled', 'enabled']]) {
+      const field = root.getElementById('schedule-' + id);
+      field?.addEventListener('input', () => {
+        const value = key === 'enabled' ? field.checked : ['weekday', 'month_day'].includes(key) ? Number(field.value) : key === 'timezone' ? field.value.trim() : field.value;
+        controller.update(key, value);
+        root.querySelector('.schedule-preview')?.remove();
+        const previewButton = root.getElementById('schedule-preview');
+        if (previewButton && !controller.model().writing) previewButton.disabled = false;
+      });
+      if (key === 'cadence') field?.addEventListener('change', () => this._render());
     }
   }
 
@@ -1462,6 +1792,7 @@ class HALogEmail extends HTMLElement {
   _render() {
     const focused = this.shadowRoot.activeElement;
     const focusId = focused?.id;
+    const focusSelection = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
     const focusTab = focused?.dataset?.tab;
     if (!this._hass || this._hass.connected === false || this._hass.connection?.connected === false) {
       this.shadowRoot.innerHTML = `<ha-card style="padding:20px"><p>${this._lang === 'pl' ? 'Brak połączenia. Dane odrzucono.' : 'Disconnected. Data discarded.'}</p></ha-card>`;
@@ -1480,7 +1811,8 @@ class HALogEmail extends HTMLElement {
     const totalErrors = errors.length;
     const totalWarnings = warnings.length;
     let statusLabel;
-    if (this._activeTab === 'history') statusLabel = this._lang === 'pl' ? 'Historia prób SMTP' : 'SMTP attempt history';
+    if (this._activeTab === 'schedule') statusLabel = this._lang === 'pl' ? 'Harmonogramy serwerowe' : 'Server schedules';
+    else if (this._activeTab === 'history') statusLabel = this._lang === 'pl' ? 'Historia prób SMTP' : 'SMTP attempt history';
     else if (unavailable) statusLabel = this._lang === 'pl' ? 'Niedostępne' : 'Unavailable';
     else if (retained && totalErrors > 0) statusLabel = this._countLabel(totalErrors, 'error');
     else if (retained && totalWarnings > 0) statusLabel = this._countLabel(totalWarnings, 'warning');
@@ -1488,11 +1820,6 @@ class HALogEmail extends HTMLElement {
     else if (retained) statusLabel = this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems';
     else statusLabel = totalErrors > 0 ? this._countLabel(totalErrors, 'error') : totalWarnings > 0 ? this._countLabel(totalWarnings, 'warning') :
       (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
-
-    const dailyEntityId = 'automation.ha_tools_log_email_daily';
-    const weeklyEntityId = 'automation.ha_tools_log_email_weekly';
-    const dailyAuto = this._getScheduleState(dailyEntityId);
-    const weeklyAuto = this._getScheduleState(weeklyEntityId);
 
     const tabs = [
       { id: 'overview', label: this._t.overview, icon: '\uD83D\uDCCA' },
@@ -1518,46 +1845,8 @@ class HALogEmail extends HTMLElement {
     if (['overview', 'errors', 'warnings'].includes(this._activeTab)) {
       tabContent = this._renderRetainedLogs();
     } else if (this._activeTab === 'schedule') {
-      tabContent = `
-        <div class="schedule-grid">
-          <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDDD3\uFE0F ${this._t.dailyReport}</div>
-            <div class="schedule-desc">${this._lang === 'pl' ? 'Dzienny raport błędów i ostrzeżeń. Czas wysyłki ustala Twoja automatyzacja.' : 'Daily errors and warnings summary. Your automation sets the sending time.'}</div>
-            <div class="schedule-row">
-              <span class="schedule-status ${dailyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${dailyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : dailyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
-              </span>
-              ${dailyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-daily-toggle">${dailyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
-            </div>
-          </div>
-
-          <div class="schedule-card">
-            <div class="schedule-title">\uD83D\uDCC6 ${this._t.weeklyReport}</div>
-            <div class="schedule-desc">${this._lang === 'pl' ? 'Zachowane wpisy dziennika z ostatnich 7 dni. Home Assistant może ograniczać historię. Dzień i czas wysyłki ustala Twoja automatyzacja.' : 'Retained log entries from the last 7 days. Home Assistant may limit history. Your automation sets the sending day and time.'}</div>
-            <div class="schedule-row">
-              <span class="schedule-status ${weeklyAuto === 'on' ? 'status-on' : 'status-off'}">
-                ${weeklyAuto === 'on' ? '\uD83D\uDFE2 ' + this._t.active : weeklyAuto === 'off' ? '\u26AB ' + this._t.disabled : '\u2795 ' + this._t.notCreated}
-              </span>
-              ${weeklyAuto === 'unknown' ? '' : `<button class="toggle-btn" id="btn-weekly-toggle">${weeklyAuto === 'on' ? this._t.disable : this._t.enable}</button>`}
-            </div>
-          </div>
-        </div>
-        ${(dailyAuto === 'unknown' || weeklyAuto === 'unknown') ? `
-          <div class="info-note" style="margin-top:8px">\u2139\uFE0F ${this._lang === 'pl'
-            ? 'Karta log-email wysy\u0142a digest, ale nie tworzy automatyzacji harmonogramu. Dodaj automatyzacj\u0119 wo\u0142aj\u0105c\u0105 ha_tools_email o wybranej porze (przyk\u0142ad w README) \u2014 jej stan pojawi si\u0119 tutaj do w\u0142\u0105czania/wy\u0142\u0105czania.'
-            : 'The log-email card sends the digest, but does not create the schedule automation. Add an automation that calls ha_tools_email at your chosen time (see README) \u2014 it will then appear here to enable/disable.'}</div>
-        ` : ''}
-
-        <div class="section-header">${this._t.smtpService}</div>
-        <div class="info-card" style="padding:12px">${smtpHtml}
-        </div>
-        <div class="section-header" style="margin-top:10px">${this._t.recipient}</div>
-        <div class="info-card">
-          <span>\uD83D\uDCE7 ${this._config.email_recipient ? _esc(this._config.email_recipient) : (this._centralRecipient ? '<span style="color:var(--bento-text-secondary)">' + (this._lang === 'pl' ? 'Domyślnie z Ustawień' : 'Default from Settings') + ' ' + _esc(this._centralRecipient) + '</span>' : '<span style="color:var(--bento-text-muted)">' + (this._lang === 'pl' ? 'Nie ustawiony \u2014 dodaj email_recipient w konfiguracji karty lub Ustawienia' : 'Not set \u2014 add email_recipient in card configuration or Settings') + '</span>')}</span>
-        </div>
-
-        
-      `;
+      this._serverSchedules.ensureRead();
+      tabContent = this._renderServerSchedules();
     } else if (this._activeTab === 'preview') {
       tabContent = `
         <div class="section-header">
@@ -1939,6 +2228,32 @@ max: 3</pre>
   .history-records td { grid-template-columns: 1fr; }
   .history-actions button { width: 100%; }
 }
+
+${createUiV3({ language: this._lang }).css}
+.server-schedules { min-width: 0; overflow-wrap: anywhere; }
+.server-schedules h3, .server-schedules h4 { margin: 12px 0 8px; }
+.server-schedule-list, .server-schedule-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.server-schedule-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.server-schedules button, .server-schedules input:not([type="checkbox"]), .server-schedules select {
+  min-height: 44px; min-width: 44px; box-sizing: border-box; font: inherit;
+  border: 1px solid var(--bento-border); border-radius: 8px; color: var(--bento-text); background: var(--bento-bg);
+}
+.server-schedules button { padding: 8px 12px; cursor: pointer; }
+.server-schedules button:disabled { cursor: default; color: var(--bento-text-secondary); }
+.server-schedules button:focus-visible, .server-schedules input:focus-visible, .server-schedules select:focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 2px; }
+.server-schedule-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.server-schedule-fields input:not([type="checkbox"]), .server-schedule-fields select { width: 100%; padding: 8px; }
+.server-schedule-fields .schedule-checkbox { flex-direction: row; align-items: center; min-height: 44px; cursor: pointer; }
+.schedule-checkbox input { width: 24px; height: 24px; }
+.schedule-editor { min-width: 0; margin: 12px 0; border: 1px solid var(--bento-border); border-radius: 8px; }
+.schedule-result { font-weight: 600; color: var(--bento-text); }
+.schedule-legacy-warning { color: var(--log-email-warning); }
+.server-schedules dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 8px; }
+.server-schedules dd { margin: 0; }
+@container log-email-card (max-width: 499px) {
+  .server-schedule-list, .server-schedule-fields, .server-schedules dl { grid-template-columns: minmax(0, 1fr); }
+  .server-schedule-actions button { flex: 1 1 150px; }
+}
 </style>
 
       <ha-card class="card">
@@ -1983,9 +2298,8 @@ max: 3</pre>
       el.addEventListener('click', (e) => {
         const tabsEl = this.shadowRoot.querySelector('.tabs');
         this._tabsScrollLeft = tabsEl ? tabsEl.scrollLeft : 0;
-        this._activeTab = e.currentTarget.dataset.tab;
+        this.setActiveTab(e.currentTarget.dataset.tab);
         history.replaceState(null, '', location.pathname + '#' + this._toolId + '/' + this._activeTab);
-        this._render();
       });
     });
 
@@ -2006,7 +2320,9 @@ max: 3</pre>
     const btnRefreshPreview = this.shadowRoot.getElementById('btn-refresh-preview');
     if (btnRefreshPreview) btnRefreshPreview.addEventListener('click', () => this._fetchLogData());
 
-    // Schedule toggle buttons
+    this._bindServerSchedules();
+
+    // Legacy automation toggle buttons
     const btnDailyToggle = this.shadowRoot.getElementById('btn-daily-toggle');
     if (btnDailyToggle) btnDailyToggle.addEventListener('click', () => this._toggleAutomation('automation.ha_tools_log_email_daily'));
     const btnWeeklyToggle = this.shadowRoot.getElementById('btn-weekly-toggle');
@@ -2045,11 +2361,28 @@ max: 3</pre>
       });
     }
 
-    if (focusId) this.shadowRoot.getElementById(focusId)?.focus({ preventScroll: true });
+    if (focusId) {
+      const target = this.shadowRoot.getElementById(focusId) || (focusId.startsWith('schedule-') ? this.shadowRoot.getElementById('schedule-refresh') : null);
+      target?.focus({ preventScroll: true });
+      if (focusSelection && target?.setSelectionRange) try { target.setSelectionRange(...focusSelection); } catch (_) {}
+    }
     else if (focusTab) {
       const tab = [...this.shadowRoot.querySelectorAll('[data-tab]')].find(el => el.dataset.tab === focusTab);
       const target = tab?.getBoundingClientRect().width ? tab : this.shadowRoot.getElementById('log-tab-select');
       target?.focus({ preventScroll: true });
+    }
+
+    const scheduleModel = this._serverSchedules.model();
+    if (this._scheduleSaveFocus && !scheduleModel.writing && !scheduleModel.reading) {
+      const ownerRoot = this.getRootNode(), active = ownerRoot.activeElement;
+      if (!active || active === this || active === this.ownerDocument.body) {
+        const rows = scheduleModel.rows.filter(row => row.kind === 'log_digest');
+        const index = rows.findIndex(row => row.id === this._scheduleSaveFocus);
+        const target = scheduleModel.status.reason === 'saved' && index >= 0 ?
+          this.shadowRoot.getElementById('schedule-edit-' + index) : this.shadowRoot.getElementById('schedule-save');
+        if (target && !target.disabled) target.focus({ preventScroll: true });
+      }
+      this._scheduleSaveFocus = null;
     }
 
   }
@@ -2084,6 +2417,8 @@ max: 3</pre>
         ${model.rows.map(row => `<tr role="row">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
     </section>`;
+
+
   }
 
   _renderHistory() {
@@ -2110,6 +2445,9 @@ max: 3</pre>
     this._logData = null;
     this._logHistory = [];
     this._attemptHistory.discard();
+    this._serverSchedules.discard();
+    this._scheduleSaveFocus = null;
+    this.shadowRoot.innerHTML = '';
     if (this._pollingTimer) {
       clearInterval(this._pollingTimer);
       this._pollingTimer = null;
@@ -2118,6 +2456,7 @@ max: 3</pre>
 
   setActiveTab(tabId) {
     this._activeTab = tabId;
+    if (tabId === 'send') this._loadCentralRecipient();
     this._render();
   }
 }

@@ -21,7 +21,8 @@ async function setup(tab = 'overview', lang = 'en', supported = true) {
     disconnect(){this.disconnected=true;}
     deliver(width){this.callback(this.targets.map(target=>({target,contentRect:{width}})));}
   };
-  w.eval(fs.readFileSync(path.join(__dirname,'../ha-log-email.js'),'utf8'));
+  const entrypoint = process.env.HA_LOG_TEST_ENTRYPOINT || 'ha-log-email.js';
+  w.eval(fs.readFileSync(path.join(__dirname,'..',entrypoint),'utf8'));
   const card = w.document.createElement('ha-log-email');
   card._config={max_entries:50,show_support:false};
   card._lang=lang;

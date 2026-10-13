@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:50da93f6c35b1be99c7322cea9571c1e5bdd8ce3bd1806f99b5fda631f3e128d
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:895402e648e9b9d032fd6fefcd3389ac02ee5039dc4d05031c7b3613d51ebf30
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:036b9e70e9af5d13b44ef4c8080e41e90066c48686bfccaebb6cac6ccecf17a5
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -599,6 +599,131 @@ function createHaToolsEmailHistory({ escape = value => String(value == null ? ''
   return controller;
 }
 // END vendored ha-tools-email-history factory
+
+// W3: adapt Device Health's container-local native records to the existing log tables.
+// Move original value nodes only; disclosure and width changes never read or send.
+function _disconnectLogRecords(card) {
+  card._logRecordsObserver?.disconnect();
+  card._logRecordsObserver = null;
+}
+function _rememberLogRecords(card) {
+  if (card._logRecordsEpoch !== card._dataEpoch) {
+    card._logRecordsEpoch = card._dataEpoch;
+    card._logRecordsOpen = new Set();
+  }
+  const root = card.shadowRoot, active = root.activeElement;
+  root.querySelectorAll('.ht-log-records > details').forEach(detail => {
+    if (detail.open) card._logRecordsOpen.add(detail.dataset.recordKey);
+    else card._logRecordsOpen.delete(detail.dataset.recordKey);
+  });
+  return active?.closest('[data-log-record-key]')?.dataset.logRecordKey ||
+    active?.closest('.ht-log-records > details')?.dataset.recordKey || null;
+}
+function _bindLogRecords(card, focusKey) {
+  const root = card.shadowRoot, doc = card.ownerDocument;
+  const specifications = [
+    ['logs', '.retained-logs table.history-records', [3], [0, 1]],
+    ['attempts', '.attempt-history table.history-records', [2, 0], [6]],
+    ['snapshots', '.browser-snapshots table.history-records', [0], [1, 2, 3]]
+  ];
+  const mounts = [];
+  for (const [kind, selector, nameIndices, stateIndices] of specifications) {
+    const table = root.querySelector(selector);
+    if (!table) continue;
+    const layout = doc.createElement('div'); layout.className = 'ht-log-layout';
+    const list = doc.createElement('div'); list.className = 'ht-log-records'; list.hidden = true;
+    const caption = doc.createElement('p'); caption.className = 'log-record-caption';
+    caption.textContent = table.caption?.textContent || ''; list.append(caption);
+    table.before(layout); layout.append(table, list);
+    const headers = Array.from(table.tHead.rows[0].cells, cell => cell.textContent.trim());
+    const items = Array.from(table.tBodies[0].rows, row => {
+      const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotTime]);
+      row.dataset.logRecordKey = key;
+      const cells = Array.from(row.cells);
+      const detail = doc.createElement('details'); detail.dataset.recordKey = key;
+      const summary = doc.createElement('summary');
+      const name = doc.createElement('strong');
+      name.textContent = nameIndices.map(index => cells[index].textContent).join(' · ');
+      const state = doc.createElement('span'); state.className = 'log-record-state';
+      state.textContent = stateIndices.map(index => stateIndices.length === 1 ? cells[index].textContent : headers[index] + ': ' + cells[index].textContent).join(' · ');
+      summary.append(name, state); detail.append(summary);
+      const fields = doc.createElement('dl'); fields.className = 'record-fields'; detail.append(fields);
+      const values = cells.map((cell, index) => {
+        const label = doc.createElement('dt'); label.textContent = headers[index];
+        const value = doc.createElement('dd'); fields.append(label, value);
+        return { cell, value, nodes:Array.from(cell.childNodes) };
+      });
+      detail.open = card._logRecordsOpen.has(key);
+      detail.addEventListener('toggle', () => {
+        if (!detail.isConnected || card._logRecordsEpoch !== card._dataEpoch) return;
+        if (detail.open) card._logRecordsOpen.add(key); else card._logRecordsOpen.delete(key);
+      });
+      list.append(detail);
+      return { key, row, detail, summary, values };
+    });
+    const mount = { kind, layout, table, list, items, narrow:false };
+    mount.apply = width => {
+      if (!Number.isFinite(width) || width <= 0) return;
+      const narrow = width < 500;
+      if (narrow === mount.narrow) return;
+      const active = root.activeElement;
+      const focused = items.find(item => item.row.contains(active) || item.detail.contains(active));
+      if (narrow) list.hidden = false; else table.hidden = false;
+      items.forEach(item => item.values.forEach(({cell,value,nodes}) => (narrow ? value : cell).append(...nodes)));
+      mount.narrow = narrow;
+      if (focused) {
+        const target = narrow ? focused.summary : focused.row;
+        if (!narrow) target.tabIndex = -1;
+        target.focus({preventScroll:true});
+      }
+      table.hidden = narrow; list.hidden = !narrow;
+    };
+    mounts.push(mount);
+  }
+  card._logRecordsMounts = mounts;
+  if (typeof ResizeObserver === 'function' && card.isConnected && mounts.length) {
+    card._logRecordWidths ||= new Map();
+    const epoch = card._dataEpoch;
+    const observer = new ResizeObserver(entries => {
+      if (!card.isConnected || card._logRecordsObserver !== observer || card._dataEpoch !== epoch) return;
+      for (const entry of entries) {
+        const mount = mounts.find(item => item.layout === entry.target);
+        if (!mount) continue;
+        if (Number.isFinite(entry.contentRect.width) && entry.contentRect.width > 0) card._logRecordWidths.set(mount.kind, entry.contentRect.width);
+        mount.apply(entry.contentRect.width);
+      }
+    });
+    card._logRecordsObserver = observer;
+    mounts.forEach(mount => {
+      const style = getComputedStyle(mount.layout);
+      const width = mount.layout.getBoundingClientRect().width - (parseFloat(style.paddingLeft)||0) - (parseFloat(style.paddingRight)||0) - (parseFloat(style.borderLeftWidth)||0) - (parseFloat(style.borderRightWidth)||0);
+      mount.apply(width > 0 ? width : card._logRecordWidths.get(mount.kind));
+      observer.observe(mount.layout);
+    });
+  }
+  if (focusKey) {
+    const mount = mounts.find(mount => mount.items.some(item => item.key === focusKey));
+    const item = mount?.items.find(item => item.key === focusKey);
+    if (item) {
+      const target = mount.narrow ? item.summary : item.row;
+      if (!mount.narrow) target.tabIndex = -1;
+      target.focus({preventScroll:true});
+    } else root.querySelector('#log-severity,#history-refresh')?.focus({preventScroll:true});
+  }
+}
+const _LOG_RECORD_CSS = `
+.ht-log-layout { min-width:0; max-width:100%; }
+.ht-log-layout [hidden] { display:none !important; }
+.ht-log-records > details { margin-block:12px; border:1px solid var(--bento-border); border-radius:10px; overflow-wrap:anywhere; }
+.ht-log-records summary { cursor:pointer; min-width:44px; min-height:44px; padding:12px; box-sizing:border-box; }
+.ht-log-records summary strong,.log-record-state { display:block; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.log-record-state { margin-top:6px; color:var(--bento-text-secondary); font-size:12px; line-height:1.5; }
+.ht-log-records .record-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; margin:0 12px 12px; }
+.ht-log-records dt { color:var(--bento-text-secondary); font-size:12px; margin-top:8px; }
+.ht-log-records dd { margin:0; min-width:0; overflow-wrap:anywhere; }
+.ht-log-records summary:focus-visible { outline:3px solid var(--bento-primary); outline-offset:2px; }
+.log-record-caption { font-weight:600; }
+`;
 
 // Component-local persistence retains this card's existing localStorage keys.
 const haToolsPersistence = { _cache: {}, _hass: null, setHass(h) { this._hass = h; }, async save(k, d) { try { localStorage.setItem('ha-log-email-' + k, JSON.stringify(d)); } catch(e) { console.debug('[ha-log-email] caught:', e); } }, async load(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } }, loadSync(k) { try { const r = localStorage.getItem('ha-log-email-' + k); return r ? JSON.parse(r) : null; } catch(e) { return null; } } };
@@ -1864,6 +1989,8 @@ class HALogEmail extends HTMLElement {
   }
 
   _render() {
+    const recordFocus = _rememberLogRecords(this);
+    _disconnectLogRecords(this);
     const focused = this.shadowRoot.activeElement;
     const focusId = focused?.id;
     const focusSelection = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
@@ -2304,6 +2431,7 @@ max: 3</pre>
 }
 
 ${createUiV3({ language: this._lang }).css}
+${_LOG_RECORD_CSS}
 .server-schedules { min-width: 0; overflow-wrap: anywhere; }
 .server-schedules h3, .server-schedules h4 { margin: 12px 0 8px; }
 .server-schedule-list, .server-schedule-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -2446,6 +2574,7 @@ ${createUiV3({ language: this._lang }).css}
       target?.focus({ preventScroll: true });
     }
 
+    _bindLogRecords(this, recordFocus);
     const scheduleModel = this._serverSchedules.model();
     if (this._scheduleSaveFocus && !scheduleModel.writing && !scheduleModel.reading) {
       const ownerRoot = this.getRootNode(), active = ownerRoot.activeElement;
@@ -2488,7 +2617,7 @@ ${createUiV3({ language: this._lang }).css}
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
         `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
-        ${model.rows.map(row => `<tr role="row">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
+        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
     </section>`;
 
@@ -2507,12 +2636,14 @@ ${createUiV3({ language: this._lang }).css}
         'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
       ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
-        `<tr role="row">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
+        `<tr role="row" data-snapshot-time="${_esc(row.ts)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
         `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}
     </section>`;
   }
 
   disconnectedCallback() {
+    _disconnectLogRecords(this);
+    this._logRecordWidths?.clear();
     this._dataEpoch++;
     this._logReadToken++;
     this._retainedLogs = null;

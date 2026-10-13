@@ -25,7 +25,7 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
         await card._sendEmailNow(scenario==='daily-future'?'daily':'weekly');
         if(scenario==='fallback') {
           assert.equal(sent.length,0,'a current sensor snapshot cannot establish a seven-day digest');
-          assert.equal(card._sendStatus.status,'error');
+          assert.equal(card._sendStatus.status,'no_data');
         } else {
           assert.equal(sent.length,1);
           assert.match(sent[0].body,/RECENT/);

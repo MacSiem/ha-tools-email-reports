@@ -25,10 +25,11 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
         assert.equal(card.shadowRoot.querySelector('.smtp-section a[href="/config/integrations"]').textContent, language === 'pl' ? 'Urządzenia i usługi' : 'Devices & services');
         assert.doesNotMatch(card.shadowRoot.querySelector('.smtp-section').textContent, /SMTP not configured|SMTP nie skonfigurowany/);
         card._hass.services = { ha_tools_email: { send: {} } };
-        card._smtpStatus = { ok: false, error: 'SMTP not configured' };
+        card._smtpStatus = { status: 'unconfirmed', reason: 'transport_unknown' };
         card._render();
         assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, language === 'pl' ? /HA Tools Email dostępne/ : /HA Tools Email available/);
-        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, /SMTP not configured/);
+        assert.match(card.shadowRoot.querySelector('.smtp-section').textContent, language === 'pl' ? /Niepotwierdzony/ : /Unconfirmed/);
+        assert.ok(card.shadowRoot.querySelector('[data-email-result] [data-result-state="unconfirmed"]'));
         assert.doesNotMatch(card.shadowRoot.querySelector('.smtp-section').textContent, /integration is not installed|Integracja HA Tools Email nie jest zainstalowana|SMTP configured/);
       } finally { dom.window.close(); }
     });

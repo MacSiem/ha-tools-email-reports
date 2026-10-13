@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:d754ce1f2cf65eb094dd0cc819a8d629f1590da73277d93fcf036b49f2800d81
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:522de199bf17f2b99e5b098d49c7a0bb429174a1d6e2954740337530858e7c4c
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:08a7032854891f590e15635703685f670d503bb5207f44cef52da480383c4b83
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1316,6 +1316,7 @@ class HALogEmail extends HTMLElement {
     this._hass = hass;
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
       this._scheduleSaveFocus = null;
+      this._clearActionFocus();
       this._dataEpoch++;
       this._logReadToken++;
       this._loading = false;
@@ -1744,6 +1745,7 @@ class HALogEmail extends HTMLElement {
       this._smtpStatus = { ok: false, error: (this._lang === 'pl' ? 'ha_tools_email nie zainstalowany' : 'ha_tools_email not installed') };
       return;
     }
+    this._rememberActionFocus('btn-smtp-test');
     this._smtpTesting = true;
     this._render();
     try {
@@ -1802,6 +1804,7 @@ class HALogEmail extends HTMLElement {
       this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
       this._render(); return;
     }
+    this._rememberActionFocus('btn-send-' + period);
     this._sendStatus = { status: 'sending', period };
     this._render();
     try {
@@ -1997,7 +2000,63 @@ class HALogEmail extends HTMLElement {
     `;
   }
 
+  _clearActionFocus() {
+    const pending = this._actionFocus;
+    if (!pending) return;
+    this.ownerDocument.removeEventListener('focusin', pending.onFocus, true);
+    this.ownerDocument.defaultView.removeEventListener('blur', pending.onBlur);
+    this.ownerDocument.defaultView.removeEventListener('offline', pending.onBlur);
+    pending.context.connection?.removeEventListener?.('disconnected', pending.onBlur);
+    pending.context.connection?.removeEventListener?.('ready', pending.onBlur);
+    this._actionFocus = null;
+  }
+
+  _rememberActionFocus(id) {
+    const origin = this.shadowRoot.activeElement;
+    if (!this.isConnected || origin?.id !== id) return;
+    this._clearActionFocus();
+    const pending = { id, anchor: origin, tab: this._activeTab, epoch: this._dataEpoch,
+      context: this._captureLogContext(this._hass) };
+    // Keep intent only while focus remains on our temporary anchor. Moving away,
+    // even briefly, belongs to the user and must not be undone by a late response.
+    pending.onFocus = event => {
+      if (!event.composedPath().includes(pending.anchor)) this._clearActionFocus();
+    };
+    pending.onBlur = () => this._clearActionFocus();
+    this._actionFocus = pending;
+    this.ownerDocument.addEventListener('focusin', pending.onFocus, true);
+    this.ownerDocument.defaultView.addEventListener('blur', pending.onBlur);
+    this.ownerDocument.defaultView.addEventListener('offline', pending.onBlur);
+    pending.context.connection?.addEventListener?.('disconnected', pending.onBlur);
+    pending.context.connection?.addEventListener?.('ready', pending.onBlur);
+  }
+
+  _restoreActionFocus() {
+    const pending = this._actionFocus;
+    if (!pending) return;
+    const root = this.shadowRoot;
+    const visible = el => el && !el.disabled && el.getClientRects().length > 0 &&
+      getComputedStyle(el).visibility !== 'hidden';
+    const busy = pending.id === 'btn-smtp-test' ? this._smtpTesting : this._sendStatus?.status === 'sending';
+    const origin = root.getElementById(pending.id);
+    const tab = [...root.querySelectorAll('[data-tab]')].find(el => el.dataset.tab === pending.tab);
+    const anchor = root.querySelector('.content');
+    const target = busy ? anchor : [origin, tab, root.getElementById('log-tab-select'), anchor].find(visible);
+    if (visible(target)) {
+      pending.anchor = target;
+      target.focus({ preventScroll: true });
+    }
+    if (!busy || root.activeElement !== pending.anchor) this._clearActionFocus();
+  }
+
   _render() {
+    const pending = this._actionFocus;
+    if (pending) {
+      const context = this._captureLogContext(this._hass);
+      if (!this.isConnected || pending.tab !== this._activeTab || pending.epoch !== this._dataEpoch ||
+          !context.online || !context.admin || Object.keys(context).some(key => context[key] !== pending.context[key]) ||
+          this.shadowRoot.activeElement !== pending.anchor) this._clearActionFocus();
+    }
     const recordFocus = _rememberLogRecords(this);
     _disconnectLogRecords(this);
     const focused = this.shadowRoot.activeElement;
@@ -2484,7 +2543,7 @@ ${_LOG_RECORD_CSS}
           `).join('')}
         </div>
 
-        <div class="content">
+        <div class="content" tabindex="-1" role="region" aria-label="${_esc(tabs.find(tab => tab.id === this._activeTab)?.label || this._t.overview)}">
           ${tabContent}
         </div>
         ${this._hass?.user?.is_admin && this._config?.show_support !== false && !logEmailSupportDismissed() ? OWN_SUPPORT_FOOTER : ''}
@@ -2596,6 +2655,7 @@ ${_LOG_RECORD_CSS}
       }
       this._scheduleSaveFocus = null;
     }
+    this._restoreActionFocus();
 
   }
 
@@ -2651,6 +2711,7 @@ ${_LOG_RECORD_CSS}
   }
 
   disconnectedCallback() {
+    this._clearActionFocus();
     _disconnectLogRecords(this);
     this._logRecordWidths?.clear();
     this._dataEpoch++;
@@ -2669,6 +2730,7 @@ ${_LOG_RECORD_CSS}
   }
 
   setActiveTab(tabId) {
+    if (tabId !== this._activeTab) this._clearActionFocus();
     this._activeTab = tabId;
     if (tabId === 'send') this._loadCentralRecipient();
     this._render();

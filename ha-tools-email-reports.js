@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:895402e648e9b9d032fd6fefcd3389ac02ee5039dc4d05031c7b3613d51ebf30
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:7a1ed319eb5e5dbbbc81b2749739a3f94e590dbc18666f3175d9310f3c3ca784
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:036b9e70e9af5d13b44ef4c8080e41e90066c48686bfccaebb6cac6ccecf17a5
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -606,6 +606,15 @@ function _disconnectLogRecords(card) {
   card._logRecordsObserver?.disconnect();
   card._logRecordsObserver = null;
 }
+function _logSnapshotKey(card, row) {
+  // Local DOM identity follows the actual snapshot object, even at equal timestamps.
+  card._logSnapshotKeys ||= new WeakMap();
+  if (!card._logSnapshotKeys.has(row)) {
+    card._logSnapshotSequence = (card._logSnapshotSequence || 0) + 1;
+    card._logSnapshotKeys.set(row, String(card._logSnapshotSequence));
+  }
+  return card._logSnapshotKeys.get(row);
+}
 function _rememberLogRecords(card) {
   if (card._logRecordsEpoch !== card._dataEpoch) {
     card._logRecordsEpoch = card._dataEpoch;
@@ -637,7 +646,7 @@ function _bindLogRecords(card, focusKey) {
     table.before(layout); layout.append(table, list);
     const headers = Array.from(table.tHead.rows[0].cells, cell => cell.textContent.trim());
     const items = Array.from(table.tBodies[0].rows, row => {
-      const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotTime]);
+      const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotKey]);
       row.dataset.logRecordKey = key;
       const cells = Array.from(row.cells);
       const detail = doc.createElement('details'); detail.dataset.recordKey = key;
@@ -2636,7 +2645,7 @@ ${_LOG_RECORD_CSS}
         'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
       ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
-        `<tr role="row" data-snapshot-time="${_esc(row.ts)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
+        `<tr role="row" data-snapshot-key="${_logSnapshotKey(this,row)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
         `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}
     </section>`;
   }

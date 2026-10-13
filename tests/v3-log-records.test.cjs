@@ -8,7 +8,11 @@ const NOW = Date.parse('2026-10-12T12:00:00Z');
 async function setup(tab = 'overview', lang = 'en', supported = true) {
   const dom = new JSDOM('', { runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/' });
   const w = dom.window, observers = [], reads = [], writes = [];
-  w.Date.now = () => NOW;
+  const NativeDate = w.Date;
+  w.Date = class extends NativeDate {
+    constructor(...args){super(...(args.length?args:[NOW]));}
+    static now(){return NOW;}
+  };
   w.matchMedia = () => ({ matches:false, addEventListener(){}, removeEventListener(){} });
   // Observer delivery only; browser layout is never mocked.
   if (supported) w.ResizeObserver = class {

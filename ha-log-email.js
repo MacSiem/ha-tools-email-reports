@@ -2560,28 +2560,55 @@ class HaLogEmailEditor extends HTMLElement {
     this._config = { ...config };
     this._render();
   }
+  set hass(hass) {
+    this._hass = hass;
+    this._lang = String(hass?.locale?.language || hass?.language || navigator.language || '').startsWith('pl') ? 'pl' : 'en';
+    this._render();
+  }
   _dispatch() {
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
   }
+  _syncFields() {
+    const values = { title: this._config.title ?? 'Log Email Summary', email_recipient: this._config.email_recipient ?? '' };
+    for (const [key, value] of Object.entries(values)) {
+      const field = this.shadowRoot.getElementById('cf_' + key);
+      const next = String(value);
+      if (field.value === next) continue;
+      // Keep the node and selection when HA echoes or replaces the configuration.
+      const selection = this.shadowRoot.activeElement === field
+        ? [field.selectionStart, field.selectionEnd, field.selectionDirection] : null;
+      field.value = next;
+      if (selection) field.setSelectionRange(...selection);
+    }
+    this.shadowRoot.querySelector('label[for="cf_title"]').textContent = this._lang === 'pl' ? 'Tytuł' : 'Title';
+    this.shadowRoot.querySelector('label[for="cf_email_recipient"]').textContent = this._lang === 'pl' ? 'Odbiorca email (zamiast ustawienia centralnego)' : 'Email recipient (override)';
+    this.shadowRoot.getElementById('cf_email_recipient_hint').textContent = this._lang === 'pl' ? 'Pozostaw puste, aby użyć ustawienia centralnego' : 'Leave empty to use central setting';
+  }
   _render() {
+    if (this.shadowRoot.getElementById('cf_title')) {
+      this._syncFields();
+      return;
+    }
     this.shadowRoot.innerHTML = `
       <style>
             :host { display:block; padding:16px; }
             h3 { margin:0 0 16px; font-size:15px; font-weight:600; color:var(--bento-text, var(--primary-text-color,#1e293b)); }
-            input { outline:none; transition:border-color .2s; }
-            input:focus { border-color:var(--bento-primary, var(--primary-color,#3b82f6)); }
+            input { min-height:44px; box-sizing:border-box; outline:none; transition:border-color .2s; }
+            input:focus-visible { outline:3px solid var(--primary-color,#3b82f6); outline-offset:2px; }
+              input[type="checkbox"] { flex:0 0 44px; }
+              input:focus { border-color:var(--bento-primary, var(--primary-color,#3b82f6)); }
         </style>
       <h3>Log Email Summary</h3>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Tytuł' : 'Title'}</label>
-              <input type="text" id="cf_title" value="${_esc(this._config?.title || 'Log Email Summary')}"
+              <label for="cf_title" style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Tytuł' : 'Title'}</label>
+              <input type="text" id="cf_title" value="${_esc(this._config?.title ?? 'Log Email Summary')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
             </div>
             <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Odbiorca email (zamiast ustawienia centralnego)' : 'Email recipient (override)'}</label>
-              <input type="text" id="cf_email_recipient" value="${_esc(this._config?.email_recipient || '')}"
+              <label for="cf_email_recipient" style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">${this._lang === 'pl' ? 'Odbiorca email (zamiast ustawienia centralnego)' : 'Email recipient (override)'}</label>
+              <input type="text" id="cf_email_recipient" aria-describedby="cf_email_recipient_hint" value="${_esc(this._config?.email_recipient ?? '')}"
                 style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
-              <div style="font-size:11px;color:var(--bento-text-secondary);margin-top:4px;">${this._lang === 'pl' ? 'Pozostaw puste, aby u\u017cy\u0107 ustawienia centralnego' : 'Leave empty to use central setting'}</div>
+              <div id="cf_email_recipient_hint" style="font-size:11px;color:var(--bento-text-secondary);margin-top:4px;">${this._lang === 'pl' ? 'Pozostaw puste, aby u\u017cy\u0107 ustawienia centralnego' : 'Leave empty to use central setting'}</div>
             </div>
     `;
         const f_title = this.shadowRoot.querySelector('#cf_title');
@@ -2594,6 +2621,7 @@ class HaLogEmailEditor extends HTMLElement {
           this._config = { ...this._config, email_recipient: e.target.value };
           this._dispatch();
         });
+    this._syncFields();
   }
   connectedCallback() { this._render(); }
 }

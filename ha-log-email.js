@@ -475,6 +475,15 @@ function _disconnectLogRecords(card) {
   card._logRecordsObserver?.disconnect();
   card._logRecordsObserver = null;
 }
+function _logSnapshotKey(card, row) {
+  // Local DOM identity follows the actual snapshot object, even at equal timestamps.
+  card._logSnapshotKeys ||= new WeakMap();
+  if (!card._logSnapshotKeys.has(row)) {
+    card._logSnapshotSequence = (card._logSnapshotSequence || 0) + 1;
+    card._logSnapshotKeys.set(row, String(card._logSnapshotSequence));
+  }
+  return card._logSnapshotKeys.get(row);
+}
 function _rememberLogRecords(card) {
   if (card._logRecordsEpoch !== card._dataEpoch) {
     card._logRecordsEpoch = card._dataEpoch;
@@ -506,7 +515,7 @@ function _bindLogRecords(card, focusKey) {
     table.before(layout); layout.append(table, list);
     const headers = Array.from(table.tHead.rows[0].cells, cell => cell.textContent.trim());
     const items = Array.from(table.tBodies[0].rows, row => {
-      const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotTime]);
+      const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotKey]);
       row.dataset.logRecordKey = key;
       const cells = Array.from(row.cells);
       const detail = doc.createElement('details'); detail.dataset.recordKey = key;
@@ -2505,7 +2514,7 @@ ${_LOG_RECORD_CSS}
         'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
       ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
-        `<tr role="row" data-snapshot-time="${_esc(row.ts)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
+        `<tr role="row" data-snapshot-key="${_logSnapshotKey(this,row)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
         `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}
     </section>`;
   }

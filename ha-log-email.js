@@ -2341,7 +2341,7 @@ max: 3</pre>
 .card { display: block; container: log-email-card / inline-size; min-width: 0; }
 .card .tabs { flex-wrap: wrap; overflow: visible; }
 .card button, .card select, .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
-.card :is(button, select, a):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
+.card :is(button, select, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
 .native-tabs { display: none; padding: 12px; color: var(--bento-text); }
 .native-tabs select { width: 100%; }
 .log-filters, .history-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 12px; }
@@ -2354,6 +2354,8 @@ max: 3</pre>
 .history-records th, .history-records td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--bento-border); vertical-align: top; overflow-wrap: anywhere; }
 .log-model-counts { font-weight: 600; }
 @container log-email-card (max-width: 499px) {
+  .send-grid { grid-template-columns: minmax(0, 1fr); }
+  .send-card { min-width: 0; overflow-wrap: anywhere; }
   .history-records, .history-records tbody, .history-records tr, .history-records td { display: block; width: auto; }
   .history-records thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
   .history-records tr { border: 1px solid var(--bento-border); border-radius: 10px; margin-block: 12px; padding: 8px; }

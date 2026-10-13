@@ -39,13 +39,13 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
         await card._sendEmailNow('daily');
         await card._sendEmailNow('weekly');
         assert.equal(requests.length, 1, 'one service request while the first send is pending');
-        assert.equal(card._sendStatus.status, 'sending');
+        assert.equal(card._sendStatus.status, 'not_checked');
         for (const id of ['btn-send-daily', 'btn-send-weekly']) {
           assert.equal(card.shadowRoot.getElementById(id).disabled, true, `${id} is disabled during sending`);
         }
         finish();
         await first;
-        assert.equal(card._sendStatus.status, outcome === 'success' ? 'success' : 'error');
+        assert.equal(card._sendStatus.status, 'unconfirmed');
         for (const id of ['btn-send-daily', 'btn-send-weekly']) {
           assert.equal(card.shadowRoot.getElementById(id).disabled, false, `${id} is enabled after settlement`);
         }

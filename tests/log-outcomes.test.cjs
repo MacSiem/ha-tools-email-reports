@@ -207,7 +207,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
         f.card._logData = retained();
         const button = f.card.shadowRoot.getElementById(buttonId(action));
         if (button) { assert.equal(button.disabled, true); button.click(); }
-        if (action === 'smtp') await f.card._testSmtp(); else await f.card._sendEmailNow(action);
+        if (action === 'smtp') void f.card._testSmtp(); else void f.card._sendEmailNow(action);
         assert.equal(f.requests.length, 0);
       } finally { await f.close(); }
     });

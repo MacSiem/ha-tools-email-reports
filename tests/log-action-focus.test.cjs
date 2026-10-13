@@ -86,8 +86,8 @@ for (const action of ['daily', 'weekly', 'smtp']) {
       await f.finish(outcome);
       assert.equal(f.card.shadowRoot.activeElement?.id, f.id);
       assert.equal(f.card.shadowRoot.activeElement.disabled, false);
-      if (action === 'smtp') assert.equal(f.card._smtpStatus.ok, outcome === 'success');
-      else assert.equal(f.card._sendStatus.status, outcome === 'success' ? 'success' : 'error');
+      if (action === 'smtp') assert.equal(f.card._smtpStatus.status, 'unconfirmed');
+      else assert.equal(f.card._sendStatus.status, 'unconfirmed');
       assert.equal(f.requests.length, 1, 'focus never adds a service call');
     } finally { await f.close(); }
   });

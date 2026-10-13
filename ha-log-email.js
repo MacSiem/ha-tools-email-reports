@@ -1137,6 +1137,9 @@ class HALogEmail extends HTMLElement {
     this._firstRender = false;
     this._lastFetch = 0;
     this._sendStatus = null;
+    this._smtpStatus = null;
+    this._emailEpoch = 0;
+    this._emailRequest = null;
     // FUNC-2: Real-time error polling
     this._pollingEnabled = false;
     this._pollingTimer = null;
@@ -1183,9 +1186,10 @@ class HALogEmail extends HTMLElement {
     const languageChanged = nextLang !== this._lang;
     this._lang = nextLang;
     this._hass = hass;
+    this._bindEmailContext();
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
       this._scheduleSaveFocus = null;
-      this._clearActionFocus();
+      this._invalidateEmailResults();
       this._dataEpoch++;
       this._logReadToken++;
       this._loading = false;
@@ -1601,39 +1605,118 @@ class HALogEmail extends HTMLElement {
     return !!this._hass?.services?.ha_tools_email?.send;
   }
 
+  // UI context may expire before the raw service promise settles. Keep the
+  // shared request lock until settlement, even after discarding its UI result.
+  _invalidateEmailResults() {
+    this._emailEpoch++;
+    this._sendStatus = null;
+    this._smtpStatus = null;
+    this._smtpTesting = false;
+    this._clearActionFocus();
+  }
+
+  _unbindEmailContext() {
+    for (const [target, event, listener] of this._emailListeners || []) target?.removeEventListener?.(event, listener);
+    this._emailListeners = null;
+  }
+
+  _bindEmailContext() {
+    const connection = this._hass?.connection;
+    if (this._emailListeners && this._emailConnection === connection) return;
+    this._unbindEmailContext();
+    if (this._emailConnection !== connection) this._emailConnectionOffline = false;
+    this._emailConnection = connection;
+    this._emailBrowserOffline = navigator.onLine === false;
+    const listen = (target, event, offline, key) => {
+      const listener = () => {
+        this[key] = offline;
+        this._invalidateEmailResults();
+        if (this.isConnected) this._render();
+      };
+      target?.addEventListener?.(event, listener);
+      return [target, event, listener];
+    };
+    const win = this.ownerDocument.defaultView;
+    this._emailListeners = [listen(win, 'offline', true, '_emailBrowserOffline'),
+      listen(win, 'online', false, '_emailBrowserOffline'),
+      listen(connection, 'disconnected', true, '_emailConnectionOffline'),
+      listen(connection, 'ready', false, '_emailConnectionOffline')];
+  }
+
+  _emailAllowed() {
+    const context = this._captureLogContext(this._hass);
+    return context.admin && context.online && navigator.onLine !== false &&
+      !this._emailBrowserOffline && !this._emailConnectionOffline;
+  }
+
+  _beginEmailRequest(kind, period) {
+    this._bindEmailContext();
+    this._rememberActionFocus(kind === 'smtp' ? 'btn-smtp-test' : 'btn-send-' + period);
+    const request = { kind, period, epoch: this._emailEpoch, attached: this.isConnected, context: this._captureLogContext(this._hass) };
+    this._emailRequest = request;
+    this[kind === 'smtp' ? '_smtpStatus' : '_sendStatus'] = { status: 'not_checked', reason: 'sending', period };
+    this._smtpTesting = kind === 'smtp';
+    this._render();
+    return request;
+  }
+
+  _finishEmailRequest(request, reason) {
+    const context = this._captureLogContext(this._hass);
+    const current = request.epoch === this._emailEpoch && this._emailAllowed() &&
+      Object.keys(context).every(key => context[key] === request.context[key]);
+    this._emailRequest = null;
+    this._smtpTesting = false;
+    if (!current) this._invalidateEmailResults();
+    if (current) this[request.kind === 'smtp' ? '_smtpStatus' : '_sendStatus'] = {
+      status: reason === 'prepare_failed' ? 'error' : 'unconfirmed', reason, period: request.period
+    };
+    if (this.isConnected || (!request.attached && current)) this._render();
+  }
+
+  _renderEmailResult(result) {
+    if (!result) return '';
+    const tr = (pl, en) => this._lang === 'pl' ? pl : en;
+    const messages = {
+      sending: tr('Żądanie wysyłki trwa. Dostarczenie niepotwierdzone.', 'Send request in progress. Delivery unconfirmed.'),
+      completed: tr('Żądanie zakończone. Dostarczenie niepotwierdzone.', 'Request completed. Delivery unconfirmed.'),
+      transport_unknown: tr('Nie udało się potwierdzić wyniku żądania. Dostarczenie niepotwierdzone. Sprawdź historię prób przed ponowną wysyłką.', 'The request outcome could not be confirmed. Delivery unconfirmed. Check attempt history before sending again.'),
+      prepare_failed: tr('Nie udało się przygotować żądania wysyłki.', 'The send request could not be prepared.'),
+      integration_missing: tr('Integracja HA Tools Email lub wymagana usługa jest niedostępna. Sprawdź konfigurację integracji.', 'The HA Tools Email integration or required service is unavailable. Check the integration configuration.'),
+      no_data: tr('Dane dziennika są niedostępne. Odśwież dziennik systemowy.', 'Log data is unavailable. Refresh the system log.'),
+      no_weekly_data: tr('Dane tygodniowe dziennika są niedostępne. Odśwież dziennik systemowy.', 'Weekly log data is unavailable. Refresh the system log.')
+    };
+    const ui = createUiV3({ language: this._lang });
+    const state = ui.status(result.status).code;
+    return `<div class="send-status" data-email-result="${state}" role="status" aria-live="polite">${ui.statusHtml(state)} <span>${_esc(messages[result.reason] || '')}</span></div>`;
+  }
+
   async _sendViaHaToolsEmail(to, subject, body, html) {
     const data = { subject, body };
     if (html) data.html = html;
     if (to) data.to = to;
-    await this._hass.callService('ha_tools_email', 'send', data);
+    await this._hass.callService('ha_tools_email', 'send', data, undefined, false);
   }
 
   async _testSmtp() {
-    if (!this._hass) return;
-    if (!this._hasHaToolsEmail()) {
-      this._smtpStatus = { ok: false, error: (this._lang === 'pl' ? 'ha_tools_email nie zainstalowany' : 'ha_tools_email not installed') };
+    if (!this._emailAllowed() || this._emailRequest) return;
+    if (!this._hasHaToolsEmail() || !this._hass.services.ha_tools_email.test) {
+      this._smtpStatus = { status: 'error', reason: 'integration_missing' };
+      this._render();
       return;
     }
-    this._rememberActionFocus('btn-smtp-test');
-    this._smtpTesting = true;
-    this._render();
+    const request = this._beginEmailRequest('smtp');
+    let reason = 'completed';
     try {
-      await this._hass.callService('ha_tools_email', 'test', {});
-      this._smtpStatus = { ok: true, service: 'ha_tools_email', time: new Date().toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) };
-    } catch (e) {
-      this._smtpStatus = { ok: false, error: e.message || 'Unknown error' };
+      await this._hass.callService('ha_tools_email', 'test', {}, undefined, false);
+    } catch (_) {
+      reason = 'transport_unknown';
     }
-    this._smtpTesting = false;
-    this._render();
+    this._finishEmailRequest(request, reason);
   }
 
   _renderSmtpSection() {
     if (this._hasHaToolsEmail()) {
-      const statusBadge = this._smtpStatus
-        ? (this._smtpStatus.ok
-          ? '<span class="badge-ok">\u2705 Test OK (' + this._smtpStatus.time + ')</span>'
-          : '<span class="badge-er">\u274C ' + _esc(this._smtpStatus.error) + '</span>')
-        : '';
+      const statusBadge = this._renderEmailResult(this._smtpStatus);
       return '<div class="smtp-section">' +
         '<div class="smtp-header">' +
           '<span class="smtp-icon">\u2709\uFE0F</span>' +
@@ -1643,14 +1726,14 @@ class HALogEmail extends HTMLElement {
           '</div>' +
         '</div>' +
         '<div class="smtp-actions">' +
-          '<button class="send-btn" id="btn-smtp-test" aria-label="' + (this._lang === 'pl' ? 'Wyślij email testowy' : 'Send test email') + '" style="width:auto;padding:8px 16px" ' + (this._smtpTesting ? 'disabled' : '') + '>' +
+          '<button class="send-btn" id="btn-smtp-test" aria-label="' + (this._lang === 'pl' ? 'Wyślij email testowy' : 'Send test email') + '" style="width:auto;padding:8px 16px" ' + (this._emailRequest || !this._emailAllowed() ? 'disabled' : '') + '>' +
             (this._smtpTesting ? (this._lang === 'pl' ? '\u23F3 Wysyłam...' : '\u23F3 Sending...') : (this._lang === 'pl' ? '\u{1F4E8} Wyślij test' : '\u{1F4E8} Send test')) +
           '</button>' +
           statusBadge +
         '</div>' +
       '</div>';
     }
-    return '<div class="smtp-section smtp-missing">' +
+    return this._renderEmailResult(this._smtpStatus) + '<div class="smtp-section smtp-missing">' +
       '<div class="smtp-header">' +
         '<span class="smtp-icon">\u26A0\uFE0F</span>' +
         '<div class="smtp-info">' +
@@ -1661,21 +1744,19 @@ class HALogEmail extends HTMLElement {
     '</div>';
   }
   async _sendEmailNow(period) {
-    if (!this._hass?.user?.is_admin) return;
-    if (this._sendStatus?.status === 'sending') return;
+    if (!this._emailAllowed() || this._emailRequest) return;
     const data = period === 'weekly' ? this._logData?.weekly : this._logData;
     if (!data || data.unavailable) {
-      this._sendStatus = { status: 'error', period, error: period === 'weekly' ? (this._lang === 'pl' ? 'Dane tygodniowe dziennika są niedostępne. Odśwież dziennik systemowy.' : 'Weekly log data is unavailable. Refresh the system log.') : (this._lang === 'pl' ? 'Dane dziennika są niedostępne.' : 'Log data is unavailable.') };
+      this._sendStatus = { status: 'no_data', period, reason: period === 'weekly' ? 'no_weekly_data' : 'no_data' };
       this._render();
       return;
     }
     if (!this._hasHaToolsEmail()) {
-      this._sendStatus = { status: 'error', period, error: (this._lang === 'pl' ? 'Integracja HA Tools Email nie jest zainstalowana. Zainstaluj j\u0105 z HACS, dodaj w Urz\u0105dzeniach i us\u0142ugach i ustaw SMTP w Konfiguruj.' : 'The HA Tools Email integration is not installed. Install it from HACS, add it in Devices & services, then set up SMTP in Configure.') };
+      this._sendStatus = { status: 'error', period, reason: 'integration_missing' };
       this._render(); return;
     }
-    this._rememberActionFocus('btn-send-' + period);
-    this._sendStatus = { status: 'sending', period };
-    this._render();
+    const request = this._beginEmailRequest('send', period);
+    let reason = 'completed', dispatched = false;
     try {
       const errors = data ? (data.errors || []) : [];
       const warnings = data ? (data.warnings || []) : [];
@@ -1699,12 +1780,12 @@ class HALogEmail extends HTMLElement {
       if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';
       body += '<hr><p style="font-size:11px;color:#999">HA Tools Log Email</p>';
       const to = this._config.email_recipient || this._centralRecipient || '';
+      dispatched = true;
       await this._sendViaHaToolsEmail(to, subject, body, body);
-      this._sendStatus = { status: 'success', period, time: new Date().toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) };
-    } catch (err) {
-      this._sendStatus = { status: 'error', period, error: (err.message || 'Unknown error') };
+    } catch (_) {
+      reason = dispatched ? 'transport_unknown' : 'prepare_failed';
     }
-    this._render();
+    this._finishEmailRequest(request, reason);
   }
 
     _getScheduleState(entityId) {
@@ -1906,7 +1987,7 @@ class HALogEmail extends HTMLElement {
     const root = this.shadowRoot;
     const visible = el => el && !el.disabled && el.getClientRects().length > 0 &&
       getComputedStyle(el).visibility !== 'hidden';
-    const busy = pending.id === 'btn-smtp-test' ? this._smtpTesting : this._sendStatus?.status === 'sending';
+    const busy = !!this._emailRequest;
     const origin = root.getElementById(pending.id);
     const tab = [...root.querySelectorAll('[data-tab]')].find(el => el.dataset.tab === pending.tab);
     const anchor = root.querySelector('.content');
@@ -1969,13 +2050,7 @@ class HALogEmail extends HTMLElement {
       { id: 'history', label: this._t.history, icon: '\uD83D\uDCDC' }
     ];
 
-    const sendStatusHTML = this._sendStatus ? (() => {
-      const s = this._sendStatus;
-      if (s.status === 'sending') return `<div class="send-status sending">\u23F3 ${this._lang === 'pl' ? 'Wysyłanie raportu dziennika' : 'Sending log email'} (${s.period === 'daily' ? this._t.dailyReport : this._t.weeklyReport})...</div>`;
-      if (s.status === 'success') return `<div class="send-status success">\u2705 ${this._lang === 'pl' ? 'Raport dziennika wysłany o' : 'Log email sent at'} ${s.time}</div>`;
-      if (s.status === 'error') return `<div class="send-status error">\u274C ${this._t.emailFailed}: ${_esc(s.error)}</div>`;
-      return '';
-    })() : '';
+    const sendStatusHTML = this._renderEmailResult(this._sendStatus);
 
     const smtpHtml = this._renderSmtpSection();
     let tabContent = '';
@@ -2006,7 +2081,7 @@ class HALogEmail extends HTMLElement {
               <span class="count-badge error-badge">${this._lang === 'pl' ? this._countLabel(totalErrors, 'error') : totalErrors + ' errors'}</span>
               <span class="count-badge warn-badge">${this._lang === 'pl' ? this._countLabel(totalWarnings, 'warning') : totalWarnings + ' warnings'}</span>
             </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendDaily}</button>
+            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._emailRequest || !this._emailAllowed() ? 'disabled' : ''}>${this._t.sendDaily}</button>
           </div>
           <div class="send-card">
             <div class="send-icon">\uD83D\uDCC6</div>
@@ -2015,7 +2090,7 @@ class HALogEmail extends HTMLElement {
             <div class="send-counts">
               <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
             </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._sendStatus?.status === 'sending' ? 'disabled' : ''}>${this._t.sendWeekly}</button>
+            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._emailRequest || !this._emailAllowed() ? 'disabled' : ''}>${this._t.sendWeekly}</button>
           </div>
         </div>
         ${sendStatusHTML}
@@ -2581,8 +2656,14 @@ ${_LOG_RECORD_CSS}
     </section>`;
   }
 
+  connectedCallback() {
+    this._bindEmailContext();
+    if (this._hass) this._render();
+  }
+
   disconnectedCallback() {
-    this._clearActionFocus();
+    this._invalidateEmailResults();
+    this._unbindEmailContext();
     _disconnectLogRecords(this);
     this._logRecordWidths?.clear();
     this._dataEpoch++;

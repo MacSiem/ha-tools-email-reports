@@ -127,13 +127,13 @@ for (const move of ['outside', 'outside-blur', 'inside', 'window-blur', 'tab']) 
     f.start(); anchor(f);
     const outside = f.w.document.getElementById('outside');
     if (move.startsWith('outside')) { outside.focus(); if (move === 'outside-blur') outside.blur(); }
-    if (move === 'inside') f.card.shadowRoot.getElementById('schedule-refresh').focus();
+    if (move === 'inside') { const target = f.card.shadowRoot.querySelector('[data-tab="schedule"]'); target.focus(); assert.equal(f.card.shadowRoot.activeElement, target); }
     if (move === 'window-blur') f.w.dispatchEvent(new f.w.Event('blur'));
     if (move === 'tab') { const tab = f.card.shadowRoot.querySelector('[data-tab="history"]'); tab.focus(); tab.click(); }
     await f.settle();
     assert.notEqual(f.card.shadowRoot.activeElement?.id, buttonId('daily'));
     if (move === 'outside') assert.equal(f.w.document.activeElement, outside);
-    if (move === 'inside') assert.equal(f.card.shadowRoot.activeElement?.id, 'schedule-refresh');
+    if (move === 'inside') assert.equal(f.card.shadowRoot.activeElement?.dataset.tab, 'schedule');
   } finally { await f.close(); }
 });
 

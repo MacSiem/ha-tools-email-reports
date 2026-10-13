@@ -1140,6 +1140,8 @@ class HALogEmail extends HTMLElement {
     this._smtpStatus = null;
     this._emailEpoch = 0;
     this._emailRequest = null;
+    this._legacyRequest = null;
+    this._legacyStatus = null;
     // FUNC-2: Real-time error polling
     this._pollingEnabled = false;
     this._pollingTimer = null;
@@ -1219,7 +1221,7 @@ class HALogEmail extends HTMLElement {
       if (hass.user?.is_admin === true && online(hass)) this._fetchLogData();
       this._render();
     } else if (identityChanged || !hass || languageChanged) this._render();
-    else if (previousAdmin !== hass?.user?.is_admin || (this._activeTab === 'schedule' && this._serverSchedules.model().status.reason === 'initial')) this._render();
+    else if (previousAdmin !== hass?.user?.is_admin || this._activeTab === 'schedule') this._render();
   }
 
   get _t() {
@@ -1609,6 +1611,7 @@ class HALogEmail extends HTMLElement {
   // shared request lock until settlement, even after discarding its UI result.
   _invalidateEmailResults() {
     this._emailEpoch++;
+    this._legacyStatus = null;
     this._sendStatus = null;
     this._smtpStatus = null;
     this._smtpTesting = false;
@@ -1794,20 +1797,50 @@ class HALogEmail extends HTMLElement {
   }
 
   async _toggleAutomation(entityId) {
+    if (!this._emailAllowed() || this._legacyRequest || this._serverSchedules.model().writing) return;
+    const cadence = ['daily', 'weekly'].find(value => entityId === 'automation.ha_tools_log_email_' + value);
+    const state = this._getScheduleState(entityId);
+    if (!cadence || !['on', 'off'].includes(state)) return;
+    this._bindEmailContext();
+    this._rememberActionFocus('btn-' + cadence + '-toggle', 'legacy');
+    const request = { entityId, desired: state === 'on' ? 'off' : 'on', epoch: this._emailEpoch,
+      attached: this.isConnected, context: this._captureLogContext(this._hass) };
     const hass = this._hass;
-    if (hass?.user?.is_admin !== true || hass.connected === false || hass.connection?.connected === false) return;
-    const epoch = this._dataEpoch;
+    // The raw lock survives discarded UI context until this exact promise settles.
+    this._legacyRequest = request;
+    this._legacyStatus = { entityId, desired: request.desired, status: 'not_checked', reason: 'pending' };
+    this._render();
+    let reason = 'state_unconfirmed';
     try {
-      const state = this._getScheduleState(entityId);
-      if (!['on', 'off'].includes(state)) return;
-      await hass.callService('automation',
-        state === 'on' ? 'turn_off' : 'turn_on',
-        { entity_id: entityId }
-      );
-      setTimeout(() => { if (epoch === this._dataEpoch && this._hass?.user?.is_admin === true) this._render(); }, 500);
-    } catch (e) {
-      console.error('[ha-log-email] Toggle automation failed:', e);
+      await hass.callService('automation', request.desired === 'on' ? 'turn_on' : 'turn_off',
+        { entity_id: entityId }, undefined, false);
+      if (this._getScheduleState(entityId) === request.desired) reason = 'state_confirmed';
+    } catch (_) {
+      reason = 'transport_unknown';
     }
+    const context = this._captureLogContext(this._hass);
+    const current = request.epoch === this._emailEpoch && this._emailAllowed() &&
+      Object.keys(context).every(key => context[key] === request.context[key]);
+    this._legacyRequest = null;
+    this._legacyStatus = current ? { entityId, desired: request.desired,
+      status: reason === 'state_confirmed' ? 'success' : 'unconfirmed', reason } : null;
+    if (this.isConnected || (!request.attached && current)) this._render();
+  }
+
+  _renderLegacyResult(entityId) {
+    const result = this._legacyStatus;
+    if (!result || result.entityId !== entityId) return '';
+    const tr = (pl, en) => this._lang === 'pl' ? pl : en;
+    const action = result.desired === 'on' ? tr('Żądanie włączenia.', 'Enable requested.') : tr('Żądanie wyłączenia.', 'Disable requested.');
+    const messages = {
+      pending: tr('Żądanie trwa. Zmiana stanu niepotwierdzona.', 'Request in progress. State change unconfirmed.'),
+      state_confirmed: tr('Bieżący stan encji HA potwierdza żądany stan.', 'The current HA entity state confirms the requested state.'),
+      state_unconfirmed: tr('Żądanie zakończone. Bieżący stan encji HA nie potwierdza żądanej zmiany.', 'Request completed. The current HA entity state does not confirm the requested change.'),
+      transport_unknown: tr('Nie udało się potwierdzić wyniku żądania. Zmiana stanu niepotwierdzona. Sprawdź encję w HA przed ponowną próbą.', 'The request outcome could not be confirmed. State change unconfirmed. Check the entity in HA before trying again.')
+    };
+    const ui = createUiV3({ language: this._lang });
+    const state = ui.status(result.status).code;
+    return `<p class="legacy-result" data-legacy-result="${state}" role="status" aria-live="polite">${ui.statusHtml(state)} <span>${_esc(action)} ${_esc(messages[result.reason] || '')}</span></p>`;
   }
 
   _renderServerSchedules() {
@@ -1865,7 +1898,7 @@ class HALogEmail extends HTMLElement {
         <p>${known ? (value === 'on' ? tr('Włączona', 'Enabled') : tr('Wyłączona', 'Disabled')) : tr('Nieznany stan', 'Unknown state')}</p>
         ${entity ? `<p class="schedule-legacy-warning">⚠ ${tr('Skonfigurowana starsza automatyzacja może wysyłać ten sam raport. Możliwe duplikaty po włączeniu obu torów. Sprawdź powyższe ID w HA.', 'A configured legacy automation may send the same report. Duplicate reports are possible if both paths are enabled. Inspect this ID in HA.')}</p>` :
           `<p>${tr('Brak encji w odczycie; nie potwierdza to braku automatyzacji.', 'Entity absent from the read; this does not confirm that no automation exists.')}</p>`}
-        ${known ? `<button type="button" class="toggle-btn" id="btn-${c}-toggle" ${m.writing ? 'disabled' : ''}>${value === 'on' ? tr('Wyłącz starszą automatyzację', 'Disable legacy automation') : tr('Włącz starszą automatyzację', 'Enable legacy automation')}</button>` : ''}</article>`;
+        ${known ? `<button type="button" class="toggle-btn" id="btn-${c}-toggle" ${m.writing || this._legacyRequest || !this._emailAllowed() ? 'disabled' : ''}>${value === 'on' ? tr('Wyłącz starszą automatyzację', 'Disable legacy automation') : tr('Włącz starszą automatyzację', 'Enable legacy automation')}</button>` : ''}${this._renderLegacyResult(id)}</article>`;
     }).join('');
     return `<section class="server-schedules"><h3>${tr('Harmonogramy serwerowe dziennika', 'Server log schedules')}</h3>
       ${state(m.status)}<p>${_esc(reason[m.status.reason] || reason.read_failed)}</p>
@@ -1961,11 +1994,11 @@ class HALogEmail extends HTMLElement {
     this._actionFocus = null;
   }
 
-  _rememberActionFocus(id) {
+  _rememberActionFocus(id, kind = 'email') {
     const origin = this.shadowRoot.activeElement;
     if (!this.isConnected || origin?.id !== id) return;
     this._clearActionFocus();
-    const pending = { id, anchor: origin, tab: this._activeTab, epoch: this._dataEpoch,
+    const pending = { id, kind, anchor: origin, tab: this._activeTab, epoch: this._dataEpoch,
       context: this._captureLogContext(this._hass) };
     // Keep intent only while focus remains on our temporary anchor. Moving away,
     // even briefly, belongs to the user and must not be undone by a late response.
@@ -1987,7 +2020,7 @@ class HALogEmail extends HTMLElement {
     const root = this.shadowRoot;
     const visible = el => el && !el.disabled && el.getClientRects().length > 0 &&
       getComputedStyle(el).visibility !== 'hidden';
-    const busy = !!this._emailRequest;
+    const busy = pending.kind === 'legacy' ? !!this._legacyRequest : !!this._emailRequest;
     const origin = root.getElementById(pending.id);
     const tab = [...root.querySelectorAll('[data-tab]')].find(el => el.dataset.tab === pending.tab);
     const anchor = root.querySelector('.content');
@@ -2445,6 +2478,9 @@ max: 3</pre>
 }
 
 ${createUiV3({ language: this._lang }).css}
+:host(.bento-dark) .ht-result-state--not_checked,
+:host(.bento-dark) .ht-result-state--no_data { color:var(--bento-text-secondary, #d6d3d1); }
+.legacy-result { line-height:1.6; }
 ${_LOG_RECORD_CSS}
 .server-schedules { min-width: 0; overflow-wrap: anywhere; }
 .server-schedules h3, .server-schedules h4 { margin: 12px 0 8px; }

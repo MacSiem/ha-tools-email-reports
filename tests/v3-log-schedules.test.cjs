@@ -144,7 +144,7 @@ test('known configured legacy IDs warn about duplicates; unknown state is never 
   const f = await fixture(t, { states: { 'automation.ha_tools_log_email_daily': { state: 'unavailable' }, 'automation.ha_tools_log_email_weekly': { state: 'off' } } }); await f.open();
   assert.match(f.root.textContent, /duplicate/i); assert.match(f.root.textContent, /automation\.ha_tools_log_email_daily/);
   assert.match(f.root.textContent, /Unknown/); assert.equal(f.root.getElementById('btn-daily-toggle'), null);
-  f.click('btn-weekly-toggle'); await settle(); assert.deepEqual(f.services[0], ['automation', 'turn_on', { entity_id: 'automation.ha_tools_log_email_weekly' }]);
+  f.click('btn-weekly-toggle'); await settle(); assert.deepEqual(f.services[0], ['automation', 'turn_on', { entity_id: 'automation.ha_tools_log_email_weekly' }, null, false]);
 });
 test('readonly preview is explicit and displays server period/source/retained limitations without SMTP/history writes', async t => {
   const f = await fixture(t); await f.open(); assert.equal(f.types().filter(x => x.endsWith('/preview_log_digest')).length, 0);

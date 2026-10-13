@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:522de199bf17f2b99e5b098d49c7a0bb429174a1d6e2954740337530858e7c4c
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:2c4386ed584785b6d0735ca3a712fcbd62da9f94474e51f07efd9324ae601646
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:08a7032854891f590e15635703685f670d503bb5207f44cef52da480383c4b83
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -2472,7 +2472,7 @@ max: 3</pre>
 .card { display: block; container: log-email-card / inline-size; min-width: 0; }
 .card .tabs { flex-wrap: wrap; overflow: visible; }
 .card button, .card select, .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
-.card :is(button, select, a):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
+.card :is(button, select, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
 .native-tabs { display: none; padding: 12px; color: var(--bento-text); }
 .native-tabs select { width: 100%; }
 .log-filters, .history-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 12px; }
@@ -2485,6 +2485,8 @@ max: 3</pre>
 .history-records th, .history-records td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--bento-border); vertical-align: top; overflow-wrap: anywhere; }
 .log-model-counts { font-weight: 600; }
 @container log-email-card (max-width: 499px) {
+  .send-grid { grid-template-columns: minmax(0, 1fr); }
+  .send-card { min-width: 0; overflow-wrap: anywhere; }
   .history-records, .history-records tbody, .history-records tr, .history-records td { display: block; width: auto; }
   .history-records thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
   .history-records tr { border: 1px solid var(--bento-border); border-radius: 10px; margin-block: 12px; padding: 8px; }

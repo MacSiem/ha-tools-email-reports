@@ -120,3 +120,19 @@ test('unsupported observer keeps all original tables and source metadata',async(
   assert.equal(f.writes.length,0);
  }finally{f.close();}
 });
+test('two actual browser reads at the same timestamp retain independent disclosures and focus on repaint',async()=>{
+ const f=await setup('history');try{
+  await f.card._fetchLogData();f.card.setActiveTab('history');f.resize(390);
+  const rows=Array.from(f.root.querySelectorAll('.browser-snapshots .ht-log-records > details'));
+  assert.equal(rows.length,2);
+  assert.equal(f.card._logHistory[0].ts,f.card._logHistory[1].ts);
+  assert.notEqual(rows[0].dataset.recordKey,rows[1].dataset.recordKey);
+  rows[1].open=true;rows[1].querySelector('summary').focus();
+  const before=JSON.stringify(f.card._logHistory);
+  f.card._lang='pl';f.card._render();
+  const after=Array.from(f.root.querySelectorAll('.browser-snapshots .ht-log-records > details'));
+  assert.equal(after[0].open,false);assert.equal(after[1].open,true);
+  assert.equal(f.root.activeElement,after[1].querySelector('summary'));
+  assert.equal(JSON.stringify(f.card._logHistory),before);
+ }finally{f.close();}
+});

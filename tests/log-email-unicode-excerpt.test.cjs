@@ -50,7 +50,8 @@ for (const source of ['ha-log-email.js', 'ha-tools-email-reports.js']) {
               card._hass = hass; card.hass = hass;
               await card._sendEmailNow(period);
               assert.equal(sent.length, 1);
-              assert.equal(card._sendStatus.status, 'success');
+              // A resolved empty transport response cannot confirm SMTP acceptance or delivery.
+              assert.equal(card._sendStatus.status, 'unconfirmed');
               const payload = sent[0];
               assert.deepEqual(Object.keys(payload).sort(), ['body', 'html', 'subject', 'to']);
               assert.equal(payload.to, 'fixture@example.invalid');

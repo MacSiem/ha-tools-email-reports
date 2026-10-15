@@ -1144,6 +1144,8 @@ class HALogEmail extends HTMLElement {
     this._logReadToken = 0;
     this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
     this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
+    this._mailPreview = createHaToolsEmailSchedules({ changed: () => this._render() });
+    this._mailCadence = 'daily'; this._mailPeriodMode = 'rolling';
     this._maxHistory = 24;
     this._loading = false;
     this._firstRender = false;
@@ -1218,6 +1220,7 @@ class HALogEmail extends HTMLElement {
     }
     this._attemptHistory.setContext(hass);
     this._serverSchedules.setContext(hass);
+    this._mailPreview.setContext(hass);
     if (!previous && hass?.user?.is_admin === true && online(hass)) {
       const key = this._browserCountsKey();
       this._logHistory = key ? this._readBrowserCounts(key) : [];
@@ -1623,6 +1626,7 @@ class HALogEmail extends HTMLElement {
   // shared request lock until settlement, even after discarding its UI result.
   _invalidateEmailResults() {
     this._emailEpoch++;
+    this._mailPreview?.clearPreview();
     this._legacyStatus = null;
     this._sendStatus = null;
     this._smtpStatus = null;
@@ -1683,7 +1687,7 @@ class HALogEmail extends HTMLElement {
     this._smtpTesting = false;
     if (!current) this._invalidateEmailResults();
     if (current) this[request.kind === 'smtp' ? '_smtpStatus' : '_sendStatus'] = {
-      status: reason === 'prepare_failed' ? 'error' : 'unconfirmed', reason, period: request.period
+      status: ['prepare_failed', 'mail_upgrade_required'].includes(reason) ? 'error' : reason === 'accepted_by_smtp' ? 'success' : 'unconfirmed', reason, period: request.period
     };
     if (this.isConnected || (!request.attached && current)) this._render();
   }
@@ -1692,6 +1696,8 @@ class HALogEmail extends HTMLElement {
     if (!result) return '';
     const tr = (pl, en) => this._lang === 'pl' ? pl : en;
     const messages = {
+      mail_upgrade_required: tr('Wymagana integracja HA Tools Email 2.3.0+. Zaktualizuj ją i ponów świadomie.', 'HA Tools Email 2.3.0+ is required. Update it and retry explicitly.'),
+      accepted_by_smtp: tr('Serwer pocztowy przyjął raport. Dostarczenie do skrzynki niepotwierdzone.', 'The mail server accepted the report. Inbox delivery remains unconfirmed.'),
       sending: tr('Żądanie wysyłki trwa. Dostarczenie niepotwierdzone.', 'Send request in progress. Delivery unconfirmed.'),
       completed: tr('Żądanie zakończone. Dostarczenie niepotwierdzone.', 'Request completed. Delivery unconfirmed.'),
       transport_unknown: tr('Nie udało się potwierdzić wyniku żądania. Dostarczenie niepotwierdzone. Sprawdź historię prób przed ponowną wysyłką.', 'The request outcome could not be confirmed. Delivery unconfirmed. Check attempt history before sending again.'),
@@ -1758,49 +1764,62 @@ class HALogEmail extends HTMLElement {
       '</div>' +
     '</div>';
   }
+  _mailSelection(cadence = this._mailCadence) {
+    const cap = Number(this._config.max_entries);
+    return { cadence, period_mode: this._mailPeriodMode,
+      max_entries: Number.isInteger(cap) && cap > 0 ? Math.min(cap, 1000) : 50 };
+  }
+
   async _sendEmailNow(period) {
-    if (!this._emailAllowed() || this._emailRequest) return;
-    const data = period === 'weekly' ? this._logData?.weekly : this._logData;
-    if (!data || data.unavailable) {
-      this._sendStatus = { status: 'no_data', period, reason: period === 'weekly' ? 'no_weekly_data' : 'no_data' };
-      this._render();
-      return;
-    }
-    if (!this._hasHaToolsEmail()) {
-      this._sendStatus = { status: 'error', period, reason: 'integration_missing' };
-      this._render(); return;
-    }
+    if (!this._emailAllowed() || this._emailRequest || !['daily', 'weekly', 'monthly'].includes(period)) return;
+    const source = this._hass, selection = this._mailSelection(period);
     const request = this._beginEmailRequest('send', period);
     let reason = 'completed', dispatched = false;
+    const current = () => request.epoch === this._emailEpoch && this._emailAllowed() &&
+      Object.keys(request.context).every(key => request.context[key] === this._captureLogContext(this._hass)[key]);
     try {
-      const errors = data ? (data.errors || []) : [];
-      const warnings = data ? (data.warnings || []) : [];
-      const now = new Date().toLocaleString((this._lang === 'pl' ? 'pl-PL' : 'en-US'));
-      const subject = period === 'daily'
-        ? (this._lang === 'pl' ? 'HA Log - Raport dzienny (' + now + ')' : 'HA Log - Daily Report (' + now + ')')
-        : (this._lang === 'pl' ? 'HA Log - Raport tygodniowy (' + now + ')' : 'HA Log - Weekly Report (' + now + ')');
-      var body = '<h2>' + subject + '</h2>';
-      if (period === 'weekly') body += '<p>' + (this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni. Historia może być ograniczona przez Home Assistant; obowiązuje limit wpisów karty.' : 'Retained entries from the last 7 days. Home Assistant may limit history; the card entry limit applies.') + '</p>';
-      body += '<p>Errors: <strong>' + errors.length + '</strong> | Warnings: <strong>' + warnings.length + '</strong></p>';
-      if (errors.length > 0) {
-        body += '<h3 style="color:#ef4444">Errors</h3><ul>';
-        errors.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count == null ? '—' : e.count) + ')</li>'; });
-        body += '</ul>';
+      // Bound the readonly capability check; the raw send promise keeps the write lock until settlement.
+      let timer;
+      const manifest = await Promise.race([
+        Promise.resolve().then(() => source.callWS({ type: 'manifest/get', integration: 'ha_tools_email' })),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Manifest timeout')), 8000); })
+      ]).finally(() => clearTimeout(timer));
+      if (!current()) { this._finishEmailRequest(request, 'prepare_failed'); return; }
+      const version = manifest?.version;
+      const parts = typeof version === 'string' && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) ? version.split('.').map(Number) : [];
+      if (manifest?.domain !== 'ha_tools_email' || parts.length !== 3 || !parts.every(Number.isSafeInteger) || parts.join('.') !== version ||
+        !(parts[0] > 2 || parts[0] === 2 && parts[1] >= 3)) {
+        reason = 'mail_upgrade_required';
+      } else {
+        const raw = this._config.email_recipient || this._centralRecipient || '';
+        const recipients = Array.isArray(raw) ? [...raw] : String(raw).split(/[,;]+/).map(value => value.trim()).filter(Boolean);
+        if (recipients.length > 128 || recipients.some(value => typeof value !== 'string' || !value.trim() || value.length > 255 || /[\r\n]/.test(value))) throw new Error('Invalid recipients');
+        dispatched = true;
+        const result = await source.callWS({ type: 'ha_tools_email/send_now', kind: 'log_digest', ...selection, recipients });
+        if (result?.ok === true && result.status === 'accepted_by_smtp' && typeof result.attempt_id === 'string' && result.attempt_id)
+          reason = 'accepted_by_smtp';
       }
-      if (warnings.length > 0) {
-        body += '<h3 style="color:#f59e0b">Warnings</h3><ul>';
-        warnings.forEach(function(e) { body += '<li><b>' + _esc(e.domain||'') + '</b>: ' + _esc(_logEmailExcerpt(e.message||'')) + ' (x' + _esc(e.count == null ? '—' : e.count) + ')</li>'; });
-        body += '</ul>';
-      }
-      if (errors.length === 0 && warnings.length === 0) body += '<p style="color:#10b981">System czysty.</p>';
-      body += '<hr><p style="font-size:11px;color:#999">HA Tools Log Email</p>';
-      const to = this._config.email_recipient || this._centralRecipient || '';
-      dispatched = true;
-      await this._sendViaHaToolsEmail(to, subject, body, body);
-    } catch (_) {
-      reason = dispatched ? 'transport_unknown' : 'prepare_failed';
-    }
+    } catch (_) { reason = dispatched ? 'transport_unknown' : 'prepare_failed'; }
     this._finishEmailRequest(request, reason);
+  }
+
+  _renderMailFrame(preview, id) {
+    if (!preview || typeof preview.html !== 'string') return '';
+    return `<section class="schedule-preview"><h4>${_esc(preview.subject)}</h4><p>${_esc(preview.period.from)} / ${_esc(preview.period.to)}</p>
+      <p>${_esc(preview.generated_at)} · ${_esc(preview.source?.name || '')} ${preview.source?.complete === false ? (this._lang === 'pl' ? '— częściowe dane' : '— partial data') : ''}</p><iframe id="${id}" title="${_esc(this._t.emailPreview)}" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:600px;border:1px solid var(--divider-color,#ddd);background:white"></iframe></section>`;
+  }
+
+  _bindMailFrame(id, preview) {
+    const frame = this.shadowRoot.getElementById(id);
+    if (!frame || typeof preview?.html !== 'string') return;
+    // No allow-same-origin/scripts/navigation permissions. CSP precedes all backend content.
+    frame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">` + preview.html;
+  }
+
+  _renderMailControls(showCadence = true) {
+    const pl = this._lang === 'pl';
+    return `${showCadence ? `<label>${pl ? 'Częstotliwość' : 'Cadence'} <select id="mail-cadence">${['daily', 'weekly', 'monthly'].map((value, i) => `<option value="${value}" ${this._mailCadence === value ? 'selected' : ''}>${(pl ? ['Dzienny', 'Tygodniowy', 'Miesięczny'] : ['Daily', 'Weekly', 'Monthly'])[i]}</option>`).join('')}</select></label>` : ''}
+      <label>${pl ? 'Okres' : 'Period'} <select id="mail-period-mode"><option value="rolling" ${this._mailPeriodMode === 'rolling' ? 'selected' : ''}>${pl ? 'Ostatnie 24 h / 7 dni / 30 dni' : 'Last 24 h / 7 days / 30 days'}</option><option value="calendar" ${this._mailPeriodMode === 'calendar' ? 'selected' : ''}>${pl ? 'Poprzedni zakończony dzień / tydzień ISO / miesiąc' : 'Previous completed day / ISO week / month'}</option></select></label>`;
   }
 
     _getScheduleState(entityId) {
@@ -1895,7 +1914,7 @@ class HALogEmail extends HTMLElement {
       <button type="button" id="schedule-cancel">${tr('Anuluj edycję', 'Cancel edits')}</button>
       <button type="button" id="schedule-preview" ${m.previewing || m.writing ? 'disabled' : ''}>${tr('Podgląd okresu z serwera (tylko odczyt)', 'Preview server period (readonly)')}</button></div></fieldset>` : '';
     const p = m.preview;
-    const preview = p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
+    const preview = p?.html !== undefined ? this._renderMailFrame(p, 'schedule-mail-frame') : p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
       <p>${tr('Poprzedni zakończony okres kalendarzowy; do nie obejmuje końca przedziału.', 'Previous completed calendar period; the end is exclusive.')}</p>
       <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(p.period.from)} / ${_esc(p.period.to)}</dd>
       <dt>${tr('Efektywna strefa', 'Effective timezone')}</dt><dd>${_esc(p.effective_timezone)}</dd>
@@ -2106,39 +2125,29 @@ class HALogEmail extends HTMLElement {
       this._serverSchedules.ensureRead();
       tabContent = this._renderServerSchedules() + `<section aria-label="${this._t.smtpService}"><div class="section-header">${this._t.smtpService}</div>${smtpHtml}</section>`;
     } else if (this._activeTab === 'preview') {
-      tabContent = `
-        <div class="section-header">
-          <span>${this._t.emailPreview}</span>
-          <button class="refresh-btn" id="btn-refresh-preview" aria-label="${this._t.refreshData}">\uD83D\uDD04 ${this._t.refreshData}</button>
-        </div>
-        ${this._loading ? '<div class="loading-bar"></div>' : ''}
-        <p class="log-filter-scope">${this._lang === 'pl' ? 'Podgląd treści emaila. Filtry listy w Przeglądzie, Błędach i Ostrzeżeniach nie zmieniają raportu.' : 'Email content preview. List filters in Overview, Errors and Warnings do not change the report.'}</p>
-        ${this._buildEmailPreview()}
-        ${data ? `<div class="last-updated">${this._lang === 'pl' ? 'Dane odczytane o:' : 'Based on data from:'} ${new Date(data.fetchedAt).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US'))}</div>` : ''}
-      `;
+      const m = this._mailPreview.model();
+      const messages = { initial: this._lang === 'pl' ? 'Wybierz okres i odczytaj podgląd.' : 'Select a period and read the preview.',
+        loading: this._lang === 'pl' ? 'Odczytywanie…' : 'Reading…', loaded: '',
+        mail_upgrade_required: this._lang === 'pl' ? 'Wymagana integracja HA Tools Email 2.3.0+.' : 'HA Tools Email 2.3.0+ is required.',
+        read_timeout: this._lang === 'pl' ? 'Odczyt przekroczył limit czasu. Odśwież świadomie.' : 'Read timed out. Refresh explicitly.' };
+      tabContent = `<div class="section-header">${this._t.emailPreview}</div>${this._renderMailControls()}
+        <button id="btn-refresh-preview" ${m.previewing || !this._emailAllowed() ? 'disabled' : ''}>${this._t.refreshData}</button>
+        <p role="status">${_esc(messages[m.previewStatus.reason] ?? (this._lang === 'pl' ? 'Nie udało się odczytać podglądu.' : 'Preview could not be read.'))}</p>
+        <p>${this._lang === 'pl' ? 'Rzeczywista treść maila z serwera. Filtry listy nie zmieniają raportu.' : 'Actual email content from the server. List filters do not change the report.'}</p>
+        ${this._renderMailFrame(m.preview, 'manual-mail-frame')}`;
     } else if (this._activeTab === 'send') {
       tabContent = `
-        <div class="send-grid">
-          <div class="send-card">
-            <div class="send-icon">\uD83D\uDCC5</div>
-            <div class="send-title">${this._t.dailySummary}</div>
-            <div class="send-desc">${this._lang === 'pl' ? 'Błędy i ostrzeżenia z ostatnich 24 godzin' : 'Errors + warnings from last 24 hours'}</div>
-            <div class="send-counts">
-              <span class="count-badge error-badge">${this._lang === 'pl' ? this._countLabel(totalErrors, 'error') : totalErrors + ' errors'}</span>
-              <span class="count-badge warn-badge">${this._lang === 'pl' ? this._countLabel(totalWarnings, 'warning') : totalWarnings + ' warnings'}</span>
-            </div>
-            <button class="send-btn" id="btn-send-daily" aria-label="${this._t.sendDaily}" ${this._emailRequest || !this._emailAllowed() ? 'disabled' : ''}>${this._t.sendDaily}</button>
-          </div>
-          <div class="send-card">
-            <div class="send-icon">\uD83D\uDCC6</div>
-            <div class="send-title">${this._t.weeklyDigest}</div>
-            <div class="send-desc">${this._lang === 'pl' ? 'Zachowane wpisy z ostatnich 7 dni; historia może być ograniczona' : 'Retained entries from the last 7 days; history may be limited'}</div>
-            <div class="send-counts">
-              <span class="count-badge info-badge">${this._lang === 'pl' ? '7 dni' : '7 days'}</span>
-            </div>
-            <button class="send-btn" id="btn-send-weekly" aria-label="${this._t.sendWeekly}" ${this._emailRequest || !this._emailAllowed() ? 'disabled' : ''}>${this._t.sendWeekly}</button>
-          </div>
-        </div>
+        ${this._renderMailControls(false)}
+        <p>${this._lang === 'pl' ? 'Raport przygotowuje serwer. Brakujące dane pozostają oznaczone w mailu.' : 'The server prepares the report. Missing data remains labelled in the email.'}</p>
+        <div class="send-grid">${['daily', 'weekly', 'monthly'].map((cadence, i) => {
+          const pl = this._lang === 'pl';
+          const title = (pl ? ['Dzienny', 'Tygodniowy', 'Miesięczny'] : ['Daily', 'Weekly', 'Monthly'])[i];
+          const scope = this._mailPeriodMode === 'calendar'
+            ? (pl ? ['Poprzedni pełny dzień', 'Poprzedni pełny tydzień od poniedziałku', 'Poprzedni pełny miesiąc'] : ['Previous completed day', 'Previous completed ISO week', 'Previous completed month'])[i]
+            : (pl ? ['Ostatnie 24 godziny', 'Ostatnie 7 dni', 'Ostatnie 30 dni'] : ['Last 24 hours', 'Last 7 days', 'Last 30 days'])[i];
+          const label = (pl ? ['Wyślij raport dzienny', 'Wyślij raport tygodniowy', 'Wyślij raport miesięczny'] : ['Send daily report', 'Send weekly report', 'Send monthly report'])[i];
+          return `<div class="send-card"><div class="send-title">${title}</div><div class="send-desc">${scope}</div><button class="send-btn" id="btn-send-${cadence}" aria-label="${label}" ${this._emailRequest || !this._emailAllowed() ? 'disabled' : ''}>${label}</button></div>`;
+        }).join('')}</div>
         ${sendStatusHTML}
         <div class="section-header" style="margin-top:16px">${this._t.recipient}</div>
         <div class="info-card">\uD83D\uDCE7 ${_esc(this._config.email_recipient || '')}</div>
@@ -2583,7 +2592,13 @@ ${_LOG_RECORD_CSS}
     // btn-refresh removed
 
     const btnRefreshPreview = this.shadowRoot.getElementById('btn-refresh-preview');
-    if (btnRefreshPreview) btnRefreshPreview.addEventListener('click', () => this._fetchLogData());
+    if (btnRefreshPreview) btnRefreshPreview.addEventListener('click', () => this._mailPreview.previewMail(this._mailSelection()));
+    for (const [id, key] of [['mail-cadence', '_mailCadence'], ['mail-period-mode', '_mailPeriodMode']]) {
+      const field = this.shadowRoot.getElementById(id);
+      if (field) { field.disabled = !!this._emailRequest; field.addEventListener('change', () => { this[key] = field.value; this._mailPreview.clearPreview(); this._render(); }); }
+    }
+    this._bindMailFrame('manual-mail-frame', this._mailPreview.model().preview);
+    this._bindMailFrame('schedule-mail-frame', this._serverSchedules.model().preview);
 
     this._bindServerSchedules();
 
@@ -2602,6 +2617,7 @@ ${_LOG_RECORD_CSS}
     const btnSendDaily = this.shadowRoot.getElementById('btn-send-daily');
     if (btnSendDaily) btnSendDaily.addEventListener('click', () => this._sendEmailNow('daily'));
 
+    this.shadowRoot.getElementById('btn-send-monthly')?.addEventListener('click', () => this._sendEmailNow('monthly'));
     const btnSendWeekly = this.shadowRoot.getElementById('btn-send-weekly');
     if (btnSendWeekly) btnSendWeekly.addEventListener('click', () => this._sendEmailNow('weekly'));
 
@@ -2723,6 +2739,7 @@ ${_LOG_RECORD_CSS}
     this._logHistory = [];
     this._attemptHistory.discard();
     this._serverSchedules.discard();
+    this._mailPreview.discard();
     this._scheduleSaveFocus = null;
     this.shadowRoot.innerHTML = '';
     if (this._pollingTimer) {

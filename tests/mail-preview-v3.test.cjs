@@ -5,13 +5,13 @@ const fs=require('node:fs'), path=require('node:path'), vm=require('node:vm');
 const {JSDOM}=require('jsdom');
 const settle=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-const mail=cadence=>({cadence,subject:'Server <subject>',body:'server text',html:'<h1 id="server-only">REAL SERVER HTML</h1><script>parent.pwned=true</script><img src="https://example.invalid/tracker"><form action="https://example.invalid"><input></form>',period:{from:'2026-09-01T00:00:00Z',to:'2026-10-01T00:00:00Z'},source:{name:'system_log',complete:false},generated_at:'2026-10-15T00:00:00Z'});
+const mail=(cadence,kind='log_digest',mode='rolling')=>({cadence,subject:'Server <subject>',body:'server text',html:'<h1 id="server-only">REAL SERVER HTML</h1><script>parent.pwned=true</script><img src="https://example.invalid/tracker"><form action="https://example.invalid"><input></form>',period:{from:'2026-09-01T00:00:00Z',to:'2026-10-01T00:00:00Z',semantics:mode==='calendar'?'previous_completed_calendar_period':kind==='log_digest'?'rolling_retained_last_observed':'rolling_completed_hours'},source:{name:kind==='log_digest'?'system_log':'recorder',complete:false},generated_at:'2026-10-15T00:00:00Z'});
 function fixture(t,source,version='2.3.0'){
  const dom=new JSDOM('<body></body>',{runScripts:'outside-only',pretendToBeVisual:true,url:'http://localhost/'});t.after(()=>dom.window.close());
  dom.window.eval(fs.readFileSync(path.join(__dirname,'..',source),'utf8'));
  const card=dom.window.document.createElement('ha-log-email');card.setConfig({show_support:false,max_entries:23,email_recipient:'fixture@example.invalid'});
  const calls=[],connection=new dom.window.EventTarget();connection.connected=true;
- let respond=message=>message.type==='manifest/get'?{domain:'ha_tools_email',version}:message.type==='system_log/list'?[]:message.type==='ha_tools_email/preview_log_digest'?mail(message.cadence):message.type==='ha_tools_email/list_schedules'?{schedules:[]}:{};
+ let respond=message=>message.type==='manifest/get'?{domain:'ha_tools_email',version}:message.type==='system_log/list'?[]:message.type==='ha_tools_email/preview_log_digest'?mail(message.cadence,'log_digest',message.period_mode):message.type==='ha_tools_email/list_schedules'?{schedules:[]}:{};
  const hass={user:{id:'admin',is_admin:true},connection,connected:true,states:{},services:{},locale:{language:'en'},config:{time_zone:'Europe/Warsaw'},callWS:message=>{calls.push(message);return Promise.resolve(respond(message));},callService:()=>{throw Error('manual mail must use WS');}};
  dom.window.document.body.append(card);card.hass=hass;
  return {dom,card,hass,connection,calls,respond:fn=>respond=fn};
@@ -44,6 +44,12 @@ for(const source of ['ha-log-email.js','ha-tools-email-reports.js']){
   assert.ok(f.card._emailRequest);await f.card._sendEmailNow('daily');assert.equal(f.calls.filter(m=>m.type==='ha_tools_email/send_now').length,1);
   wire.resolve({});await send;assert.equal(f.card._emailRequest,null);assert.equal(f.card._sendStatus,null);
  });
+ test(`${source}: server acceptance is distinct from inbox delivery`,async t=>{
+  const f=fixture(t,source);await settle();f.respond(m=>m.type==='manifest/get'?{domain:'ha_tools_email',version:'2.3.0'}:{ok:true,status:'accepted_by_smtp',attempt_id:'synthetic-attempt'});
+  await f.card._sendEmailNow('daily');assert.equal(f.card._sendStatus.status,'success');assert.equal(f.card._sendStatus.reason,'accepted_by_smtp');
+  assert.match(f.card._renderEmailResult(f.card._sendStatus),/Inbox delivery remains unconfirmed/);
+  f.card._config.max_entries=2000;assert.equal(f.card._mailSelection().max_entries,1000);
+ });
  test(`${source}: transport failure remains UNKNOWN without automatic retry`,async t=>{
   const f=fixture(t,source);await settle();f.respond(m=>m.type==='manifest/get'?{domain:'ha_tools_email',version:'2.3.0'}:m.type==='ha_tools_email/send_now'?Promise.reject(Error('lost acknowledgement')):[]);
   await f.card._sendEmailNow('monthly');await settle();assert.equal(f.card._sendStatus.reason,'transport_unknown');assert.equal(f.calls.filter(m=>m.type==='ha_tools_email/send_now').length,1);
@@ -57,7 +63,7 @@ for(const source of ['ha-log-email.js','ha-tools-email-reports.js']){
 function controller(t,kind,version='2.3.0'){
  const deadlines=new Map();let id=0;const sandbox={Intl,setTimeout:fn=>{deadlines.set(++id,fn);return id;},clearTimeout:id=>deadlines.delete(id)};vm.createContext(sandbox);
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../shared/ha-tools-email-schedules.js'),'utf8').replace('export function ','function ')+';this.factory=createHaToolsEmailSchedules;',sandbox);
- const calls=[];let handler=m=>m.type==='manifest/get'?{domain:'ha_tools_email',version}:m.type==='ha_tools_email/list_schedules'?{schedules:[{id:'fixture',kind,cadence:'monthly',time:'08:00',enabled:false,timezone:'Europe/Warsaw',month_day:31}]}:mail(m.cadence);
+ const calls=[];let handler=m=>m.type==='manifest/get'?{domain:'ha_tools_email',version}:m.type==='ha_tools_email/list_schedules'?{schedules:[{id:'fixture',kind,cadence:'monthly',time:'08:00',enabled:false,timezone:'Europe/Warsaw',month_day:31}]}:mail(m.cadence,kind,m.period_mode);
  const c=sandbox.factory({kind,projectPreview:()=>({state:'partial',value:{legacy:true}})}),hass={user:{id:'admin',is_admin:true},connection:{connected:true},callWS:m=>{calls.push(m);return Promise.resolve(handler(m));}};
  c.setContext(hass);t.after(()=>c.discard());return {c,hass,calls,respond:fn=>handler=fn,expire:()=>{[...deadlines.values()].forEach(fn=>fn());}};
 }

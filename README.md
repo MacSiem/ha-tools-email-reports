@@ -76,7 +76,7 @@ Log Email daily and weekly sends use the retained `system_log/list` snapshot fro
 | Integration-presence detection + install banner | Choosing server calendar schedules (backend 2.2+); reviewing existing automation paths to avoid duplicates |
 | Error/warning digest from `system_log` (`ha-log-email`) | Choosing log filters and manual sends; configuring a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
-| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Reviewing and saving Smart Reports JSON / CSV / TXT locally |
+| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Reviewing and saving Smart Reports JSON / CSV locally |
 
 ## Screenshots
 
@@ -163,7 +163,7 @@ has no default tariff.
 Today / 7 days / 30 days are local-calendar windows in Home Assistant's
 configured timezone. Missing, invalid, unsupported or incomplete required
 statistics are surfaced with per-source status/reason evidence and combined
-totals/cost are withheld. The export dialog previews filename, format, included and excluded fields before Save. JSON uses schema 2, or schema 3 for previous-period comparison, and includes both selected ranges and full device snapshot regardless of search. CSV and TXT preserve available status and provenance; CSV neutralizes formula-leading labels. Private fields default off. The visual
+totals/cost are withheld. The export dialog previews filename, format, included and excluded fields before Save. JSON uses schema 2, or schema 3 for previous-period comparison, and includes both selected ranges and full device snapshot regardless of search. CSV preserves available status and provenance; CSV neutralizes formula-leading labels. Private fields default off. The visual
 editor exposes safe Title and Currency fields, tab selection is per card
 instance, and disabling every section performs no Home Assistant requests.
 

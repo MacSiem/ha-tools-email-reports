@@ -3,7 +3,7 @@
 ## [4.6.0] - 2026-10-15
 
 - Add severity, source and period filters to retained log views, with separate unique-problem and HA occurrence counts, stable aggregate deduplication, explicit limits and sensor fallback limitations. Show repetition counts before expanding narrow records. Display filters explicitly leave manual email content unchanged.
-- Manage daily, weekly and monthly server log schedules with a chosen wall time, weekday or month day and IANA timezone. Drafts start disabled; previews are read-only, and a separate matching readback confirms saves and deletes.
+- Manage daily, weekly and monthly server log schedules with a chosen wall time, weekday or month day and IANA timezone. Drafts start disabled; previews are read-only, and a separate matching readback confirms saves.
 - Require confirmed HA Tools Email 2.2.0+ calendar support before mutation; older backends cannot silently discard the selected day or timezone. Existing automation controls remain independent and warn about duplicate sending.
 - Separate bounded SMTP attempt history from browser-local count snapshots. SMTP acceptance remains distinct from inbox delivery; private mail content and raw errors are absent from attempt metadata.
 - Include the exact Smart Reports 4.2.0 source, previous-period comparison, device search, measured cost breakdowns and reviewed local JSON/CSV exports. Keep Energy Email as the compatibility wrapper for Energy Optimizer.

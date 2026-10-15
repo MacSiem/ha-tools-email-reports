@@ -52,7 +52,7 @@ and SMTP is configured in the integration's own settings, all email leaves throu
 
 ### Server schedules and existing automations
 
-With **HA Tools Email 2.2.0 or newer**, the Schedule tab manages server-side daily, weekly and monthly log digests. Choose a wall time, weekday or month day, and an optional IANA timezone. An empty timezone follows Home Assistant. New schedules start disabled; opening the tab, editing a draft, cancelling or previewing sends nothing and saves nothing. Save and Delete require administrator access and a separate matching server readback before showing Success. If the outcome is unconfirmed, refresh to check it before trying another write.
+With **HA Tools Email 2.2.0 or newer**, the Schedule tab manages server-side daily, weekly and monthly log digests. Choose a wall time, weekday or month day, and an optional IANA timezone. An empty timezone follows Home Assistant. New schedules start disabled; opening the tab, editing a draft, cancelling or previewing sends nothing and saves nothing. Saving requires administrator access and a separate matching server readback before showing Success. If the outcome is unconfirmed, refresh to check it before trying another write.
 
 Calendar support is confirmed from the loaded integration manifest before writes. Backend 2.1.2 supports basic email but silently drops the new calendar fields, so the new schedule editor remains unavailable until the backend is updated. Refresh after updating. DST gaps move forward by the offset change; a repeated wall time runs at its first occurrence, once. A month day of 29–31 uses the last day in a shorter month.
 

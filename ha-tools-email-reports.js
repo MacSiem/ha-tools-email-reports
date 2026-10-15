@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:8f86fb63fed410f1aedbeb43cc4691bf6846e0ef99b8b04b66fcb0024167c427
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:4b93f8d1e45b5b1ae9af800fdf9df604a02e58aebaeaf871c44959cd66092269
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:e00cfab9bb0f04e3aecb9f28ee031feee65ce9e4e6dc76f6d37763d4e3048373
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -4026,6 +4026,7 @@ function createTariffHostV3({ card, kind, createModel, legacyProfile, createSett
     "nested_parent_missing": "brak nadrzędnego źródła urządzenia",
     "currency_mismatch": "niezgodna waluta",
     "partial_cost": "niepełne dane kosztu",
+    "partial_energy": "niepełne dane energii",
     "missing_currency": "brak waluty",
     "energy_data_unavailable": "dane energii niedostępne",
     "included_in_stat is only valid for device sources: ": "included_in_stat jest dozwolone tylko dla źródeł urządzeń: "
@@ -4047,7 +4048,7 @@ function createTariffHostV3({ card, kind, createModel, legacyProfile, createSett
       nonexistent_local_cutoff: 'Local cutoff time does not exist', historical_flat_rate_unavailable: 'Confirmed historical flat rate unavailable',
       previous_zero: 'Previous value is zero; percentage unavailable', previous_nonpositive: 'Previous value is negative; percentage unavailable',
       nonfinite_delta: 'Change exceeds numeric range', unit_mismatch: 'Incompatible units',
-      incomplete_coverage: 'Incomplete coverage', missing_rate: 'Missing rate', currency_mismatch: 'Incompatible currency' })[text] || (text === 'day_suffix' ? 'd' : text);
+      incomplete_coverage: 'Incomplete coverage', partial_cost: 'Incomplete cost history', partial_energy: 'Incomplete energy history', missing_rate: 'Missing rate', currency_mismatch: 'Incompatible currency' })[text] || (text === 'day_suffix' ? 'd' : text);
   }
 
   function uniqueById(items) {
@@ -5119,10 +5120,22 @@ function projectSmartReportV3(report, includePrivate = false) {
         && (current.cost.method !== 'configured_tariff' || (current.cost.coverage?.complete && previous.cost.coverage?.complete
           && current.cost.price_basis === previous.cost.price_basis && current.cost.revision === previous.cost.revision
           && current.cost.tariff_timezone === previous.cost.tariff_timezone && JSON.stringify(current.cost.tariff_clock) === JSON.stringify(previous.cost.tariff_clock)));
+      // An unavailable amount does not invalidate a currency confirmed by every
+      // selected cost source. Keep the legacy cost snapshot itself unchanged.
+      const comparisonCurrency = snapshot => {
+        if (snapshot?.cost.currency) return snapshot.cost.currency;
+        const expected = this._hass.config?.currency;
+        return snapshot && snapshot.cost.reason !== 'currency_mismatch' && typeof expected === 'string' && expected
+          && snapshot.cost_sources.length > 0 && snapshot.cost_sources.every(source => source.unit === expected && source.reason !== 'incompatible_currency_metadata')
+          ? expected : null;
+      };
+      const currentCurrency = comparisonCurrency(current), previousCurrency = comparisonCurrency(previous);
+      const costReason = descriptor.reason || (currentCurrency && previousCurrency && currentCurrency !== previousCurrency ? 'currency_mismatch'
+        : previous?.cost.reason || current.cost.reason || 'incomplete_coverage');
       const metrics = {
         energy: this._comparisonDelta(current.total.value, previous?.total.value, current.total.unit, previous?.total.unit, energyComplete, descriptor.reason),
-        cost: this._comparisonDelta(current.cost.value, previous?.cost.value, current.cost.currency, previous?.cost.currency, costComplete,
-          descriptor.reason || (current.cost.currency !== previous?.cost.currency ? 'currency_mismatch' : previous?.cost.reason || current.cost.reason)),
+        cost: this._comparisonDelta(current.cost.value, previous?.cost.value, currentCurrency, previousCurrency, costComplete,
+          costComplete ? descriptor.reason : costReason),
       };
       return this._freezeComparison({ status: descriptor.reason ? 'noncomparable' : metrics.energy.comparable && metrics.cost.comparable ? 'ready' : 'partial',
         reason: descriptor.reason || null, shift_days: descriptor.shift_days,
@@ -5742,7 +5755,7 @@ function projectSmartReportV3(report, includePrivate = false) {
         note.textContent = `${this._t('Previous period')}: ${evidence ? `${key === 'sources' ? evidence.sources_with_data : evidence.complete_sources} / ${evidence.configured_sources}` : '—'}`;
       } else {
         const delta = pair.metrics[key];
-        note.textContent = `${this._t('Previous period')}: ${this._formatNumber(delta.previous,2)} ${delta.unit || ''}`;
+        note.textContent = `${this._t('Previous period')}: ${this._formatNumber(delta.previous,2)} ${key === 'cost' ? pair.previous?.cost.currency || (pair.previous?.cost_sources.length && pair.previous.cost_sources.every(source => source.unit === delta.unit) ? delta.unit : '') : delta.unit || ''}`;
         if (typeof delta.delta === 'number') note.textContent += ` · Δ ${this._formatNumber(delta.delta,2)} ${delta.unit || ''}`;
         if (typeof delta.percent === 'number') note.textContent += ` · ${this._formatNumber(delta.percent,2)}%`;
         else note.textContent += ` · ${this._t(delta.reason || pair.reason || 'unavailable')}`;

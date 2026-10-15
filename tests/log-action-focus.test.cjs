@@ -6,6 +6,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 // Set LOG_ACTION_FOCUS_SOURCE to the generated bundle to qualify that artifact later.
+const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 const source = process.env.LOG_ACTION_FOCUS_SOURCE || path.join(__dirname, '..', 'ha-log-email.js');
 function fixture(action, compact = false) {
   const dom = new JSDOM('<!doctype html><html><body><button id="outside">Outside</button></body></html>', {
@@ -34,8 +35,13 @@ function fixture(action, compact = false) {
   connection.connected = true;
   const hass = { language: 'en', locale: { language: 'en' }, user: { id: 'admin-a', is_admin: true },
     connection, states: {}, services: { ha_tools_email: { send: {}, test: {} } },
-    callWS: async () => ({ schema: 1, schedules: [] }),
+    callWS: message => {
+      if (message.type === 'manifest/get') return Promise.resolve({domain:'ha_tools_email',version:'2.3.0'});
+      if (message.type === 'ha_tools_email/send_now') { requests.push({type:message.type,service:'send_now',data:message}); return pending; }
+      return Promise.resolve({ schema: 1, schedules: [] });
+    },
     callService: (domain, service, data) => {
+      assert.notEqual(service, 'send', 'manual digest must not use client-built service payload');
       requests.push({ domain, service, data });
       return ['send', 'test'].includes(service) ? pending : Promise.resolve({});
     } };
@@ -70,13 +76,13 @@ function anchor(card) {
   assert.ok(active.getClientRects().length);
 }
 
-for (const action of ['daily', 'weekly', 'smtp']) {
+for (const action of ['daily', 'weekly', 'monthly', 'smtp']) {
   for (const outcome of ['success', 'error']) test(`${action}: actual async ${outcome} restores keyboard origin`, async () => {
     const f = fixture(action);
     try {
-      f.start();
+      f.start(); await flush();
       assert.equal(f.requests.length, 1);
-      assert.equal(f.requests[0].service, action === 'smtp' ? 'test' : 'send');
+      assert.equal(f.requests[0].service, action === 'smtp' ? 'test' : 'send_now');
       assert.equal(f.card.shadowRoot.getElementById(f.id).disabled, true);
       anchor(f.card);
       // An unrelated redraw and locale change during the wait retain the anchor.
@@ -95,7 +101,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   for (const move of ['outside', 'outside-then-blur', 'inside', 'window-blur']) test(`${action}: ${move} relinquishes restore intent`, async () => {
     const f = fixture(action);
     try {
-      f.start(); anchor(f.card);
+      f.start(); await flush(); anchor(f.card);
       let target;
       if (move === 'inside') {
         target = f.card.shadowRoot.querySelector(`[data-tab="${f.card._activeTab}"]`);
@@ -115,7 +121,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   for (const compact of [false, true]) test(`${action}: navigation ${compact ? 'picker' : 'tabs'} cancels late restore`, async () => {
     const f = fixture(action, compact);
     try {
-      f.start();
+      f.start(); await flush();
       if (compact) {
         const picker = f.card.shadowRoot.getElementById('log-tab-select');
         picker.focus(); picker.value = 'history'; picker.dispatchEvent(new f.w.Event('change'));
@@ -132,7 +138,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   for (const change of ['user', 'connection', 'offline', 'reconnect-event', 'remove-reinsert']) test(`${action}: ${change} invalidates old focus ownership`, async () => {
     const f = fixture(action);
     try {
-      f.start();
+      f.start(); await flush();
       if (change === 'user') f.card.hass = { ...f.hass, user: { id: 'admin-b', is_admin: true } };
       if (change === 'connection') f.card.hass = { ...f.hass, connection: { connected: true } };
       if (change === 'offline') {
@@ -161,11 +167,11 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   });
 }
 
-for (const period of ['daily', 'weekly']) test(`${period}: both send buttons stay single-flight while focused on anchor`, async () => {
+for (const period of ['daily', 'weekly', 'monthly']) test(`${period}: both send buttons stay single-flight while focused on anchor`, async () => {
   const f = fixture(period);
   try {
-    const first = f.start();
-    for (const id of ['btn-send-daily', 'btn-send-weekly']) {
+    const first = f.start(); await flush();
+    for (const id of ['btn-send-daily', 'btn-send-weekly', 'btn-send-monthly']) {
       const button = f.card.shadowRoot.getElementById(id);
       assert.equal(button.disabled, true); button.click();
     }
@@ -182,7 +188,7 @@ for (const period of ['daily', 'weekly']) test(`${period}: both send buttons sta
 for (const compact of [false, true]) test(`SMTP removed during wait: visible ${compact ? 'picker' : 'active tab'} fallback`, async () => {
   const f = fixture('smtp', compact);
   try {
-    f.start(); anchor(f.card);
+    f.start(); await flush(); anchor(f.card);
     f.hass.services = {}; // Real renderer now omits the SMTP action on the same tab.
     await f.finish();
     const active = f.card.shadowRoot.activeElement;

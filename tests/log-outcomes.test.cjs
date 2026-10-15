@@ -7,6 +7,7 @@ const { JSDOM } = require('jsdom');
 
 // Qualify the generated artifact separately by setting LOG_OUTCOMES_SOURCE.
 const source = process.env.LOG_OUTCOMES_SOURCE || path.join(__dirname, '..', 'ha-log-email.js');
+const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 const privateError = 'smtp://private-host.invalid token=fixture-secret recipient=private@example.invalid <img src=x onerror=alert(1)>';
 const retained = () => ({ errors: [{ domain: 'fixture', message: 'Fixture error', count: 1 }], warnings: [], total: 1,
   weekly: { errors: [{ domain: 'fixture', message: 'Fixture error', count: 1 }], warnings: [], total: 1 } });
@@ -29,15 +30,24 @@ function fixture(action) {
   w.eval(fs.readFileSync(source, 'utf8'));
   const card = w.document.createElement('ha-log-email');
   const connection = new w.EventTarget(); connection.connected = true;
+  let manifest = { domain: 'ha_tools_email', version: '2.3.0' };
   const requests = [], operations = [], logs = [];
   for (const name of ['warn', 'error', 'debug']) w.console[name] = (...args) => logs.push(args);
   let complete, fail;
   const pending = new Promise((resolve, reject) => { complete = resolve; fail = reject; });
   const hass = { locale: { language: 'en' }, language: 'en', user: { id: 'admin-a', is_admin: true },
     connection, states: {}, services: { ha_tools_email: { send: {}, test: {} } },
-    callWS: async () => ({ schema: 1, schedules: [] }),
+    callWS: message => {
+      if (message.type === 'manifest/get') return Promise.resolve(manifest);
+      if (message.type === 'ha_tools_email/send_now') {
+        requests.push(['ha_tools_email', 'send_now', message]);
+        return requests.length === 1 ? pending : Promise.resolve(undefined);
+      }
+      return Promise.resolve({ schema: 1, schedules: [] });
+    },
     callService: (...args) => {
-      if (!['send', 'test'].includes(args[1])) return Promise.resolve({});
+      assert.notEqual(args[1], 'send', 'manual digest must delegate to server');
+      if (!['test'].includes(args[1])) return Promise.resolve({});
       requests.push(args);
       return requests.length === 1 ? pending : Promise.resolve(undefined);
     } };
@@ -53,7 +63,7 @@ function fixture(action) {
   w.document.body.append(card);
   card.hass = hass;
   card._render();
-  return { dom, w, card, hass, connection, requests, logs,
+  return { dom, w, card, hass, connection, requests, logs, setManifest(value) { manifest = value; },
     start(next = action) {
       card._activeTab = next === 'smtp' ? 'schedule' : 'send'; card._render();
       const button = card.shadowRoot.getElementById(buttonId(next));
@@ -67,14 +77,19 @@ function fixture(action) {
   };
 }
 
-for (const action of ['daily', 'weekly', 'smtp']) {
+for (const action of ['daily', 'weekly', 'monthly', 'smtp']) {
   for (const outcome of ['resolve', 'reject']) test(`${action}: rendered click has truthful, sanitized ${outcome} result and keyboard focus`, async () => {
     const f = fixture(action);
     try {
-      f.start();
+      f.start(); await flush();
       assert.equal(f.requests.length, 1);
-      assert.equal(f.requests[0][1], action === 'smtp' ? 'test' : 'send');
-      assert.equal(f.requests[0][4], false, 'HA must not toast a raw service error');
+      assert.equal(f.requests[0][1], action === 'smtp' ? 'test' : 'send_now');
+      if (action === 'smtp') assert.equal(f.requests[0][4], false, 'HA must not toast a raw service error');
+      else {
+        assert.equal(f.requests[0][2].cadence, action);
+        assert.equal(f.requests[0][2].kind, 'log_digest');
+        for (const key of ['html','body','subject']) assert.equal(key in f.requests[0][2], false);
+      }
       assert.equal(f.card.shadowRoot.activeElement, f.card.shadowRoot.querySelector('.content'));
       assert.equal(f.card.shadowRoot.getElementById(buttonId(action)).disabled, true);
       assert.equal(f.card.shadowRoot.querySelector('[data-email-result] [data-result-state]').dataset.resultState, 'not_checked');
@@ -108,7 +123,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   test(`${action}: arbitrary service payload cannot claim delivery`, async () => {
     const f = fixture(action);
     try {
-      f.start(); await f.settle('resolve', { success: true, delivered: true, status: 'success', message: privateError });
+      f.start(); await flush(); await f.settle('resolve', { success: true, delivered: true, status: 'success', message: privateError });
       assert.equal(resultOf(f.card, action).status, 'unconfirmed');
       assert.doesNotMatch(f.card.shadowRoot.innerHTML, /fixture-secret|private-host/);
     } finally { await f.close(); }
@@ -118,7 +133,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
     for (const outcome of ['resolve', 'reject']) test(`${action}: ${change} discards ${outcome} result but preserves raw single-flight`, async () => {
       const f = fixture(action);
       try {
-        f.start();
+        f.start(); await flush();
         if (change === 'user') f.card.hass = { ...f.hass, user: { id: 'admin-b', is_admin: true } };
         if (change === 'role') {
           f.card.hass = { ...f.hass, user: { id: 'admin-a', is_admin: false } };
@@ -141,7 +156,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
         assert.equal(f.card._sendStatus, null);
         assert.equal(f.card._smtpStatus, null);
         f.card._logData = retained();
-        for (const next of ['daily', 'weekly', 'smtp']) {
+        for (const next of ['daily', 'weekly', 'monthly', 'smtp']) {
           f.card._activeTab = next === 'smtp' ? 'schedule' : 'send'; f.card._render();
           const button = f.card.shadowRoot.getElementById(buttonId(next));
           assert.equal(button.disabled, true); button.click();
@@ -154,7 +169,7 @@ for (const action of ['daily', 'weekly', 'smtp']) {
         assert.equal(f.card.shadowRoot.querySelector('[data-email-result]'), null);
         assert.equal(f.w.document.activeElement.id, 'outside');
         assert.equal(f.requests.length, 1, 'no automatic retry on settlement');
-        f.start(action); await f.settle();
+        f.start(action); await flush(); await f.settle();
         assert.equal(f.requests.length, 2, 'intentional retry works only after settlement');
         assert.equal(resultOf(f.card, action).status, 'unconfirmed');
       } finally { await f.close(); }
@@ -164,11 +179,11 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   test(`${action}: earlier settled metadata is cleared by reconnect and identity changes`, async () => {
     const f = fixture(action);
     try {
-      f.start(); await f.settle();
+      f.start(); await flush(); await f.settle();
       assert.equal(resultOf(f.card, action).status, 'unconfirmed');
       f.connection.dispatchEvent(new f.w.Event('ready'));
       assert.equal(f.card._sendStatus, null); assert.equal(f.card._smtpStatus, null);
-      f.start(); await f.settle();
+      f.start(); await flush(); await f.settle();
       f.card.hass = { ...f.hass, user: { id: 'admin-b', is_admin: true } };
       assert.equal(f.card._sendStatus, null); assert.equal(f.card._smtpStatus, null);
       assert.equal(f.card.shadowRoot.querySelector('[data-email-result]'), null);
@@ -178,8 +193,8 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   test(`${action}: send and SMTP buttons share one request lock`, async () => {
     const f = fixture(action);
     try {
-      f.start();
-      for (const next of ['daily', 'weekly', 'smtp']) {
+      f.start(); await flush();
+      for (const next of ['daily', 'weekly', 'monthly', 'smtp']) {
         f.card._activeTab = next === 'smtp' ? 'schedule' : 'send'; f.card._render();
         const button = f.card.shadowRoot.getElementById(buttonId(next));
         assert.equal(button.disabled, true); button.click();
@@ -188,13 +203,13 @@ for (const action of ['daily', 'weekly', 'smtp']) {
       assert.equal(f.requests.length, 1);
       await f.settle();
       assert.equal(f.requests.length, 1);
-      f.start(action === 'smtp' ? 'daily' : 'smtp'); await f.settle();
+      f.start(action === 'smtp' ? 'daily' : 'smtp'); await flush(); await f.settle();
       assert.equal(f.requests.length, 2);
     } finally { await f.close(); }
   });
 }
 
-for (const action of ['daily', 'weekly', 'smtp']) {
+for (const action of ['daily', 'weekly', 'monthly', 'smtp']) {
   for (const denial of ['role', 'hass-offline', 'connection-offline', 'browser-offline', 'connection-event']) {
     test(`${action}: ${denial} forbids a service request`, async () => {
       const f = fixture(action);
@@ -214,28 +229,33 @@ for (const action of ['daily', 'weekly', 'smtp']) {
   }
 }
 
-for (const action of ['daily', 'weekly', 'smtp']) test(`${action}: missing integration is Error, without dispatch`, async () => {
+for (const action of ['daily', 'weekly', 'monthly', 'smtp']) test(`${action}: missing integration is Error, without dispatch`, async () => {
   const f = fixture(action);
   try {
     // Existing rendered action can outlive a service registry update until next redraw.
     f.hass.services = {};
-    const button = f.card.shadowRoot.getElementById(buttonId(action)); button.click();
+    if (action !== 'smtp') f.setManifest(null);
+    const button = f.card.shadowRoot.getElementById(buttonId(action)); button.click(); await flush();
     assert.equal(f.requests.length, 0);
     assert.equal(resultOf(f.card, action).status, 'error');
     assert.equal(f.card.shadowRoot.querySelector('[data-email-result]').dataset.emailResult, 'error');
   } finally { await f.close(); }
 });
 
-for (const action of ['daily', 'weekly']) test(`${action}: missing retained data is No data, without dispatch`, async () => {
+for (const action of ['daily', 'weekly', 'monthly']) test(`${action}: missing local retained data delegates truthfulness to server`, async () => {
   const f = fixture(action);
   try {
-    if (action === 'daily') f.card._logData = null; else delete f.card._logData.weekly;
-    f.start();
-    assert.equal(f.requests.length, 0);
-    assert.equal(resultOf(f.card, action).status, 'no_data');
-    assert.match(f.card.shadowRoot.querySelector('[data-email-result]').textContent, /No data/);
+    f.card._logData = null;
+    f.start(); await flush();
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.requests[0][1], 'send_now');
+    assert.equal(f.requests[0][2].cadence, action);
+    await f.settle();
+    assert.equal(resultOf(f.card, action).status, 'unconfirmed');
+    assert.match(f.card.shadowRoot.querySelector('[data-email-result]').textContent, /Delivery unconfirmed/);
     f.card.hass = { ...f.hass, locale: { language: 'pl' } };
-    assert.match(f.card.shadowRoot.querySelector('[data-email-result]').textContent, /Brak danych/);
+    assert.match(f.card.shadowRoot.querySelector('[data-email-result]').textContent, /Dostarczenie niepotwierdzone/);
+    assert.equal(f.requests.length, 1);
   } finally { await f.close(); }
 });
 
@@ -243,7 +263,7 @@ test('SMTP: missing test service is Error, without dispatch', async () => {
   const f = fixture('smtp');
   try {
     delete f.hass.services.ha_tools_email.test;
-    f.start();
+    f.start(); await flush();
     assert.equal(f.requests.length, 0);
     assert.equal(f.card._smtpStatus.status, 'error');
   } finally { await f.close(); }

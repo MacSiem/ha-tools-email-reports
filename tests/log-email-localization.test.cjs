@@ -37,9 +37,14 @@ for (const language of ['pl', 'en']) {
           assert.equal(header, count === 0 ? (language === 'pl' ? 'Częściowe dane' : 'Partial data') : expected);
           assert.equal(card.shadowRoot.querySelector('img'), null);
           card._activeTab = 'send'; card._render();
-          const badge = card.shadowRoot.querySelector(kind === 'error' ? '.error-badge' : '.warn-badge');
-          // English send badges deliberately keep their established plural wording.
-          assert.equal(badge.textContent, language === 'pl' ? expected : `${count} ${kind}s`);
+          // Send scope comes from server cadence/mode; local snapshot counts
+          // remain on overview, never masquerading as counts of the server mail.
+          for (const [cadence, title] of (language === 'pl'
+            ? [['daily','Wyślij raport dzienny'],['weekly','Wyślij raport tygodniowy'],['monthly','Wyślij raport miesięczny']]
+            : [['daily','Send daily report'],['weekly','Send weekly report'],['monthly','Send monthly report']])) {
+            assert.equal(card.shadowRoot.getElementById('btn-send-' + cadence).textContent, title);
+          }
+          assert.equal(card.shadowRoot.querySelector('.error-badge,.warn-badge'), null);
           assert.equal(card._logData.total, count);
         } finally { dom.window.close(); }
       });

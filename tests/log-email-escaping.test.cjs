@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
-test('log messages and service errors remain text in the card, preview and email body', async () => {
+test('log messages and service errors stay escaped; server send carries selection only', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/',
   });
@@ -20,7 +20,12 @@ test('log messages and service errors remain text in the card, preview and email
   card._hass = {
     language: 'en', themes: { darkMode: false }, user: { is_admin: true }, states: {},
     services: { ha_tools_email: { send: {} } },
-    callService: async (_domain, service, data) => { if (service === 'send') sent.push(data); return {}; },
+    callWS: async message => {
+      if (message.type === 'manifest/get') return {domain:'ha_tools_email',version:'2.3.0'};
+      if (message.type === 'ha_tools_email/send_now') { sent.push(message); return {}; }
+      return {};
+    },
+    callService: () => assert.fail('manual report must not carry client-rendered HTML'),
   };
   card._logData = { errors: [{ domain: attack, message: attack, when: '', count: 1 }], warnings: [], total: 1 };
   card._activeTab = 'overview';
@@ -39,7 +44,9 @@ test('log messages and service errors remain text in the card, preview and email
 
   await card._sendEmailNow('daily');
   assert.equal(sent.length, 1);
-  assert.doesNotMatch(sent[0].body, /<img src=x/);
+  for (const field of ['html','body','subject']) assert.equal(field in sent[0], false);
+  assert.equal(sent[0].type, 'ha_tools_email/send_now');
+  assert.equal(sent[0].cadence, 'daily');
   dom.window.close();
 });
 
@@ -69,7 +76,7 @@ test('household view never requests admin logs or displays stored admin results'
   dom.window.close();
 });
 
-test('missing fallback sensor reports unavailable and cannot send a false clean digest', async () => {
+test('missing fallback sensor stays unavailable locally; missing backend capability blocks mail', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/',
   });
@@ -87,6 +94,8 @@ test('missing fallback sensor reports unavailable and cannot send a false clean 
   card._activeTab = 'send';
   await card._sendEmailNow('daily');
   assert.equal(sends, 0);
-  assert.match(card.shadowRoot.textContent, /Log data is unavailable/i);
+  assert.equal(card._sendStatus.status, 'error');
+  assert.equal(card._sendStatus.reason, 'prepare_failed');
+  assert.doesNotMatch(card.shadowRoot.textContent, /Clean|No errors found/i);
   dom.window.close();
 });

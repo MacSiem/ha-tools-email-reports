@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.5.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.4.1 sha256:8f86fb63fed410f1aedbeb43cc4691bf6846e0ef99b8b04b66fcb0024167c427
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.1.2 sha256:81545165983e82dd9da29c46c0cd159d21194ff8597ad1a82a1c5b82134c9894
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:cff41f81040c7256222aa00dc3762e9b9661ddf974b0e91c58e36390595a2005
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -2946,7 +2946,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.1.2
+ * Version: 4.2.0
  */
 
 (function registerHASmartReports() {
@@ -3820,7 +3820,7 @@ function createTariffHostV3({ card, kind, createModel, legacyProfile, createSett
 
   // END mirror shared/ha-tools-tariff-host.js
 
-  const VERSION = '4.1.2';
+  const VERSION = '4.2.0';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 

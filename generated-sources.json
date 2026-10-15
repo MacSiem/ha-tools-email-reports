@@ -29,7 +29,7 @@
   "ha-smart-reports.js": {
     "owner": "MacSiem/ha-smart-reports",
     "path": "ha-smart-reports.js",
-    "version": "4.1.2",
-    "sha256": "81545165983e82dd9da29c46c0cd159d21194ff8597ad1a82a1c5b82134c9894"
+    "version": "4.2.0",
+    "sha256": "cff41f81040c7256222aa00dc3762e9b9661ddf974b0e91c58e36390595a2005"
   }
 }

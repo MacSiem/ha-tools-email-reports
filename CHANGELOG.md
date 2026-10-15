@@ -1,5 +1,9 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.6.1] - 2026-10-15
+
+- Clear Smart Reports measurements and device details immediately when the Home Assistant user, connection or timezone changes, including disconnection. Keep locale and theme changes on the current measurements.
+
 ## [4.6.0] - 2026-10-15
 
 - Add severity, source and period filters to retained log views, with separate unique-problem and HA occurrence counts, stable aggregate deduplication, explicit limits and sensor fallback limitations. Show repetition counts before expanding narrow records. Display filters explicitly leave manual email content unchanged.

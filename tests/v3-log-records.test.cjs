@@ -66,6 +66,10 @@ for(const lang of ['en','pl'])for(const tab of ['overview','history'])test(`${ta
   if(tab==='overview'){
    const summary=f.root.querySelector('.ht-log-records summary').textContent;
    assert.match(summary,/Long original <message>/);assert.match(summary,/ERROR/);
+   assert.match(summary,lang==='pl'?/Wystąpienia \(HA\): 0/:/Occurrences \(HA\): 0/);
+   assert.match(summary,lang==='pl'?/Ostatnie wystąpienie:/:/Last occurrence:/);
+   assert.equal(f.root.querySelectorAll('.ht-log-records > details')[1].open,false);
+   assert.match(f.root.querySelectorAll('.ht-log-records summary')[1].textContent,lang==='pl'?/Wystąpienia \(HA\): 2/:/Occurrences \(HA\): 2/);
    assert.equal(f.root.querySelector('.ht-log-records dd:last-child').textContent,'0');
   }else{
    const summary=f.root.querySelector('.attempt-history .ht-log-records summary').textContent;

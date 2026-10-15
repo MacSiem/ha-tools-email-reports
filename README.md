@@ -48,23 +48,23 @@ Email](https://github.com/MacSiem/ha-tools-email-integration) integration**
 `hass.services.ha_tools_email.send`; if it's missing, the card shows an
 inline "This tool requires the HA Tools Email integration" banner with an
 install link instead of failing silently. Once the integration is installed
-and SMTP is configured (once, in the integration's own settings), the cards
-talk to it purely through HA services:
+and SMTP is configured in the integration's own settings, all email leaves through that backend. The cards use Home Assistant service calls for manual send/test and WebSocket commands for schedules, previews and bounded attempt history. They never open an SMTP connection.
 
-- `ha_tools_email.get_config` — reads the configured default recipient.
-- `ha_tools_email.test` — sends a test email to verify SMTP.
-- `ha_tools_email.send` — sends the actual report.
+### Server schedules and existing automations
 
-The Log Email card's Schedule tab shows and toggles existing
-`automation.ha_tools_log_email_daily` and
-`automation.ha_tools_log_email_weekly` automations. It does not create them.
-Add an automation that calls `ha_tools_email.send` at the chosen time; Home
-Assistant runs it even when the dashboard is closed. Set the automation
-entity IDs to `automation.ha_tools_log_email_daily` and
-`automation.ha_tools_log_email_weekly` so they appear in this tab. The
-automation must provide its own subject and body; it cannot call the card's
-daily/weekly button or reuse its browser-cached log snapshot. Energy Email
-scheduling is provided by Energy Optimizer.
+With **HA Tools Email 2.2.0 or newer**, the Schedule tab manages server-side daily, weekly and monthly log digests. Choose a wall time, weekday or month day, and an optional IANA timezone. An empty timezone follows Home Assistant. New schedules start disabled; opening the tab, editing a draft, cancelling or previewing sends nothing and saves nothing. Save and Delete require administrator access and a separate matching server readback before showing Success. If the outcome is unconfirmed, refresh to check it before trying another write.
+
+Calendar support is confirmed from the loaded integration manifest before writes. Backend 2.1.2 supports basic email but silently drops the new calendar fields, so the new schedule editor remains unavailable until the backend is updated. Refresh after updating. DST gaps move forward by the offset change; a repeated wall time runs at its first occurrence, once. A month day of 29–31 uses the last day in a shorter month.
+
+Preview reads the previous completed calendar day, week or month in the selected timezone directly from the backend. It shows the actual range and retained-log limitations, without SMTP delivery or history/digest writes. It is separate from the manual rolling-window reports below.
+
+Existing `automation.ha_tools_log_email_daily` and `automation.ha_tools_log_email_weekly` controls remain available. They are independent of server schedules: review them to avoid duplicate emails. The card does not create or rewrite those automations. An existing automation calling `ha_tools_email.send` must provide its own subject and body. Energy Email scheduling belongs to Energy Optimizer.
+
+### Retained logs and attempt history
+
+Severity, source and 24-hour / 7-day / 30-day filters apply only to the displayed retained logs; they do not change email content or a saved schedule. A stable backend identity groups repeated aggregates without counting a duplicated row twice. Unique problems and HA occurrence counts are shown separately. The entry limit, observed range and data source remain visible. HA aggregate counts may include older repetitions, and filtering the last observed time does not establish how many occurrences happened exclusively in that window. The fallback sensor is only a current snapshot.
+
+History separates bounded server SMTP attempts from browser-local count snapshots. Refresh explicitly reads attempt metadata; timestamps, kind, period, entry count and outcome are shown without mail addresses, subjects, bodies or raw errors. SMTP acceptance does not establish inbox delivery. Server retention is at most 128 attempts / 90 days. Local snapshots describe this browser and account, not server delivery history.
 
 Log Email daily and weekly sends use the retained `system_log/list` snapshot from the latest refresh, filtered to rolling 24-hour and seven-day windows respectively. Future-dated entries are excluded. Home Assistant retention and the card `max_entries` setting can limit the report; this is not a guarantee of complete historical coverage. A fallback current sensor snapshot cannot produce a weekly digest.
 
@@ -73,10 +73,10 @@ Log Email daily and weekly sends use the retained `system_log/list` snapshot fro
 | Automatic | Manual (optional) |
 |---|---|
 | Home Assistant Energy source mapping (`ha-smart-reports`) | Setting SMTP server/recipient once, in the HA Tools Email integration |
-| Integration-presence detection + install banner | Creating the Log Email daily / weekly automations; Energy Email scheduling is handled by Energy Optimizer |
-| Error/warning digest from `system_log` (`ha-log-email`) | Creating the Log Email schedule automations; choosing a tariff and currency only for energy reports |
+| Integration-presence detection + install banner | Choosing server calendar schedules (backend 2.2+); reviewing existing automation paths to avoid duplicates |
+| Error/warning digest from `system_log` (`ha-log-email`) | Choosing log filters and manual sends; configuring a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
-| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Exporting Smart Reports schema-v2 JSON or flat CSV |
+| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Reviewing and saving Smart Reports JSON / CSV / TXT locally |
 
 ## Screenshots
 
@@ -92,7 +92,7 @@ disabled. No real address, log entry, or household data is shown.*
 
 The Dashboard bundle requires Home Assistant Core **2024.5.0 or newer**. Log Email uses the frontend service-response API to read the centrally configured recipient; the frontend shipped with Core 2024.1.0 ignores that response argument. Core 2024.5.0 ships frontend 20240501.0 with support for it. These floors are qualified against the official Core/frontend contracts; an old Home Assistant instance was not run for this maintenance release.
 
-Sending Log or Energy email requires the separate **HA Tools Email 2.1.2** integration, whose backend requires Core **2024.7.0 or newer**. Smart Reports works without SMTP. Energy Email is provided by Energy Optimizer and retains that product's compatibility requirements.
+Basic manual Log or Energy email requires the separate **HA Tools Email 2.1.2 or newer** integration. Server calendar schedules, calendar previews, attempt history and shared tariffs require **2.2.0 or newer**. The backend requires Core **2024.7.0 or newer**. Smart Reports works without SMTP. Energy Email is provided by Energy Optimizer and retains that product's compatibility requirements.
 
 ## Installation
 
@@ -163,9 +163,7 @@ has no default tariff.
 Today / 7 days / 30 days are local-calendar windows in Home Assistant's
 configured timezone. Missing, invalid, unsupported or incomplete required
 statistics are surfaced with per-source status/reason evidence and combined
-totals/cost are withheld. JSON export uses the full `schema_version: 2`
-contract including warnings and total/cost source rows; CSV is flat, keeps
-status/provenance/reason and neutralizes formula-leading labels. The visual
+totals/cost are withheld. The export dialog previews filename, format, included and excluded fields before Save. JSON uses schema 2, or schema 3 for previous-period comparison, and includes both selected ranges and full device snapshot regardless of search. CSV and TXT preserve available status and provenance; CSV neutralizes formula-leading labels. Private fields default off. The visual
 editor exposes safe Title and Currency fields, tab selection is per card
 instance, and disabling every section performs no Home Assistant requests.
 
@@ -186,17 +184,11 @@ integration is required and linking to it — it doesn't fail silently or send
 through your `notify:` platform instead.
 
 **Does scheduled sending require a browser tab to stay open?**
-The Log Email card only enables or disables existing daily and weekly
-automations. Create those automations separately in Home Assistant with
-`ha_tools_email.send` and your own subject and body. Home Assistant runs them
-even when the dashboard is closed. The card does not create automations,
-register a server-side digest job, or supply its cached log snapshot to a
-scheduled action. Energy Email scheduling belongs to Energy Optimizer.
+No. Server schedules in HA Tools Email 2.2+ run inside Home Assistant. Existing standalone automations also run without a browser, independently of those schedules. Review both paths to avoid duplicate sends. Opening the dashboard does not create an additional scheduler. Energy Email is maintained by Energy Optimizer.
 
 **Where do the emails actually go out through?**
 Your own SMTP server, configured once in the HA Tools Email integration.
-This plugin's cards never talk to any mail server directly — they only call
-`ha_tools_email.send` / `.test` / `.get_config`.
+This plugin's cards never talk to any mail server directly — they use Home Assistant services and the integration's WebSocket commands.
 
 **Does this send data anywhere else, or use any CDN?**
 No. There are no `fetch`/`XMLHttpRequest` calls in the card runtime. The cards

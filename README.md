@@ -34,8 +34,8 @@ want by their own tag:
 1. **`ha-energy-email`** — compatibility wrapper only. The card itself is
    provided by [Energy Optimizer](https://github.com/MacSiem/ha-energy-optimizer);
    install it from HACS to use energy-usage emails.
-2. **`ha-log-email`** — sends a daily digest of `system_log` errors and
-   warnings (`system_log/list`), with a configurable entry limit and a
+2. **`ha-log-email`** — previews and sends daily, weekly and monthly digests
+   of retained `system_log` errors and warnings, with a configurable entry limit and a
    history tab. Logs and report controls are available to administrators only;
    household users see an explanation without reading logs or SMTP settings.
 3. **`ha-smart-reports`** — an on-demand energy / automations / system-health
@@ -50,7 +50,7 @@ Email](https://github.com/MacSiem/ha-tools-email-integration) integration**
 `hass.services.ha_tools_email.send`; if it's missing, the card shows an
 inline "This tool requires the HA Tools Email integration" banner with an
 install link instead of failing silently. Once the integration is installed
-and SMTP is configured in the integration's own settings, all email leaves through that backend. The cards use Home Assistant service calls for manual send/test and WebSocket commands for schedules, previews and bounded attempt history. They never open an SMTP connection.
+and SMTP is configured in the integration's own settings, all email leaves through that backend. Compatible report controls use WebSocket commands for backend-composed manual sends, schedules, previews and bounded attempt history; the existing service remains available for SMTP tests and custom automations. They never open an SMTP connection.
 
 ### Server schedules and existing automations
 
@@ -58,7 +58,7 @@ With **HA Tools Email 2.2.0 or newer**, the Schedule tab manages server-side dai
 
 Calendar support is confirmed from the loaded integration manifest before writes. Backend 2.1.2 supports basic email but silently drops the new calendar fields, so the new schedule editor remains unavailable until the backend is updated. Refresh after updating. DST gaps move forward by the offset change; a repeated wall time runs at its first occurrence, once. A month day of 29–31 uses the last day in a shorter month.
 
-Preview reads the previous completed calendar day, week or month in the selected timezone directly from the backend. It shows the actual range and retained-log limitations, without SMTP delivery or history/digest writes. It is separate from the manual rolling-window reports below.
+Preview reads the previous completed calendar day, week or month in the selected timezone directly from the backend. It shows the actual range and retained-log limitations, without SMTP delivery or history/digest writes. It is separate from the explicit manual period selection below. Backend2.2 returns a summary;2.3+ can return the actual composed mail.
 
 Existing `automation.ha_tools_log_email_daily` and `automation.ha_tools_log_email_weekly` controls remain available. They are independent of server schedules: review them to avoid duplicate emails. The card does not create or rewrite those automations. An existing automation calling `ha_tools_email.send` must provide its own subject and body. Energy Email scheduling belongs to Energy Optimizer.
 
@@ -68,7 +68,31 @@ Severity, source and 24-hour / 7-day / 30-day filters apply only to the displaye
 
 History separates bounded server SMTP attempts from browser-local count snapshots. Refresh explicitly reads attempt metadata; timestamps, kind, period, entry count and outcome are shown without mail addresses, subjects, bodies or raw errors. SMTP acceptance does not establish inbox delivery. Server retention is at most 128 attempts / 90 days. Local snapshots describe this browser and account, not server delivery history.
 
-Log Email daily and weekly sends use the retained `system_log/list` snapshot from the latest refresh, filtered to rolling 24-hour and seven-day windows respectively. Future-dated entries are excluded. Home Assistant retention and the card `max_entries` setting can limit the report; this is not a guarantee of complete historical coverage. A fallback current sensor snapshot cannot produce a weekly digest.
+### Actual mail preview and manual sends (4.7+)
+
+Install **stable HA Tools Email 2.3.0 or newer** before using the new manual
+preview or send controls. Preview selects daily, weekly or monthly and either
+rolling 24-hour / 7-day / 30-day retained windows or the previous completed local
+day / ISO week / calendar month. The backend chooses the actual inclusive start
+and exclusive end; the card shows those dates with their timezone and source.
+Calendar periods follow the Home Assistant timezone. The Send tab shares the
+same period mode and offers a separate button for each cadence.
+
+The preview shows the actual subject and HTML composed by the server, isolated
+in a sandboxed frame with scripts, external resources and form actions blocked.
+Reading it does not send mail or change schedules/history. A later send composes
+again from current data, so new log records can change its contents. An older
+backend shows an update explanation instead of silently sending a browser-built
+report. SMTP server acceptance remains distinct from inbox delivery.
+
+Manual reports use server-retained data, independently from this browser's list
+filters, fallback sensor, latest refresh or scheduled digest state. They do not
+advance the scheduled digest's last-seen keys. Future or missing timestamps are
+excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
+report; aggregate counts are not exact events or complete historical coverage.
+
+The source code and README on this working branch describe the4.7 candidate;
+public4.6.1 remains the prior release until a new release is published.
 
 ### What is automatic vs. manual
 
@@ -88,7 +112,7 @@ Log Email daily and weekly sends use the retained `system_log/list` snapshot fro
 | ![Server calendar schedules and independent legacy controls](docs/screenshots/card-schedule-light.png) | ![Server schedules in dark theme](docs/screenshots/card-schedule-dark.png) |
 | ![Server SMTP attempt history and separate browser snapshots](docs/screenshots/card-history-light.png) | ![Attempt history in dark theme](docs/screenshots/card-history-dark.png) |
 
-*Current 4.6.0 UI rendered with synthetic data at a 500 px card width. The
+*Historical 4.6.0 overview/schedule/history UI rendered with synthetic data at a 500 px card width. The
 read-only screenshot harness has no Home Assistant or SMTP connection. Logs
 show two unique problems and 21 retained HA occurrences; schedules show a
 server next-fire time and separate legacy controls. SMTP acceptance is not

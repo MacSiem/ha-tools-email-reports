@@ -1,5 +1,12 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.7.0] - Unreleased
+
+- Preview the actual backend-composed email in an isolated frame, with daily, weekly and monthly choices and explicit rolling or completed calendar periods. Opening or refreshing a preview never sends mail.
+- Send Log reports through the same backend composer and period selection; list filters and stale browser snapshots cannot change the report. Requires stable HA Tools Email 2.3.0+ for the new mail contract.
+- Show readable period labels and local dates with timezone, source and partial-data limitations. Preserve raw-request single-flight, administrator gates, focus and unconfirmed outcomes without automatic retry.
+- Keep the existing server schedule editor and its 2.2 summary-preview compatibility, Smart Reports 4.2.0 and the Energy Optimizer wrapper.
+
 ## [4.6.1] - 2026-10-15
 
 - Clear Smart Reports measurements and device details immediately when the Home Assistant user, connection or timezone changes, including disconnection. Keep locale and theme changes on the current measurements.

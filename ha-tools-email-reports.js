@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.6.1
+ * HA Tools Email Reports bundle v4.7.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.6.0 sha256:a4ead2bad3cbf81701bc72a0900a9dec25a807fbb986c78284cc5ceeea073ada
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.7.0 sha256:ecfcceb8de764363097dfe4496ffb0df4c0a83c912f40aefc9bfc76228ba97de
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -129,7 +129,7 @@ if (!window.customCards.some(c => c.type === TAG)) {
 }
 
 })();
-/* HA Tools split — ha-log-email v4.6.0 (2026-10-15) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.7.0 (2026-10-15) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -784,7 +784,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.6.0
+ * HA Log Email Card v4.7.0
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -2936,7 +2936,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.6.0 registered');
+  console.log('[ha-log-email] v4.7.0 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {
@@ -6656,6 +6656,6 @@ function projectSmartReportV3(report, includePrivate = false) {
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.6.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.7.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

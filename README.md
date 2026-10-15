@@ -58,7 +58,7 @@ With **HA Tools Email 2.2.0 or newer**, the Schedule tab manages server-side dai
 
 Calendar support is confirmed from the loaded integration manifest before writes. Backend 2.1.2 supports basic email but silently drops the new calendar fields, so the new schedule editor remains unavailable until the backend is updated. Refresh after updating. DST gaps move forward by the offset change; a repeated wall time runs at its first occurrence, once. A month day of 29–31 uses the last day in a shorter month.
 
-Preview reads the previous completed calendar day, week or month in the selected timezone directly from the backend. It shows the actual range and retained-log limitations, without SMTP delivery or history/digest writes. It is separate from the explicit manual period selection below. Backend2.2 returns a summary;2.3+ can return the actual composed mail.
+Preview reads the previous completed calendar day, week or month in the selected timezone directly from the backend. It shows the actual range and retained-log limitations, without SMTP delivery or history/digest writes. It is separate from the explicit manual period selection below. Backend 2.2 returns a summary; 2.3+ can return the actual composed mail.
 
 Existing `automation.ha_tools_log_email_daily` and `automation.ha_tools_log_email_weekly` controls remain available. They are independent of server schedules: review them to avoid duplicate emails. The card does not create or rewrite those automations. An existing automation calling `ha_tools_email.send` must provide its own subject and body. Energy Email scheduling belongs to Energy Optimizer.
 
@@ -91,8 +91,8 @@ advance the scheduled digest's last-seen keys. Future or missing timestamps are
 excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
 report; aggregate counts are not exact events or complete historical coverage.
 
-The source code and README on this working branch describe the4.7 candidate;
-public4.6.1 remains the prior release until a new release is published.
+The source code and README on this working branch describe the 4.7 candidate;
+public 4.6.1 remains the prior release until a new release is published.
 
 ### What is automatic vs. manual
 

@@ -50,5 +50,10 @@
       "bytes": 82298,
       "sha256": "05df24015621e4e9ddded5f864d9937cd00165ab6b49419c4444f04ba00dd656"
     }
-  ]
+  ],
+  "qualified_reuse": {
+    "current_runtime_commit": "ec00e8a08b6bbdcdf7c39bbdd5d69a39d4b00992",
+    "current_bundle_sha256": "a2408202df03e4b1095a7d4049c91fe942155b23caf0562900de6327cb63006d",
+    "scope": "Log Email screenshots only; Log source and its three shared factories are byte-identical to the captured 4.6.0 bundle. Smart binding-only change has separate current native evidence. Original capture bundle/commit/hashes above remain historical facts."
+  }
 }

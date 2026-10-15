@@ -17,6 +17,8 @@ not send email.
 
 Part of the [HA Tools](https://github.com/MacSiem) ecosystem.
 
+Version 4.6.1 immediately clears accepted Smart measurements and device details when the HA user, connection or timezone changes, including disconnection. Locale and theme changes retain current measurements.
+
 The generated bundle includes the exact Smart Reports 4.2.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
 
 ## How it works

@@ -17,6 +17,7 @@ function fixture(t, options = {}) {
   const hass = { user: { id: 'a', is_admin: true }, connection,
     callWS: async msg => {
       calls.push(msg);
+      if (msg.type === 'manifest/get') return { domain: 'ha_tools_email', version: '2.2.0' };
       if (msg.type.endsWith('/list_schedules')) return options.list ? options.list(calls.filter(c => c.type.endsWith('/list_schedules')).length) : { schedules: rows };
       if (msg.type.endsWith('/set_schedule')) {
         if (options.save) return options.save(msg);
@@ -75,9 +76,9 @@ test('unknown write timeout locks Save and only explicit read can confirm; late 
 test('New is explicit UUID disabled; reads coalesce; Cancel and old late results cannot leak draft', async t => {
   const pending = deferred(); const f = fixture(t, { list: () => pending.promise });
   assert.equal(f.calls.length, 0); const a = f.controller.ensureRead(), b = f.controller.ensureRead(); await settle();
-  assert.equal(f.calls.length, 1); pending.resolve({ schedules: [] }); await Promise.all([a,b]);
+  assert.equal(f.calls.length, 2); pending.resolve({ schedules: [] }); await Promise.all([a,b]);
   f.controller.create(); assert.match(f.controller.model().draft.id, /^[0-9a-f-]{36}$/i); assert.equal(f.controller.model().draft.enabled, false);
-  f.controller.cancel(); assert.equal(f.controller.model().draft, null); assert.equal(f.calls.length, 1);
+  f.controller.cancel(); assert.equal(f.controller.model().draft, null); assert.equal(f.calls.length, 2);
 });
 for (const boundary of ['user','role','connection','offline','connection-event']) test('context fence clears private draft and pending read on ' + boundary, async t => {
   const pending = deferred(); let reads = 0;

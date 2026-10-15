@@ -11,7 +11,7 @@ const row = (extra = {}) => ({ id: 'log-existing', kind: 'log_digest', cadence: 
   enabled: false, weekday: 0, recipients: ['local-fixture@example.invalid'],
   next_fire: null, effective_timezone: 'Europe/Warsaw', ...extra });
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
-const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(); };
+const settle = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 async function fixture(t, options = {}) {
   const dom = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/', runScripts: 'outside-only', pretendToBeVisual: true });
   t.after(() => dom.window.close());
@@ -31,6 +31,7 @@ async function fixture(t, options = {}) {
     callService: async (...args) => { services.push(JSON.parse(JSON.stringify(args))); return {}; },
     callWS: async msg => {
       calls.push(JSON.parse(JSON.stringify(msg)));
+      if (msg.type === 'manifest/get') return { domain: 'ha_tools_email', version: '2.2.0' };
       if (msg.type === 'system_log/list') return options.logs || [];
       if (msg.type === 'ha_tools_email/list_schedules') { lists++; return options.list ? options.list(lists, rows) : { schedules: rows }; }
       if (msg.type === 'ha_tools_email/set_schedule') {

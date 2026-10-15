@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.6.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.6.0 sha256:922c52886a764c85b5dd694910c90312342a64cf76cd5165f3a31d0a36b21f8c
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.6.0 sha256:a4ead2bad3cbf81701bc72a0900a9dec25a807fbb986c78284cc5ceeea073ada
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1967,8 +1967,19 @@ class HALogEmail extends HTMLElement {
 
   _renderMailFrame(preview, id) {
     if (!preview || typeof preview.html !== 'string') return '';
-    return `<section class="schedule-preview"><h4>${_esc(preview.subject)}</h4><p>${_esc(preview.period.from)} / ${_esc(preview.period.to)}</p>
-      <p>${_esc(preview.generated_at)} · ${_esc(preview.source?.name || '')} ${preview.source?.complete === false ? (this._lang === 'pl' ? '— częściowe dane' : '— partial data') : ''}</p><iframe id="${id}" title="${_esc(this._t.emailPreview)}" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:600px;border:1px solid var(--divider-color,#ddd);background:white"></iframe></section>`;
+    const pl = this._lang === 'pl', locale = pl ? 'pl-PL' : 'en-US';
+    const zone = preview.effective_timezone || 'UTC';
+    const date = value => {
+      try { return new Intl.DateTimeFormat(locale, { timeZone: zone, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value)); }
+      catch (_) { return pl ? 'Czas niedostępny' : 'Time unavailable'; }
+    };
+    const source = preview.source?.name === 'system_log' ? (pl ? 'Zachowane wpisy dziennika HA' : 'Retained HA log entries') : (pl ? 'Statystyki energii Recorder' : 'Recorder energy statistics');
+    return `<section class="schedule-preview"><h4>${_esc(preview.subject)}</h4>
+      <dl><dt>${pl ? 'Od (włącznie)' : 'From (inclusive)'}</dt><dd>${_esc(date(preview.period.from))}</dd>
+      <dt>${pl ? 'Do (wyłącznie)' : 'To (exclusive)'}</dt><dd>${_esc(date(preview.period.to))}</dd>
+      <dt>${pl ? 'Wygenerowano' : 'Generated'}</dt><dd>${_esc(date(preview.generated_at))}</dd>
+      <dt>${pl ? 'Źródło' : 'Source'}</dt><dd>${_esc(source)}${preview.source?.complete === false ? (pl ? ' — częściowe dane' : ' — partial data') : ''}</dd></dl>
+      <iframe id="${id}" title="${_esc(this._t.emailPreview)}" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:600px;border:1px solid var(--divider-color,#ddd);background:white"></iframe></section>`;
   }
 
   _bindMailFrame(id, preview) {
@@ -1980,8 +1991,12 @@ class HALogEmail extends HTMLElement {
 
   _renderMailControls(showCadence = true) {
     const pl = this._lang === 'pl';
-    return `${showCadence ? `<label>${pl ? 'Częstotliwość' : 'Cadence'} <select id="mail-cadence">${['daily', 'weekly', 'monthly'].map((value, i) => `<option value="${value}" ${this._mailCadence === value ? 'selected' : ''}>${(pl ? ['Dzienny', 'Tygodniowy', 'Miesięczny'] : ['Daily', 'Weekly', 'Monthly'])[i]}</option>`).join('')}</select></label>` : ''}
-      <label>${pl ? 'Okres' : 'Period'} <select id="mail-period-mode"><option value="rolling" ${this._mailPeriodMode === 'rolling' ? 'selected' : ''}>${pl ? 'Ostatnie 24 h / 7 dni / 30 dni' : 'Last 24 h / 7 days / 30 days'}</option><option value="calendar" ${this._mailPeriodMode === 'calendar' ? 'selected' : ''}>${pl ? 'Poprzedni zakończony dzień / tydzień ISO / miesiąc' : 'Previous completed day / ISO week / month'}</option></select></label>`;
+    const i = Math.max(0, ['daily', 'weekly', 'monthly'].indexOf(this._mailCadence));
+    const rolling = showCadence ? (pl ? ['Ostatnie 24 godziny', 'Ostatnie 7 dni', 'Ostatnie 30 dni'] : ['Last 24 hours', 'Last 7 days', 'Last 30 days'])[i] : (pl ? 'Ostatni okres' : 'Rolling period');
+    const calendar = showCadence ? (pl ? ['Poprzedni pełny dzień', 'Poprzedni pełny tydzień', 'Poprzedni pełny miesiąc'] : ['Previous completed day', 'Previous completed ISO week', 'Previous completed month'])[i] : (pl ? 'Pełny okres kalendarzowy' : 'Completed calendar period');
+    const field = 'display:grid;gap:4px;min-width:0', select = 'width:100%;min-width:0;min-height:44px';
+    return `<div class="mail-controls" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px">${showCadence ? `<label style="${field}">${pl ? 'Częstotliwość' : 'Cadence'} <select style="${select}" id="mail-cadence">${['daily', 'weekly', 'monthly'].map((value, i) => `<option value="${value}" ${this._mailCadence === value ? 'selected' : ''}>${(pl ? ['Dzienny', 'Tygodniowy', 'Miesięczny'] : ['Daily', 'Weekly', 'Monthly'])[i]}</option>`).join('')}</select></label>` : ''}
+      <label style="${field}">${pl ? 'Okres' : 'Period'} <select style="${select}" id="mail-period-mode"><option value="rolling" ${this._mailPeriodMode === 'rolling' ? 'selected' : ''}>${rolling}</option><option value="calendar" ${this._mailPeriodMode === 'calendar' ? 'selected' : ''}>${calendar}</option></select></label></div>`;
   }
 
     _getScheduleState(entityId) {

@@ -9,7 +9,7 @@
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-log-email.js",
     "version": "4.6.0",
-    "sha256": "922c52886a764c85b5dd694910c90312342a64cf76cd5165f3a31d0a36b21f8c",
+    "sha256": "a4ead2bad3cbf81701bc72a0900a9dec25a807fbb986c78284cc5ceeea073ada",
     "sharedEmailHistory": {
       "path": "shared/ha-tools-email-history.js",
       "sha256": "9482e7df0e0521e3197029611151e362c6ece6b417ad4f906e5463734b6d8da2",

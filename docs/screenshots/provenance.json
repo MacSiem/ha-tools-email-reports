@@ -1,0 +1,54 @@
+{
+  "runtime_source_commit": "3bb59c79304da1a2799b4b9734b9fa503d8e5699",
+  "bundle_sha256": "734eb98cc3d8416324c06b6fc5272b65279c21f4a6f0dc99b6ff10919115e11e",
+  "log_source_sha256": "8184936662874e3cbe53ee09342b341cf38055f68015eb494f014f521ca812c9",
+  "harness": "docs/screenshots/_harness.html",
+  "harness_sha256": "1907d07a156fe31c649d2f05b9ed385b5d1f53c63ec919d8970296e8338d88e0",
+  "capture": "Native Chrome full-card screenshots; no pixel editing",
+  "data": "Synthetic only; no HA connection or SMTP; fixture-owned session counter reset on load",
+  "card_width_css_px": 500,
+  "captures": [
+    {
+      "file": "card-overview-light.png",
+      "width": 500,
+      "height": 1062,
+      "bytes": 72294,
+      "sha256": "c18ba04da8c2daec30576ae7afc329739804d328f6cbdda89a7385eab03806db"
+    },
+    {
+      "file": "card-overview-dark.png",
+      "width": 500,
+      "height": 1062,
+      "bytes": 74753,
+      "sha256": "c63e98208bfc7a1db73e153d29e86d18ea3fc4b1b3b155073e937d574e758ddf"
+    },
+    {
+      "file": "card-schedule-light.png",
+      "width": 500,
+      "height": 1814,
+      "bytes": 124356,
+      "sha256": "4a03135b862887f8b1b71f6a521846bd47bfa89789a59a543e62adf6e22de348"
+    },
+    {
+      "file": "card-schedule-dark.png",
+      "width": 500,
+      "height": 1814,
+      "bytes": 121973,
+      "sha256": "d206cd7e9a2a8bbc9d5f93b55b7e7650388d6fe71c27a287dcb78ccb18f76e61"
+    },
+    {
+      "file": "card-history-light.png",
+      "width": 500,
+      "height": 1236,
+      "bytes": 81337,
+      "sha256": "73c6c2b803de47a5cb24d659e8dcaee536aa2a5f4a533ee20eaedc67eefa5bdd"
+    },
+    {
+      "file": "card-history-dark.png",
+      "width": 500,
+      "height": 1236,
+      "bytes": 82298,
+      "sha256": "05df24015621e4e9ddded5f864d9937cd00165ab6b49419c4444f04ba00dd656"
+    }
+  ]
+}

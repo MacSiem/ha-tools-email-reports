@@ -1,60 +1,18 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Log Email screenshot harness</title>
-<style>
-  html, body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body.light { background: #f4f5f7; }
-  body.light ha-log-email { --card-background-color: #ffffff; --primary-background-color: #f4f5f7; }
-  body.dark { background: #111318; }
-  body.dark ha-log-email { --card-background-color: #1c1e26; --primary-background-color: #111318; }
-  ha-log-email { display: block; width: 480px; }
-</style>
-</head>
-<body>
-<ha-log-email id="card"></ha-log-email>
-<script src="../../ha-log-email.js"></script>
-<script>
-(() => {
-  const params = new URLSearchParams(location.search);
-  const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
-  document.body.className = theme;
-  const now = Date.now();
-  const states = {
-    'automation.ha_tools_log_email_daily': { entity_id: 'automation.ha_tools_log_email_daily', state: 'on', attributes: {} },
-    'automation.ha_tools_log_email_weekly': { entity_id: 'automation.ha_tools_log_email_weekly', state: 'off', attributes: {} },
-  };
-  const hass = {
-    language: 'en', themes: { darkMode: theme === 'dark' }, user: { is_admin: true }, states,
-    services: { ha_tools_email: { send: {}, test: {}, get_config: {} } },
-    connection: { subscribeEvents: () => Promise.resolve(() => {}) },
-    callWS: async ({type}) => type === 'system_log/list' ? [
-      { level: 'WARNING', name: 'demo.integration', message: ['Sample warning from a test integration'], timestamp: now / 1000 - 600, count: 1 },
-    ] : [],
-    callService: async (_domain, service) => service === 'get_config' ? { response: { default_recipient: 'demo@example.com' } } : {},
-  };
-  const card = document.getElementById('card');
-  card.setConfig({ type: 'custom:ha-log-email', title: 'Log Email Summary', email_recipient: 'demo@example.com' });
-  card.hass = hass;
-  setTimeout(() => {
-    const tab = params.get('tab') || 'schedule';
-    const button = card.shadowRoot?.querySelector('.tab-btn[data-tab="' + tab + '"]');
-    button?.click();
-  }, 600);
-  const scrub = () => {
-    if (!card.shadowRoot) return;
-    card.shadowRoot.querySelectorAll('#tip-banner, .donate-section, [class*="support"]').forEach(n => n.remove());
-    if (!card.shadowRoot.getElementById('harness-hacard-fix')) {
-      const style = document.createElement('style');
-      style.id = 'harness-hacard-fix';
-      style.textContent = 'ha-card { background: transparent !important; box-shadow: none !important; border: none !important; }';
-      card.shadowRoot.appendChild(style);
-    }
-  };
-  setInterval(scrub, 150);
-  setTimeout(() => { scrub(); document.title = 'READY'; }, 1500);
-})();
-</script>
-</body>
-</html>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Log Email — synthetic screenshots</title>
+<style>html,body{margin:0;padding:16px;font:16px system-ui}body{background:#f4f7fb}ha-log-email{display:block;width:500px;--card-background-color:#fff;--primary-background-color:#f4f7fb;--primary-text-color:#172335}body.dark{background:#111827}body.dark ha-log-email{--card-background-color:#182132;--primary-background-color:#111827;--primary-text-color:#f0f3f9}</style>
+<ha-log-email></ha-log-email><script src="../../ha-tools-email-reports.js"></script><script>
+// Only synthetic data. No Home Assistant connection or SMTP transport exists here.
+const params=new URLSearchParams(location.search),theme=params.get('theme')==='dark'?'dark':'light';
+const tab=['overview','schedule','history','preview'].includes(params.get('tab'))?params.get('tab'):'overview';
+const width=[320,390,500,900].includes(Number(params.get('width')))?Number(params.get('width')):500;
+const NativeDate=Date,now=NativeDate.parse('2026-10-12T12:00:00Z');window.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[now]))}static now(){return now}};
+document.body.className=theme;const card=document.querySelector('ha-log-email');card.style.width=width+'px';
+const schedules=[{id:'synthetic-daily',kind:'log_digest',cadence:'daily',time:'08:30',enabled:true,timezone:'Europe/Warsaw',effective_timezone:'Europe/Warsaw',next_fire:'2026-10-13T08:30:00+02:00'},{id:'synthetic-weekly',kind:'log_digest',cadence:'weekly',weekday:0,time:'08:30',enabled:false,timezone:'Europe/Warsaw',effective_timezone:'Europe/Warsaw',next_fire:null}];
+const logs=[{id:'synthetic-mqtt',timestamp:(now-120000)/1000,level:'ERROR',name:'homeassistant.components.mqtt',source:['components/mqtt/client.py',10],message:['Connection reset by peer'],count:18},{id:'synthetic-hacs',timestamp:(now-3600000)/1000,level:'ERROR',name:'custom_components.hacs',source:['custom_components/hacs/base.py',20],message:['Resource not found'],count:3}];
+const attempts=[{id:'12345678-1234-4234-8234-123456789abc',timestamp:'2026-10-12T06:30:00Z',source:'schedule',kind:'log_digest',cadence:'daily',period:'daily:2026-10-11',schedule_ref:'a'.repeat(64),recipient_count:2,outcome:'accepted_by_smtp'},{id:'22345678-1234-4234-8234-123456789abc',timestamp:'2026-10-11T06:30:00Z',source:'schedule',kind:'log_digest',cadence:'daily',period:'daily:2026-10-10',schedule_ref:'a'.repeat(64),recipient_count:2,outcome:'transport_outcome_unknown'}];
+// Reset only this fixture's synthetic counter namespace for repeatable captures.
+sessionStorage.setItem('ha-log-email-history:synthetic-admin','[]');
+card.setConfig({title:'Log Email Summary',max_entries:50,show_support:false});
+card.hass={language:'en',locale:{language:'en'},user:{id:'synthetic-admin',is_admin:true},connection:{connected:true},themes:{darkMode:theme==='dark'},config:{time_zone:'Europe/Warsaw'},states:{'automation.ha_tools_log_email_daily':{state:'on'},'automation.ha_tools_log_email_weekly':{state:'off'}},services:{ha_tools_email:{send:{},test:{},get_config:{}}},callWS:async request=>{if(request.type==='manifest/get')return {domain:'ha_tools_email',version:'2.2.0'};if(request.type==='system_log/list')return logs;if(request.type==='ha_tools_email/list_schedules')return {schedules};if(request.type==='ha_tools_email/get_attempt_history')return {schema:1,limit:128,retention_days:90,attempts};throw Error('Read-only screenshot fixture: unsupported request')},callService:async(domain,service)=>{if(domain==='ha_tools_email'&&service==='get_config')return {response:{default_recipient:''}};throw Error('No mutations or SMTP in screenshot fixture')}};
+card.setActiveTab(tab);if(tab==='history')card._refreshAttemptHistory();
+</script></html>

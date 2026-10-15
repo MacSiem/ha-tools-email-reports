@@ -82,11 +82,15 @@ Log Email daily and weekly sends use the retained `system_log/list` snapshot fro
 
 | Light | Dark |
 |---|---|
-| ![ha-log-email, Schedule tab, light theme](docs/screenshots/card-schedule-light.png) | ![ha-log-email, Schedule tab, dark theme](docs/screenshots/card-schedule-dark.png) |
+| ![Retained logs, filters and visible repetition counts](docs/screenshots/card-overview-light.png) | ![Retained logs in dark theme](docs/screenshots/card-overview-dark.png) |
+| ![Server calendar schedules and independent legacy controls](docs/screenshots/card-schedule-light.png) | ![Server schedules in dark theme](docs/screenshots/card-schedule-dark.png) |
+| ![Server SMTP attempt history and separate browser snapshots](docs/screenshots/card-history-light.png) | ![Attempt history in dark theme](docs/screenshots/card-history-dark.png) |
 
-*The current Log Email Schedule tab with synthetic data: HA Tools Email is
-available, the daily automation is active, and the weekly automation is
-disabled. No real address, log entry, or household data is shown.*
+*Current 4.6.0 UI rendered with synthetic data at a 500 px card width. The
+read-only screenshot harness has no Home Assistant or SMTP connection. Logs
+show two unique problems and 21 retained HA occurrences; schedules show a
+server next-fire time and separate legacy controls. SMTP acceptance is not
+inbox delivery. No real address, log entry or household data is shown.*
 
 ## Compatibility
 

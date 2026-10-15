@@ -1,8 +1,8 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.6.0
+ * HA Tools Email Reports bundle v4.6.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.6.0 sha256:8184936662874e3cbe53ee09342b341cf38055f68015eb494f014f521ca812c9
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:82204763548c7bb985ca28fad9f82356fe0524ce6ac104d31eafb6461a2bff38
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -4603,10 +4603,16 @@ function projectSmartReportV3(report, includePrivate = false) {
     }
 
     set hass(hass) {
+      // Capture scalar values: HA can mutate the same user/config/hass object.
+      const measurementBinding = { present: !!hass, connection: hass?.connection ?? null,
+        user: hass?.user?.id ?? null, zone: hass?.config?.time_zone ?? null };
+      const previousBinding = this._measurementBinding;
+      const measurementsChanged = !!previousBinding && Object.keys(measurementBinding).some(key => previousBinding[key] !== measurementBinding[key]);
+      this._measurementBinding = measurementBinding;
+      if (measurementsChanged) this._clearMeasuredEnergySource(true);
       const language = languageOf(hass);
       const languageChanged = language !== this._language;
       this._language = language;
-      if (this._hass && (this._hass.user?.id !== hass?.user?.id || this._hass.connection !== hass?.connection)) this._deviceQuery = '';
       this._hass = hass;
       if (this._connected) this._bindReviewedExportEvents();
       this._observeReviewedExportSource();
@@ -4620,6 +4626,24 @@ function projectSmartReportV3(report, includePrivate = false) {
         this._syncTabs();
       }
       if (this._connected && hass) this._scheduleRefresh(false);
+    }
+
+    _clearMeasuredEnergySource(allViews = false) {
+      this._energyReportConfig = null;
+      this._tariffPricingContext = null;
+      this._deviceQuery = '';
+      this._costSelectedDay = null;
+      this._costDataPage = 0;
+      this._costChartPage = 0;
+      this._comparisonSelectedDay = null;
+      this._comparisonDataPage = 0;
+      this._comparisonChartPage = 0;
+      this._tariffSettingsSection?.replaceChildren();
+      this._tariffSettingsSection = null;
+      this._energyViewState = { status: 'idle' };
+      // Clear accepted source DOM before a throttled/new-session read starts.
+      // Request/export association and any occupied tariff wire keep their fences.
+      if (this._scaffoldRendered && (allViews || this._activeTab === 'energy')) this.shadowRoot.getElementById('content')?.replaceChildren();
     }
 
     get hass() {
@@ -5590,12 +5614,8 @@ function projectSmartReportV3(report, includePrivate = false) {
       this._tariffGuard ||= createTariffGuardV3({ getHass: () => this._hass,
         getContext: () => ({ config: this._config, period: this._period, tab: this._activeTab, connected: this._connected }) });
       this._tariffGuard.subscribe(() => {
-        this._invalidateEnergyRequest(); this._energyReportConfig = null; this._tariffPricingContext = null; this._deviceQuery = ''; this._costSelectedDay = null; this._costDataPage = 0; this._costChartPage = 0;
-        this._comparisonSelectedDay = null; this._comparisonDataPage = 0; this._comparisonChartPage = 0;
-        this._tariffSettingsSection?.replaceChildren(); this._tariffSettingsSection = null;
-        this._energyViewState = { status: 'idle' };
-        // Clear cached priced/private source DOM immediately; do not dispatch a retry.
-        if (this._scaffoldRendered && this._activeTab === 'energy') this.shadowRoot.getElementById('content')?.replaceChildren();
+        this._invalidateEnergyRequest();
+        this._clearMeasuredEnergySource();
       });
       this._tariffHost = createTariffHostV3({ card: this, kind: 'smart', createModel: createEnergyTariffV3,
         legacyProfile: config => Object.hasOwn(config, 'tariff_profile') ? config.tariff_profile : null,
@@ -6573,6 +6593,6 @@ function projectSmartReportV3(report, includePrivate = false) {
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.6.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.6.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

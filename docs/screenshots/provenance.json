@@ -52,8 +52,42 @@
     }
   ],
   "qualified_reuse": {
-    "current_runtime_commit": "ec00e8a08b6bbdcdf7c39bbdd5d69a39d4b00992",
-    "current_bundle_sha256": "a2408202df03e4b1095a7d4049c91fe942155b23caf0562900de6327cb63006d",
-    "scope": "Log Email screenshots only; Log source and its three shared factories are byte-identical to the captured 4.6.0 bundle. Smart binding-only change has separate current native evidence. Original capture bundle/commit/hashes above remain historical facts."
+    "current_runtime_commit": "8010f21486182f82afdbd7bfcada05afeeb2a9ff",
+    "current_bundle_sha256": "1c2abf8a1cc57a9662c7a19ace841adc02d2973f7993e71c07e4f1f47be3eb3e",
+    "scope": "The six original captures remain explicitly historical 4.6.0 references for Overview, unopened Schedule and History. They are not claimed as live 4.7 captures or byte-identical whole Log source. The 4.7 change adds actual manual HTML/Send controls and schedule HTML previews; their current native qualification is Reports370b, including 18 affected EN/light and PL/dark surfaces. New live screenshots below cover the actual 4.7 HTML preview."
+  },
+  "live_preview": {
+    "source_head": "cb8cca525061ee6ca950e788c51b35acc45de0da",
+    "runtime_commit": "8010f21486182f82afdbd7bfcada05afeeb2a9ff",
+    "bundle_sha256": "1c2abf8a1cc57a9662c7a19ace841adc02d2973f7993e71c07e4f1f47be3eb3e",
+    "log_source_sha256": "ecfcceb8de764363097dfe4496ffb0df4c0a83c912f40aefc9bfc76228ba97de",
+    "backend_version": "2.3.0",
+    "backend_commit": "492385e2f16fce96ca5a8b514615f5c04aceb6b4",
+    "capture": "Actual Chrome on a disposable Home Assistant staging clone; only the card clipped with the browser screenshot API, no pixel editing",
+    "data": "Two controlled synthetic system_log sources, three retained occurrences (ERROR2/WARNING1), no private household logs or real recipients. Restrictive sandboxed iframe displays actual server-composed HTML; no SMTP or Save. The chart image shows the same preview scrolled lower.",
+    "viewport_css_px": [
+      1920,
+      783
+    ],
+    "card_width_css_px": 1664,
+    "legacy_capture_metadata_above": "Historical fields and six original hashes unchanged",
+    "captures": [
+      {
+        "file": "card-preview-live-light.jpg",
+        "width": 1664,
+        "height": 1230,
+        "bytes": 93361,
+        "sha256": "31179a586ce291beba2033eaa3945f26fb288b2af8d18784e4c261c6c3f1b091",
+        "surface": "metadata and upper email content"
+      },
+      {
+        "file": "card-preview-charts-live-light.jpg",
+        "width": 1664,
+        "height": 1230,
+        "bytes": 122760,
+        "sha256": "ac4dd6bcc9818cfb619e7e5190389362cedd71800d1201c611559af488bed0dc",
+        "surface": "same native iframe scrolled to charts"
+      }
+    ]
   }
 }

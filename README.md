@@ -106,6 +106,19 @@ public 4.6.1 remains the prior release until a new release is published.
 
 ## Screenshots
 
+### Actual 4.7 email preview
+
+| Period metadata and email content | Same preview, scrolled to charts |
+|---|---|
+| ![Actual daily Log email preview in Home Assistant](docs/screenshots/card-preview-live-light.jpg) | ![Retained occurrence charts inside the actual server-composed email](docs/screenshots/card-preview-charts-live-light.jpg) |
+
+*Captured in Chrome on a disposable Home Assistant staging clone with HA Tools Email 2.3.0.
+Two controlled synthetic log groups contain three retained occurrences (two errors and one warning).
+The second image shows the same preview scrolled lower. These are retained aggregates, not a complete
+history or a claim about a real household. Previewing did not send mail or save a schedule.*
+
+### Historical 4.6 reference surfaces
+
 | Light | Dark |
 |---|---|
 | ![Retained logs, filters and visible repetition counts](docs/screenshots/card-overview-light.png) | ![Retained logs in dark theme](docs/screenshots/card-overview-dark.png) |

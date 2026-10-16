@@ -1,5 +1,11 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.7.1] - 2026-10-16
+
+- Start the first Log Email read when the mounted card becomes available to an online administrator, including a later login or reconnection.
+- Keep one occupied initial/display log read until it settles. Discard stale user, connection, role and detached results, then resume an unfinished first load without requiring another Home Assistant update.
+- Keep current empty, invalid and failed responses settled; manual refresh remains available without adding polling or retrying sends. Existing optional alert polling is unchanged.
+
 ## [4.7.0] - Unreleased
 
 - Preview the actual backend-composed email in an isolated frame, with daily, weekly and monthly choices and explicit rolling or completed calendar periods. Opening or refreshing a preview never sends mail.

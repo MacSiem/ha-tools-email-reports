@@ -250,11 +250,13 @@ test('retained aggregates preserve zero and unknown counts; loaded older range r
 test('late system log data cannot restore a previous admin user snapshot', async()=>{
   const f=fixture();
   try {
-    const d=pending();f.hass.callWS=()=>d.promise;const fetch=f.card._fetchLogData();
+    const d=pending(),next=pending();let reads=0;f.hass.callWS=()=>++reads===1?d.promise:next.promise;const fetch=f.card._fetchLogData();
     f.card._firstRender=true;f.card.hass={...f.hass,user:{id:'admin-b',is_admin:true}};
     d.resolve([entry(100,{message:['STALE_ADMIN_DATA']})]);await fetch;
     assert.equal(f.card._logData,null);assert.equal(f.card._retainedLogs,null);
     assert.doesNotMatch(f.card.shadowRoot.textContent,/STALE_ADMIN_DATA/);
+    assert.equal(reads,2,'current admin first load resumes only after old raw read settles');
+    next.resolve([]);await f.card._logRead.promise;
     assert.equal(f.writes.length,0);
   } finally {f.close();}
 });

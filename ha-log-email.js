@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.7.0 (2026-10-15) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.7.1 (2026-10-15) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -653,7 +653,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.7.0
+ * HA Log Email Card v4.7.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1173,6 +1173,8 @@ class HALogEmail extends HTMLElement {
     this._dataEpoch = 0;
     this._dataContext = null;
     this._logReadToken = 0;
+    this._logRead = null;
+    this._initialLogSettled = false;
     this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
     this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailPreview = createHaToolsEmailSchedules({ changed: () => this._render() });
@@ -1239,6 +1241,7 @@ class HALogEmail extends HTMLElement {
       this._invalidateEmailResults();
       this._dataEpoch++;
       this._logReadToken++;
+      this._initialLogSettled = false;
       this._loading = false;
       this._logData = null;
       this._retainedLogs = null;
@@ -1264,10 +1267,10 @@ class HALogEmail extends HTMLElement {
     this._legacyBrowserCounts = [];
     if (!this._firstRender && hass) {
       this._firstRender = true;
-      if (hass.user?.is_admin === true && online(hass)) this._fetchLogData();
       this._render();
     } else if (identityChanged || !hass || languageChanged) this._render();
     else if (previousAdmin !== hass?.user?.is_admin || this._activeTab === 'schedule') this._render();
+    this._ensureInitialLogData();
   }
 
   get _t() {
@@ -1519,12 +1522,35 @@ class HALogEmail extends HTMLElement {
       severities: [...new Set(candidates.map(row => row.level))].sort() };
   }
 
+  _ensureInitialLogData() {
+    const context = this._captureLogContext(this._hass);
+    if (this.isConnected && context.admin && context.online && !this._initialLogSettled && !this._logData && !this._logRead) this._fetchLogData();
+  }
+
   async _fetchLogData() {
+    // Context invalidation purges data, but cannot release an occupied raw WS read.
+    if (this._logRead) return this._logRead.promise;
+    const context = this._captureLogContext(this._hass);
+    if (!context.admin || !context.online) return;
+    const read = { promise: null };
+    this._logRead = read;
+    read.promise = this._readLogData().finally(() => {
+      if (this._logRead !== read) return;
+      this._logRead = null;
+      // Resume only an unsettled first load; a current error/fallback is settled too.
+      this._ensureInitialLogData();
+    });
+    return read.promise;
+  }
+
+  async _readLogData() {
     const hass = this._hass;
     if (hass?.user?.is_admin !== true || hass.connected === false || hass.connection?.connected === false) return;
     if (!this._dataContext) this._dataContext = this._captureLogContext(hass);
     const epoch = this._dataEpoch, readToken = ++this._logReadToken;
-    const current = () => epoch === this._dataEpoch && readToken === this._logReadToken && this._hass?.user?.is_admin === true;
+    const context = this._captureLogContext(hass), attached = this.isConnected;
+    const current = () => epoch === this._dataEpoch && readToken === this._logReadToken && this.isConnected === attached &&
+      Object.keys(context).every(key => context[key] === this._captureLogContext(this._hass)[key]);
     this._loading = true;
     this._render();
     try {
@@ -1548,6 +1574,7 @@ class HALogEmail extends HTMLElement {
     }
     if (!current()) return;
     this._loading = false;
+    this._initialLogSettled = true;
     this._lastFetch = Date.now();
     if (this._logData && this._logData.errors) {
       const snapshot = { ts: new Date().toISOString(), errors: this._logData.errors.length, warnings: this._logData.warnings.length, total: this._logData.total };
@@ -2771,6 +2798,7 @@ ${_LOG_RECORD_CSS}
   connectedCallback() {
     this._bindEmailContext();
     if (this._hass) this._render();
+    this._ensureInitialLogData();
   }
 
   disconnectedCallback() {
@@ -2780,6 +2808,8 @@ ${_LOG_RECORD_CSS}
     this._logRecordWidths?.clear();
     this._dataEpoch++;
     this._logReadToken++;
+    this._initialLogSettled = false;
+    this._loading = false;
     this._retainedLogs = null;
     this._logData = null;
     this._logHistory = [];
@@ -2805,7 +2835,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.7.0 registered');
+  console.log('[ha-log-email] v4.7.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

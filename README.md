@@ -274,3 +274,8 @@ The cards read Home Assistant logs and configured energy statistics. Reports and
 See [SECURITY.md](SECURITY.md) for safe vulnerability reporting and [NOTICE](NOTICE) for licensing notices.
 
 Smart Reports energy ranges end at the last completed Recorder UTC hour. Missing boundary hours or buckets extending beyond the range withhold the total and estimated cost. Before the first completed hour, Today has an empty range and no data, including timezones with fractional-hour offsets. The exported range matches the report exactly.
+
+Log Email loads when the card is mounted and an administrator is online. A login,
+reconnection or remount resumes an unfinished first read; stale results cannot
+restore another user's log data. Empty or failed current reads do not trigger a
+retry loop. Manual refresh and the existing optional alert polling remain available.

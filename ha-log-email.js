@@ -1621,10 +1621,13 @@ class HALogEmail extends HTMLElement {
   }
 
   async _pollForNewErrors() {
-    if (!this._hass?.user?.is_admin) return;
+    const hass = this._hass, context = this._captureLogContext(hass), epoch = this._dataEpoch;
+    const current = () => this.isConnected && epoch === this._dataEpoch &&
+      Object.keys(context).every(key => context[key] === this._captureLogContext(this._hass)[key]);
+    if (!this.isConnected || !context.admin || !context.online) return;
     try {
-      const logs = await this._hass.callWS({ type: 'system_log/list' });
-      if (!this._hass?.user?.is_admin) return;
+      const logs = await hass.callWS({ type: 'system_log/list' });
+      if (!current()) return;
       if (!Array.isArray(logs)) return;
       const now = Date.now();
       const h1 = 60 * 60 * 1000;
@@ -1640,7 +1643,7 @@ class HALogEmail extends HTMLElement {
         this._lastErrorCount = recentErrors.length;
         // Send HA persistent notification
         try {
-          await this._hass.callService('persistent_notification', 'create', {
+          await hass.callService('persistent_notification', 'create', {
             title: this._t.newErrorsNotif(newErrors.length),
             message: newErrors.slice(0, 3).map(e => `**${e.name || 'unknown'}**: ${(Array.isArray(e.message) ? e.message[0] : String(e.message || '')).substring(0, 150)}`).join('\n\n'),
             notification_id: 'ha_log_email_poll_' + Date.now()
@@ -1648,6 +1651,7 @@ class HALogEmail extends HTMLElement {
         } catch(notifErr) {
           console.warn('[ha-log-email] Could not create notification:', notifErr);
         }
+        if (!current()) return;
         // Also refresh the log data display
         this._fetchLogData();
       }
@@ -1666,6 +1670,11 @@ class HALogEmail extends HTMLElement {
       fetchedAt: new Date().toISOString()
     };
     const attrs = sensor.attributes || {};
+    if (!Array.isArray(attrs.errors) && !Array.isArray(attrs.warnings)) return {
+      unavailable: true,
+      note: 'Sensor sensor.ha_log_summary has no readable log records.',
+      fetchedAt: new Date().toISOString()
+    };
     return {
       errors: Array.isArray(attrs.errors) ? attrs.errors : [],
       warnings: Array.isArray(attrs.warnings) ? attrs.warnings : [],

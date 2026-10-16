@@ -110,3 +110,59 @@ test('empty first result remains settled across locale/theme updates and preserv
     f.card.remove(); assert.deepEqual(cleared, [42]);
   } finally { f.close(); }
 });
+
+for (const boundary of ['user', 'connection', 'role', 'offline', 'detached']) test(`optional alert poll discards stale logs after ${boundary}`, async () => {
+  const f = setup(); try {
+    f.mount(); f.card.hass = f.hass; await flush(); await f.accept(0, 'INITIAL');
+    const pending = f.card._pollForNewErrors();
+    assert.equal(f.requests.length, 2);
+    if (boundary === 'user') f.hass.user = { id: 'second-admin', is_admin: true };
+    if (boundary === 'connection') f.hass.connection = { connected: true };
+    if (boundary === 'role') f.hass.user.is_admin = false;
+    if (boundary === 'offline') f.hass.connection.connected = false;
+    if (boundary === 'detached') f.card.remove(); else f.card.hass = f.hass;
+    await f.accept(1, 'PRIVATE-OLD-ADMIN'); await pending;
+    assert.equal(f.writes.length, 0, 'stale logs must not create a notification');
+    assert.equal(f.card._lastErrorKeys.size, 0, 'stale poll cannot replace the current baseline');
+    assert.equal(f.card._lastPollTime, undefined);
+    assert.doesNotMatch(f.card.shadowRoot.textContent, /PRIVATE-OLD-ADMIN/);
+    if (f.requests[2]) await f.accept(2, 'CURRENT');
+  } finally { f.close(); }
+});
+for (const boundary of ['offline', 'detached']) test(`optional alert poll does not read while ${boundary}`, async () => {
+  const f = setup(); try {
+    f.mount(); f.card.hass = f.hass; await flush(); await f.accept(0);
+    if (boundary === 'offline') { f.hass.connection.connected = false; f.card.hass = f.hass; }
+    else f.card.remove();
+    const pending = f.card._pollForNewErrors(); const reads = f.requests.length;
+    if (f.requests[1]) { f.requests[1].resolve([]); await flush(); }
+    await pending;
+    assert.equal(reads, 1); assert.equal(f.writes.length, 0);
+  } finally { f.close(); }
+});
+test('current optional alert poll still notifies once and refreshes the display', async () => {
+  const f = setup(); try {
+    f.mount(); f.card.hass = f.hass; await flush(); await f.accept(0, 'INITIAL');
+    const pending = f.card._pollForNewErrors(); await f.accept(1, 'CURRENT-ALERT'); await pending;
+    assert.equal(f.writes.length, 1);
+    assert.equal(f.writes[0][0], 'persistent_notification'); assert.equal(f.writes[0][1], 'create');
+    assert.match(f.writes[0][2].message, /CURRENT-ALERT/);
+    assert.equal(f.requests.length, 3); await f.accept(2, 'CURRENT-DISPLAY');
+    assert.match(f.card.shadowRoot.textContent, /CURRENT-DISPLAY/);
+    assert.equal(f.card._pollingTimer, null);
+  } finally { f.close(); }
+});
+test('fallback sensor without either typed record list is unavailable, not a zero-row snapshot', () => {
+  const f = setup(); try {
+    for (const attributes of [{}, { total: 8 }, { errors: null, warnings: null, total: 8 }, { errors: 'invalid', warnings: {}, total: 0 }]) {
+      f.hass.states = { 'sensor.ha_log_summary': { state: '8', attributes } }; f.card._hass = f.hass;
+      const data = f.card._getLogFromSensor();
+      assert.equal(data.unavailable, true);
+      f.card._logData = data; f.card._render();
+      assert.equal(f.card._retainedModel().unavailable, true);
+      assert.doesNotMatch(f.card.shadowRoot.textContent, /0 current snapshot rows/);
+    }
+    f.hass.states['sensor.ha_log_summary'].attributes = { errors: [], warnings: [], total: 0 };
+    const zero = f.card._getLogFromSensor(); assert.equal(zero.total, 0); assert.ok(!zero.unavailable);
+  } finally { f.close(); }
+});

@@ -4,7 +4,8 @@
 
 - Start the first Log Email read when the mounted card becomes available to an online administrator, including a later login or reconnection.
 - Keep one occupied initial/display log read until it settles. Discard stale user, connection, role and detached results, then resume an unfinished first load without requiring another Home Assistant update.
-- Keep current empty, invalid and failed responses settled; manual refresh remains available without adding polling or retrying sends. Existing optional alert polling is unchanged.
+- Keep current empty, invalid and failed responses settled; manual refresh remains available without adding polling or retrying sends. Preserve the optional alert interval and discard stale alert reads after a user, connection, role or mount change.
+- Treat a fallback sensor with no readable record lists as unavailable, while preserving known empty lists and zero counts.
 
 ## [4.7.0] - Unreleased
 

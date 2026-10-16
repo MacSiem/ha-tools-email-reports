@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.7.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.7.1 sha256:4ace372b692d476e4da4b344aece0bd7f115d2a848c99eb46ae09b0669320509
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.7.1 sha256:031f2d7e79f8561b9ee339f743145d5ac88782122bb96602a0a2da8795753c01
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -1752,10 +1752,13 @@ class HALogEmail extends HTMLElement {
   }
 
   async _pollForNewErrors() {
-    if (!this._hass?.user?.is_admin) return;
+    const hass = this._hass, context = this._captureLogContext(hass), epoch = this._dataEpoch;
+    const current = () => this.isConnected && epoch === this._dataEpoch &&
+      Object.keys(context).every(key => context[key] === this._captureLogContext(this._hass)[key]);
+    if (!this.isConnected || !context.admin || !context.online) return;
     try {
-      const logs = await this._hass.callWS({ type: 'system_log/list' });
-      if (!this._hass?.user?.is_admin) return;
+      const logs = await hass.callWS({ type: 'system_log/list' });
+      if (!current()) return;
       if (!Array.isArray(logs)) return;
       const now = Date.now();
       const h1 = 60 * 60 * 1000;
@@ -1771,7 +1774,7 @@ class HALogEmail extends HTMLElement {
         this._lastErrorCount = recentErrors.length;
         // Send HA persistent notification
         try {
-          await this._hass.callService('persistent_notification', 'create', {
+          await hass.callService('persistent_notification', 'create', {
             title: this._t.newErrorsNotif(newErrors.length),
             message: newErrors.slice(0, 3).map(e => `**${e.name || 'unknown'}**: ${(Array.isArray(e.message) ? e.message[0] : String(e.message || '')).substring(0, 150)}`).join('\n\n'),
             notification_id: 'ha_log_email_poll_' + Date.now()
@@ -1779,6 +1782,7 @@ class HALogEmail extends HTMLElement {
         } catch(notifErr) {
           console.warn('[ha-log-email] Could not create notification:', notifErr);
         }
+        if (!current()) return;
         // Also refresh the log data display
         this._fetchLogData();
       }
@@ -1797,6 +1801,11 @@ class HALogEmail extends HTMLElement {
       fetchedAt: new Date().toISOString()
     };
     const attrs = sensor.attributes || {};
+    if (!Array.isArray(attrs.errors) && !Array.isArray(attrs.warnings)) return {
+      unavailable: true,
+      note: 'Sensor sensor.ha_log_summary has no readable log records.',
+      fetchedAt: new Date().toISOString()
+    };
     return {
       errors: Array.isArray(attrs.errors) ? attrs.errors : [],
       warnings: Array.isArray(attrs.warnings) ? attrs.warnings : [],

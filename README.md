@@ -122,7 +122,7 @@ inbox delivery. No real address, log entry or household data is shown.*
 
 The Dashboard bundle requires Home Assistant Core **2024.5.0 or newer**. Log Email uses the frontend service-response API to read the centrally configured recipient; the frontend shipped with Core 2024.1.0 ignores that response argument. Core 2024.5.0 ships frontend 20240501.0 with support for it. These floors are qualified against the official Core/frontend contracts; an old Home Assistant instance was not run for this maintenance release.
 
-Basic manual Log or Energy email requires the separate **HA Tools Email 2.1.2 or newer** integration. Server calendar schedules, calendar previews, attempt history and shared tariffs require **2.2.0 or newer**. The backend requires Core **2024.7.0 or newer**. Smart Reports works without SMTP. Energy Email is provided by Energy Optimizer and retains that product's compatibility requirements.
+The separate integration's legacy basic send API is available from **HA Tools Email 2.1.2**. The manual Preview and Send controls introduced in this bundle's **4.7** release require **stable HA Tools Email 2.3.0 or newer**; the older basic API does not enable those controls. Server calendar schedules, summary calendar previews, attempt history and shared tariffs require **2.2.0 or newer**; previews of the actual composed email require **2.3.0 or newer**. The backend requires Core **2024.7.0 or newer**. Smart Reports works without SMTP. Energy Email is provided by Energy Optimizer and retains that product's compatibility requirements.
 
 ## Installation
 

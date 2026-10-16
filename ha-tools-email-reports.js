@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.7.0
+ * HA Tools Email Reports bundle v4.7.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.7.0 sha256:ecfcceb8de764363097dfe4496ffb0df4c0a83c912f40aefc9bfc76228ba97de
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.7.1 sha256:4ace372b692d476e4da4b344aece0bd7f115d2a848c99eb46ae09b0669320509
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -129,7 +129,7 @@ if (!window.customCards.some(c => c.type === TAG)) {
 }
 
 })();
-/* HA Tools split — ha-log-email v4.7.0 (2026-10-15) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.7.1 (2026-10-15) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -784,7 +784,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.7.0
+ * HA Log Email Card v4.7.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1304,6 +1304,8 @@ class HALogEmail extends HTMLElement {
     this._dataEpoch = 0;
     this._dataContext = null;
     this._logReadToken = 0;
+    this._logRead = null;
+    this._initialLogSettled = false;
     this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
     this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailPreview = createHaToolsEmailSchedules({ changed: () => this._render() });
@@ -1370,6 +1372,7 @@ class HALogEmail extends HTMLElement {
       this._invalidateEmailResults();
       this._dataEpoch++;
       this._logReadToken++;
+      this._initialLogSettled = false;
       this._loading = false;
       this._logData = null;
       this._retainedLogs = null;
@@ -1395,10 +1398,10 @@ class HALogEmail extends HTMLElement {
     this._legacyBrowserCounts = [];
     if (!this._firstRender && hass) {
       this._firstRender = true;
-      if (hass.user?.is_admin === true && online(hass)) this._fetchLogData();
       this._render();
     } else if (identityChanged || !hass || languageChanged) this._render();
     else if (previousAdmin !== hass?.user?.is_admin || this._activeTab === 'schedule') this._render();
+    this._ensureInitialLogData();
   }
 
   get _t() {
@@ -1650,12 +1653,35 @@ class HALogEmail extends HTMLElement {
       severities: [...new Set(candidates.map(row => row.level))].sort() };
   }
 
+  _ensureInitialLogData() {
+    const context = this._captureLogContext(this._hass);
+    if (this.isConnected && context.admin && context.online && !this._initialLogSettled && !this._logData && !this._logRead) this._fetchLogData();
+  }
+
   async _fetchLogData() {
+    // Context invalidation purges data, but cannot release an occupied raw WS read.
+    if (this._logRead) return this._logRead.promise;
+    const context = this._captureLogContext(this._hass);
+    if (!context.admin || !context.online) return;
+    const read = { promise: null };
+    this._logRead = read;
+    read.promise = this._readLogData().finally(() => {
+      if (this._logRead !== read) return;
+      this._logRead = null;
+      // Resume only an unsettled first load; a current error/fallback is settled too.
+      this._ensureInitialLogData();
+    });
+    return read.promise;
+  }
+
+  async _readLogData() {
     const hass = this._hass;
     if (hass?.user?.is_admin !== true || hass.connected === false || hass.connection?.connected === false) return;
     if (!this._dataContext) this._dataContext = this._captureLogContext(hass);
     const epoch = this._dataEpoch, readToken = ++this._logReadToken;
-    const current = () => epoch === this._dataEpoch && readToken === this._logReadToken && this._hass?.user?.is_admin === true;
+    const context = this._captureLogContext(hass), attached = this.isConnected;
+    const current = () => epoch === this._dataEpoch && readToken === this._logReadToken && this.isConnected === attached &&
+      Object.keys(context).every(key => context[key] === this._captureLogContext(this._hass)[key]);
     this._loading = true;
     this._render();
     try {
@@ -1679,6 +1705,7 @@ class HALogEmail extends HTMLElement {
     }
     if (!current()) return;
     this._loading = false;
+    this._initialLogSettled = true;
     this._lastFetch = Date.now();
     if (this._logData && this._logData.errors) {
       const snapshot = { ts: new Date().toISOString(), errors: this._logData.errors.length, warnings: this._logData.warnings.length, total: this._logData.total };
@@ -2902,6 +2929,7 @@ ${_LOG_RECORD_CSS}
   connectedCallback() {
     this._bindEmailContext();
     if (this._hass) this._render();
+    this._ensureInitialLogData();
   }
 
   disconnectedCallback() {
@@ -2911,6 +2939,8 @@ ${_LOG_RECORD_CSS}
     this._logRecordWidths?.clear();
     this._dataEpoch++;
     this._logReadToken++;
+    this._initialLogSettled = false;
+    this._loading = false;
     this._retainedLogs = null;
     this._logData = null;
     this._logHistory = [];
@@ -2936,7 +2966,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.7.0 registered');
+  console.log('[ha-log-email] v4.7.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {
@@ -6656,6 +6686,6 @@ function projectSmartReportV3(report, includePrivate = false) {
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.7.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.7.1 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

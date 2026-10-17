@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.8.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:9f1f3180e8c318097dbd6f3b9c0a5ca9c463967cdd0d8ce3837f8e96aa8b562d
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:106a56ae8be9a1855d202b43f1e54421c0bf1cf43fd5df667b8c5f22ff36888d
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -256,6 +256,8 @@ function createUiV3({ language = 'en' } = {}) {
     const result = status(value);
     return `<span class="ht-result-state ht-result-state--${result.code}" data-result-state="${result.code}"><span aria-hidden="true">${result.icon}</span> ${result.label}</span>`;
   };
+  // Callers supply honest source/range/coverage labels; this renderer invents no metrics.
+  const sourceSummary = (parts, escape) => `<p data-source-summary>${parts.map(value => escape(value)).join(' · ')}</p>`;
   const css = `
 .ht-result-state { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.4;white-space:normal; }
 .ht-result-state--success { color:#237b3d;background:rgba(35,123,61,.10); }
@@ -269,7 +271,7 @@ function createUiV3({ language = 'en' } = {}) {
 :host(.bento-dark) .ht-result-state--unconfirmed { color:#ffb97b; }
 :host(.bento-dark) .ht-result-state--error { color:#ff9999; }
 `;
-  return { status, statusHtml, css };
+  return { status, statusHtml, sourceSummary, css };
 }
 // END vendored ha-tools-ui factory
 
@@ -577,12 +579,31 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
 }
 // END vendored ha-tools-email-schedules factory
 
+// BEGIN vendored ha-tools-lists factory
+// Shared list presentation. No registry writes, storage or global state.
+function createListUi(language = 'en') {
+  const collator = new Intl.Collator(language, {numeric:true, sensitivity:'base'});
+  const compare = (a,b) => collator.compare(String(a ?? ''), String(b ?? ''));
+  const createdAt = value => {
+    if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value * 1000 : 0;
+    if (typeof value !== 'string' || !value.trim() || /^0(?:\.0+)?$/.test(value.trim())) return 0;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && time > 0 ? time : 0;
+  };
+  const isNew = (value, now = Date.now()) => {
+    const time = createdAt(value);
+    return time > 0 && time <= now && now - time < 7 * 86400000;
+  };
+  return {compare, createdAt, isNew};
+}
+// END vendored ha-tools-lists factory
+
 // BEGIN vendored ha-tools-email-history factory
 // Pure ES-module factory. Vendor this function inside each consumer's own IIFE.
 // Neither the controller nor renderer sends, saves, retries, or reads on open.
 function createHaToolsEmailHistory({ escape = value => String(value == null ? '' : value).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]), clock = () => Date.now(),
-  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null } = {}) {
+  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null, renderExplanation = null } = {}) {
   const kinds = new Set(['manual', 'test', 'log_digest', 'energy_report']);
   const cadences = new Set(['daily', 'weekly', 'monthly']);
   const outcomes = new Set(['accepted_by_smtp', 'preparation_failed', 'authentication_failed',
@@ -711,14 +732,15 @@ function createHaToolsEmailHistory({ escape = value => String(value == null ? ''
     };
     const rows = state.attempts.map(row => [date(row.timestamp), sourceLabels[row.source], kindLabels[row.kind] ?? '—', cadenceLabels[row.cadence] ?? '—',
       periodLabel(row.period), row.recipient_count ?? '—', outcomeLabels[row.outcome]]);
-    return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
-      <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}</h3>
-      <p>${pl ? 'Metadane prób z serwera Home Assistant. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
+    const explanation = `<p>${pl ? 'Metadane prób z serwera Home Assistant. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
         'Attempt metadata from your Home Assistant server. SMTP acceptance does not confirm delivery. Unknown and partial outcomes do not trigger another send.'}</p>
       <p>${pl ? 'Strefa czasu widoku' : 'Display timezone'}: ${escape(timezone)}.</p>
       <p>${pl ? 'Maksymalnie 128 prób / 90 dni. To zachowany zakres, nie pełna historia.' : 'At most 128 attempts / 90 days. This is the retained range, not a complete history.'}</p>
       <p>${pl ? 'Odczytano o' : 'Read at'}: ${state.observedAt ? escape(date(state.observedAt)) : '—'}. ${pl ? 'Zakres dotyczy chwili odczytu.' : 'The range describes the time of this read.'}</p>
-      <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>
+      <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>`;
+    return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
+      <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}${typeof renderExplanation === 'function' ? ` (${rows.length})` : ''}</h3>
+      ${typeof renderExplanation === 'function' ? renderExplanation(explanation, { language, state }) : explanation}
       <div class="history-actions"><button type="button" id="history-refresh" ${state.status === 'loading' ? 'aria-busy="true"' : ''}>${pl ? 'Odśwież historię' : 'Refresh history'}</button>
       <button type="button" id="history-discard">${pl ? 'Odrzuć odczyt' : 'Discard read'}</button></div>
       <p role="status" aria-live="polite">${text[state.status]}</p>
@@ -1373,6 +1395,12 @@ pre {
   .stat-value, .stat-val, .kpi-val { font-size: 18px; }
 }
 
+.log-model-counts { display:flex;flex-wrap:wrap;gap:8px;margin:12px 0; }
+[data-log-metric] { flex:1 1 130px;min-width:0;padding:12px;border:1px solid var(--divider-color,#ddd);border-radius:8px;background:var(--secondary-background-color,#f5f5f5);overflow-wrap:anywhere; }
+.log-filter-chips { display:flex;flex-wrap:wrap;gap:8px; }
+.log-filter-chips button { min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere;padding:8px 12px;border:1px solid var(--primary-color,#3b82f6);border-radius:18px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#222);cursor:pointer; }
+.log-filter-chips button:focus-visible { outline:2px solid var(--primary-color,#3b82f6);outline-offset:2px; }
+[data-source-summary] { overflow-wrap:anywhere; }
 details[data-log-disclosure-key] > summary { min-height:44px; box-sizing:border-box; padding:12px 4px; cursor:pointer; overflow-wrap:anywhere; }
 details[data-log-disclosure-key] > summary:focus-visible { outline:2px solid var(--primary-color,#3b82f6); outline-offset:2px; }
 `;
@@ -1395,13 +1423,22 @@ class HALogEmail extends HTMLElement {
     this._legacyBrowserCounts = this._readBrowserCounts('ha-log-email-history');
     this._retainedLogs = null;
     this._logFilters = { severity: 'all', source: 'all', period: '24h' };
+    this._selectedLogSourceLabel = null;
     this._dataEpoch = 0;
     this._dataContext = null;
     this._logReadToken = 0;
     this._logRead = null;
     this._initialLogSettled = false;
     this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render(),
-      formatDate: stamp => this._formatUi().pointLabel(stamp), displayTimezone: () => this._formatUi().timeZone });
+      formatDate: stamp => this._formatUi().pointLabel(stamp), displayTimezone: () => this._formatUi().timeZone,
+      renderExplanation: (html, { language }) => {
+        const pl = language === 'pl';
+        return createUiV3({ language }).sourceSummary([
+          pl ? 'Źródło: serwer Home Assistant' : 'Source: Home Assistant server',
+          pl ? 'Zakres: maks. 128 prób / 90 dni' : 'Range: at most 128 attempts / 90 days',
+          pl ? 'Pokrycie: zachowany zakres, nie pełna historia' : 'Coverage: retained range, not a complete history'
+        ], _esc) + `<details data-log-disclosure-key="smtp-source"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>${html}</details>`;
+      } });
     this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailPreview = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailCadence = 'daily'; this._mailPeriodMode = 'rolling';
@@ -1467,6 +1504,7 @@ class HALogEmail extends HTMLElement {
     this._bindEmailContext();
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
       this._scheduleSaveFocus = null;
+      this._selectedLogSourceLabel = null;
       this._invalidateEmailResults();
       this._dataEpoch++;
       this._logReadToken++;
@@ -2119,12 +2157,18 @@ class HALogEmail extends HTMLElement {
     const date = value => format.pointLabel(value) || (pl ? 'Czas niedostępny' : 'Time unavailable');
     const source = preview.source?.name === 'system_log' ? (pl ? 'Zachowane wpisy dziennika HA' : 'Retained HA log entries') : (pl ? 'Statystyki energii Recorder' : 'Recorder energy statistics');
     return `<section class="schedule-preview"><h4>${_esc(preview.subject)}</h4>
+      ${createUiV3({ language: this._lang }).sourceSummary([
+        source, (pl ? 'Zakres: ' : 'Range: ') + date(preview.period.from) + ' — ' + date(preview.period.to),
+        preview.source?.complete === false ? (pl ? 'Pokrycie: częściowe dane' : 'Coverage: partial data') : (pl ? 'Pokrycie: kompletność nieustalona' : 'Coverage: completeness unknown')
+      ], _esc)}
+      ${preview.source?.complete === false ? `<p role="status">${pl ? 'częściowe dane' : 'partial data'}</p>` : ''}
+      <details data-log-disclosure-key="mail-${_esc(id)}"><summary>${pl ? 'Źródło, zakres i znaczniki czasu' : 'Source, range and timestamps'}</summary>
       <dl><dt>${pl ? 'Od (włącznie)' : 'From (inclusive)'}</dt><dd>${_esc(date(preview.period.from))}</dd>
       <dt>${pl ? 'Do (wyłącznie)' : 'To (exclusive)'}</dt><dd>${_esc(date(preview.period.to))}</dd>
       <dt>${pl ? 'Wygenerowano' : 'Generated'}</dt><dd>${_esc(date(preview.generated_at))}</dd>
-      <dt>${pl ? 'Źródło' : 'Source'}</dt><dd>${_esc(source)}${preview.source?.complete === false ? (pl ? ' — częściowe dane' : ' — partial data') : ''}</dd></dl>
+      <dt>${pl ? 'Źródło' : 'Source'}</dt><dd>${_esc(source)}</dd></dl>
       <p>${pl ? 'Strefa czasu widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${pl ? 'Strefa kalendarza serwera' : 'Server calendar timezone'}: ${_esc(preview.effective_timezone || '—')}</p>
-      <details data-log-disclosure-key="mail-${_esc(id)}"><summary>${pl ? 'Surowe znaczniki czasu' : 'Raw timestamps'}</summary><p>${_esc(preview.period.from)} / ${_esc(preview.period.to)} · ${_esc(preview.generated_at)}</p></details>
+      <p>${_esc(preview.period.from)} / ${_esc(preview.period.to)} · ${_esc(preview.generated_at)}</p></details>
       <iframe id="${id}" title="${_esc(this._t.emailPreview)}" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:600px;border:1px solid var(--divider-color,#ddd);background:white"></iframe></section>`;
   }
 
@@ -2238,13 +2282,19 @@ class HALogEmail extends HTMLElement {
       <button type="button" id="schedule-preview" ${m.previewing || m.writing ? 'disabled' : ''}>${tr('Podgląd okresu z serwera (tylko odczyt)', 'Preview server period (readonly)')}</button></div></fieldset>` : '';
     const p = m.preview;
     const preview = p?.html !== undefined ? this._renderMailFrame(p, 'schedule-mail-frame') : p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
+      ${createUiV3({ language: this._lang }).sourceSummary([
+        p.source.name, (pl ? 'Zakres: ' : 'Range: ') + (this._formatUi().pointLabel(p.period.from) || p.period.from) + ' — ' + (this._formatUi().pointLabel(p.period.to) || p.period.to),
+        p.source.complete === false ? (pl ? 'Pokrycie: częściowe dane' : 'Coverage: partial data') : (pl ? 'Pokrycie: kompletność nieustalona' : 'Coverage: completeness unknown')
+      ], _esc)}
+      ${p.unique_problems == null || p.total == null || p.source.retained_entries == null ? `<p role="status">${tr('Brak danych dla części liczników zachowanych wpisów; nie oznacza to zera.', 'No data for some retained-entry counts; this does not mean zero.')}</p>` : ''}
+      <details data-log-disclosure-key="summary-preview"><summary>${tr('Źródło, zakres i ograniczenia', 'Source, range and limitations')}</summary>
       <p>${tr('Poprzedni zakończony okres kalendarzowy; do nie obejmuje końca przedziału.', 'Previous completed calendar period; the end is exclusive.')}</p>
       <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(this._formatUi().pointLabel(p.period.from) || p.period.from)} / ${_esc(this._formatUi().pointLabel(p.period.to) || p.period.to)}</dd>
       <dt>${tr('Efektywna strefa', 'Effective timezone')}</dt><dd>${_esc(p.effective_timezone)}</dd>
       <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${tr('zachowane agregaty Home Assistant', 'retained Home Assistant aggregates')}</dd>
       <dt>${tr('Zachowane wpisy / różne problemy / wystąpienia (HA)', 'Retained entries / unique problems / occurrences (HA)')}</dt><dd>${_esc(p.source.retained_entries)} / ${_esc(p.unique_problems ?? tr('Brak danych', 'No data'))} / ${_esc(p.total ?? tr('Brak danych', 'No data'))}</dd></dl>
-      <details data-log-disclosure-key="summary-preview"><summary>${tr('Surowy okres serwera', 'Raw server period')}</summary><p>${_esc(p.period.from)} / ${_esc(p.period.to)}</p></details>
-      <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></section>` :
+      <p>${_esc(p.period.from)} / ${_esc(p.period.to)}</p>
+      <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></details></section>` :
       m.previewStatus.reason !== 'initial' ? `<section class="schedule-preview">${state(m.previewStatus)}<p>${_esc(reason[m.previewStatus.reason] || reason.read_failed)}</p></section>` : '';
     const legacy = ['daily', 'weekly'].map(c => {
       const id = 'automation.ha_tools_log_email_' + c, entity = this._hass?.states?.[id], value = entity?.state;
@@ -2255,7 +2305,7 @@ class HALogEmail extends HTMLElement {
           !entity ? `<p>${tr('Brak encji w odczycie; nie potwierdza to braku automatyzacji.', 'Entity absent from the read; this does not confirm that no automation exists.')}</p>` : ''}
         ${known ? `<button type="button" class="toggle-btn" id="btn-${c}-toggle" ${m.writing || this._legacyRequest || !this._emailAllowed() ? 'disabled' : ''}>${value === 'on' ? tr('Wyłącz starszą automatyzację', 'Disable legacy automation') : tr('Włącz starszą automatyzację', 'Enable legacy automation')}</button>` : ''}${this._renderLegacyResult(id)}</article>`;
     }).join('');
-    return `<section class="server-schedules"><h3>${tr('Harmonogramy serwerowe dziennika', 'Server log schedules')}</h3>
+    return `<section class="server-schedules"><h3>${tr('Harmonogramy serwerowe dziennika', 'Server log schedules')} (${logRows.length})</h3>
       ${state(m.status)}<p>${_esc(reason[m.status.reason] || reason.read_failed)}</p>
       <div class="server-schedule-actions"><button type="button" id="schedule-refresh" ${m.reading || m.writing ? 'disabled' : ''}>${tr('Odśwież harmonogramy', 'Refresh schedules')}</button>
       <button type="button" id="schedule-new" ${!busy && ['success', 'no_data'].includes(m.status.state) ? '' : 'disabled'}>${tr('Nowy harmonogram', 'New schedule')}</button></div>
@@ -2920,8 +2970,19 @@ ${_LOG_RECORD_CSS}
     this.shadowRoot.getElementById('log-refresh')?.addEventListener('click', () => this._fetchLogData());
     for (const key of ['severity', 'source', 'period']) {
       this.shadowRoot.getElementById('log-' + key)?.addEventListener('change', event => {
+        if (key === 'source') this._selectedLogSourceLabel = event.target.selectedOptions[0]?.textContent || null;
         this._logFilters = { ...this._logFilters, [key]: event.target.value };
         this._render();
+      });
+    }
+
+    for (const chip of this.shadowRoot.querySelectorAll('[data-log-clear-filter]')) {
+      chip.addEventListener('click', () => {
+        const key = chip.dataset.logClearFilter;
+        if (!['severity', 'source', 'period'].includes(key)) return;
+        this._logFilters = { ...this._logFilters, [key]: key === 'period' ? '24h' : 'all' };
+        this._render();
+        this.shadowRoot.getElementById('log-' + key)?.focus({ preventScroll: true });
       });
     }
 
@@ -3027,21 +3088,35 @@ ${_LOG_RECORD_CSS}
       `<option value="${_esc(value)}" ${this._logFilters[key] === value ? 'selected' : ''}>${_esc(text)}</option>`).join('')}</select></label>`;
     const severities = [...new Set(['ERROR', 'CRITICAL', 'WARNING', ...model.severities, this._logFilters.severity])].filter(value => value !== 'all');
     const sources = [...model.sources];
-    if (this._logFilters.source !== 'all' && !sources.some(([value]) => value === this._logFilters.source)) sources.push([this._logFilters.source, pl ? 'Wybrane źródło (brak w tym okresie)' : 'Selected source (absent in this period)']);
+    const selectedSource = sources.find(([value]) => value === this._logFilters.source);
+    if (selectedSource) this._selectedLogSourceLabel = selectedSource[1];
+    if (this._logFilters.source !== 'all' && !selectedSource) sources.push([this._logFilters.source,
+      (this._selectedLogSourceLabel ? this._selectedLogSourceLabel + ' — ' : '') + (pl ? 'Wybrane źródło (brak w tym okresie)' : 'Selected source (absent in this period)')]);
+    const list = createListUi(this._hass?.locale?.language || this._hass?.language || navigator.language || 'en');
+    sources.sort((a, b) => list.compare(a[1], b[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    const periods = [['24h', '24 h'], ['7d', pl ? '7 dni' : '7 days'], ['30d', pl ? '30 dni' : '30 days']];
+    const filterLabels = { severity: pl ? 'Poziom' : 'Severity', source: pl ? 'Źródło' : 'Source', period: pl ? 'Okres' : 'Period' };
+    const activeFilters = ['severity', 'source', 'period'].filter(key => this._logFilters[key] !== (key === 'period' ? '24h' : 'all'));
+    const filterValue = key => key === 'source' ? sources.find(([value]) => value === this._logFilters.source)?.[1] :
+      key === 'period' ? periods.find(([value]) => value === this._logFilters.period)?.[1] : this._logFilters[key];
     const labels = pl ? ['Poziom', 'Źródło', 'Ostatnie wystąpienie', 'Komunikat', 'Wystąpienia (HA)'] :
       ['Severity', 'Source', 'Last occurrence', 'Message', 'Occurrences (HA)'];
     return `<section class="retained-logs" aria-label="${pl ? 'Zachowany dziennik' : 'Retained log'}">
       <div class="log-filters">
         ${select('severity', pl ? 'Poziom' : 'Severity', [['all', pl ? 'Wszystkie' : 'All'], ...severities.map(value => [value, value])])}
         ${select('source', pl ? 'Źródło' : 'Source', [['all', pl ? 'Wszystkie źródła' : 'All sources'], ...sources])}
-        ${select('period', pl ? 'Zachowany okres' : 'Retained period', [['24h', '24 h'], ['7d', pl ? '7 dni' : '7 days'], ['30d', pl ? '30 dni' : '30 days']])}
+        ${select('period', pl ? 'Zachowany okres' : 'Retained period', periods)}
         <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
       </div>
-      <p class="log-model-counts">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')} · ${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}
-        ${model.filteredUnique > model.unique ? ` · ${pl ? 'pokazano' : 'shown'} ${model.unique}/${model.filteredUnique} (${pl ? 'limit karty' : 'card cap'})` : ''}</p>
+      <div class="log-filter-chips">${activeFilters.map(key => `<button type="button" data-log-clear-filter="${key}" aria-label="${_esc((pl ? 'Zresetuj filtr' : 'Reset filter') + ': ' + filterLabels[key] + ' — ' + filterValue(key))}">${_esc(filterLabels[key])}: ${_esc(filterValue(key))} <span aria-hidden="true">×</span></button>`).join('')}</div>
+      <div class="log-model-counts">
+        <div data-log-metric="unique">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')}</div>
+        <div data-log-metric="occurrences">${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}</div>
+        ${model.filteredUnique > model.unique ? `<div data-log-metric="shown">${pl ? 'pokazano' : 'shown'} ${model.unique}/${model.filteredUnique} (${pl ? 'limit karty' : 'card cap'})</div>` : ''}
+      </div>
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
-        `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
+        `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'} (${model.unique})</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
         ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
       <p data-log-source-summary>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)} · ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)} · ${pl ? 'Zaobserwowany zakres' : 'Observed retained range'}: ${_esc(rangeDate(model.first))} — ${_esc(rangeDate(model.last))} · ${pl ? 'Pokazano / limit' : 'Shown / cap'}: ${model.unique} / ${model.cap} · ${pl ? 'Strefa widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${model.unavailable ? (pl ? 'Dane niedostępne' : 'Data unavailable') : model.partial ? (pl ? 'Bieżący odczyt sensora; brak pokrycia historii' : 'Current sensor snapshot; historical coverage unavailable') : (pl ? 'Zachowane agregaty; kompletność historii nieustalona' : 'Retained aggregates; completeness of history unknown')}</p>
@@ -3068,9 +3143,15 @@ ${_LOG_RECORD_CSS}
       Number.isFinite(Date.parse(row.ts)) && Date.parse(row.ts) <= Date.now() && ['errors', 'warnings', 'total'].every(key => Number.isSafeInteger(row[key]) && row[key] >= 0)).slice(0, 24);
     return this._attemptHistory.render(this._lang) + `<section class="browser-snapshots">
       <h3>${pl ? 'Odczyty dziennika w sesji przeglądarki' : 'Browser session log snapshots'} (${rows.length})</h3>
+      ${createUiV3({ language: this._lang }).sourceSummary([
+        pl ? 'Źródło: lokalna sesja przeglądarki' : 'Source: local browser session',
+        pl ? 'Zakres: maks. 24 odczyty w sesji' : 'Range: at most 24 snapshots in the session',
+        pl ? 'Pokrycie: tylko odczyty lokalne, nie pełna historia' : 'Coverage: local snapshots only, not a complete history'
+      ], _esc)}
+      <details data-log-disclosure-key="snapshots-source"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>
       <p>${pl ? 'Lokalne liczniki odczytów, nie próby SMTP ani dowód dostarczenia. Maksymalnie 24 odczyty w sesji przeglądarki.' :
-        'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
-      ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
+        'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}</p></details>
+      ${this._browserCountsLegacy ? `<p role="status">${pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.'}</p>` : ''}
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
         `<tr role="row" data-snapshot-key="${_logSnapshotKey(this,row)}">${[this._formatUi().pointLabel(row.ts) || '—' , row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}${i === 0 ? `<details data-log-disclosure-key="snapshot-time-${_logSnapshotKey(this,row)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.ts)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
         `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}

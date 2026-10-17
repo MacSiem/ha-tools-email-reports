@@ -5,10 +5,36 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { JSDOM } = require('jsdom');
 const settle = async () => { for (let i = 0; i < 8; i++) await new Promise(r => setImmediate(r)); };
-async function fixture(t, language = 'en', backend = '2.3.1') {
+async function fixture(t, language = 'en', backend = '2.3.1', asyncHaCard = false) {
   const dom = new JSDOM('', { runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/' });
   t.after(() => dom.window.close());
-  const w = dom.window; w.eval(readFileSync(join(__dirname, '..', 'ha-log-email.js'), 'utf8'));
+  const w = dom.window, pendingPaints = [];
+  if (asyncHaCard) {
+    // HA-CARD is a LitElement: its light DOM is focusable only after its slot renders.
+    // jsdom has no layout, so model this native readiness boundary explicitly.
+    w.customElements.define('ha-card', class extends w.HTMLElement {
+      constructor() {
+        super(); this.attachShadow({ mode: 'open' });
+        this.updateComplete = new Promise(resolve => pendingPaints.push(() => {
+          this.shadowRoot.innerHTML = '<slot></slot>'; resolve(true);
+        }));
+      }
+    });
+    const nativeRects = w.HTMLElement.prototype.getClientRects;
+    w.HTMLElement.prototype.getClientRects = function () {
+      const wrapper = this.closest('ha-card');
+      if (wrapper) return wrapper.shadowRoot.querySelector('slot') ? [{ width: 100, height: 44 }] : [];
+      return nativeRects.call(this);
+    };
+    const nativeFocus = w.HTMLElement.prototype.focus;
+    w.HTMLElement.prototype.focus = function (...args) {
+      const wrapper = this.closest('ha-card');
+      if (wrapper && !wrapper.shadowRoot.querySelector('slot')) return;
+      nativeFocus.apply(this, args);
+    };
+  }
+  const paint = async () => { pendingPaints.splice(0).forEach(done => done()); await settle(); await new Promise(resolve => w.requestAnimationFrame(resolve)); };
+  w.eval(readFileSync(join(__dirname, '..', 'ha-log-email.js'), 'utf8'));
   const now = Date.now(), calls = [], writes = [];
   const logs = ['qa10', 'qa2', 'qa1'].map((name, i) => ({ id: name, name, level: i === 1 ? 'WARNING' : 'ERROR',
     timestamp: (now - (i + 1) * 1000) / 1000, count: i === 2 ? 0 : i + 1, message: [name + ' retained message'] }));
@@ -33,10 +59,11 @@ async function fixture(t, language = 'en', backend = '2.3.1') {
     } };
   const card = w.document.createElement('ha-log-email'); card.setConfig({ show_support: false });
   w.document.body.append(card); card.hass = hass; await settle();
+  if (asyncHaCard) await paint();
   const root = card.shadowRoot;
   const choose = (key, value) => { const e = root.getElementById('log-' + key); e.value = value; e.dispatchEvent(new w.Event('change')); };
   const source = name => [...root.getElementById('log-source').options].find(o => o.textContent === name).value;
-  return { card, root, hass, calls, writes, choose, source };
+  return { card, root, hass, calls, writes, choose, source, paint, window: w };
 }
 for (const language of ['en', 'pl']) test(`W9 source chooser is natural while records stay chronological (${language})`, async t => {
   const f = await fixture(t, language);
@@ -163,3 +190,32 @@ test('W8–W10 keep Smart and Energy sources byte identical', () => {
     ['ha-energy-email.js', 'e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5']
   ]) assert.equal(createHash('sha256').update(readFileSync(join(__dirname, '..', file))).digest('hex'), hash);
 });
+
+for (const key of ['severity', 'source', 'period']) test(`W9 keyboard reset transfers focus after HA-CARD renders its slot: ${key}`, async t => {
+  const f = await fixture(t, 'en', '2.3.1', true);
+  f.choose(key, key === 'severity' ? 'WARNING' : key === 'source' ? f.source('qa2') : '7d');
+  await f.paint();
+  const chip = f.root.querySelector('[data-log-clear-filter="' + key + '"]');
+  chip.focus(); assert.equal(f.root.activeElement, chip); chip.click();
+  assert.equal(f.root.getElementById('log-' + key).value, key === 'period' ? '24h' : 'all');
+  await f.paint();
+  assert.equal(f.root.activeElement, f.root.getElementById('log-' + key));
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.writes, []);
+});
+for (const interruption of ['focus-away-and-back', 'keyboard', 'pointer', 'window-blur', 'context', 'disconnect'])
+  test(`W9 delayed reset focus respects newer user intent or context: ${interruption}`, async t => {
+    const f = await fixture(t, 'en', '2.3.1', true);
+    f.choose('severity', 'WARNING'); await f.paint();
+    const chip = f.root.querySelector('[data-log-clear-filter="severity"]'); chip.focus(); chip.click();
+    const outside = f.window.document.createElement('button'); outside.textContent = 'Other control';
+    f.window.document.body.append(outside);
+    if (interruption === 'focus-away-and-back') { outside.focus(); outside.blur(); }
+    if (interruption === 'keyboard') f.window.document.dispatchEvent(new f.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    if (interruption === 'pointer') f.window.document.dispatchEvent(new f.window.Event('pointerdown', { bubbles: true }));
+    if (interruption === 'window-blur') f.window.dispatchEvent(new f.window.Event('blur'));
+    if (interruption === 'context') f.card.hass = { ...f.hass, user: { id: 'next-admin', is_admin: true } };
+    if (interruption === 'disconnect') f.card.remove();
+    await f.paint();
+    assert.notEqual(f.root.activeElement, f.root.getElementById('log-severity'));
+    assert.deepEqual(f.writes, []);
+  });

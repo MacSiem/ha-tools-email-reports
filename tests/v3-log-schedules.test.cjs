@@ -141,9 +141,9 @@ test('explicit IANA timezone can return to HA timezone and then choose another c
   const writes = f.calls.filter(c => c.type.endsWith('/set_schedule')); assert.equal(writes.length, 2);
   assert.equal(writes[1].schedule.timezone, 'America/New_York');
 });
-test('known configured legacy IDs warn about duplicates; unknown state is never off or toggled', async t => {
+test('disabled and unknown legacy IDs do not claim duplicate sending; unknown is never off or toggled', async t => {
   const f = await fixture(t, { states: { 'automation.ha_tools_log_email_daily': { state: 'unavailable' }, 'automation.ha_tools_log_email_weekly': { state: 'off' } } }); await f.open();
-  assert.match(f.root.textContent, /duplicate/i); assert.match(f.root.textContent, /automation\.ha_tools_log_email_daily/);
+  assert.equal(f.root.querySelectorAll('.schedule-legacy-warning').length,0); assert.match(f.root.textContent, /automation\.ha_tools_log_email_daily/);
   assert.match(f.root.textContent, /Unknown/); assert.equal(f.root.getElementById('btn-daily-toggle'), null);
   f.click('btn-weekly-toggle'); await settle(); assert.deepEqual(f.services[0], ['automation', 'turn_on', { entity_id: 'automation.ha_tools_log_email_weekly' }, null, false]);
 });
@@ -246,4 +246,21 @@ test('confirmed Save returns keyboard focus to the edited row after its busy pha
   const save = f.root.getElementById('schedule-save'); save.focus(); save.click(); await settle();
   assert.match(f.root.querySelector('.server-schedules').textContent, /Success/);
   assert.equal(f.root.activeElement?.id, 'schedule-edit-0');
+});
+
+for(const active of [false,true])test(`legacy disclosure is collapsed when disabled and warns only for active paths: ${active}`,async t=>{
+ const f=await fixture(t,{states:{'automation.ha_tools_log_email_daily':{state:active?'on':'off'},'automation.ha_tools_log_email_weekly':{state:'off'}}});await f.open();
+ const legacy=f.root.querySelector('details.schedule-legacy');assert.ok(legacy,'legacy controls have a keyboard-accessible disclosure');
+ assert.equal(legacy.open,active);assert.equal(legacy.querySelectorAll('.schedule-legacy-warning').length,active?1:0);
+ assert.equal(f.services.length,0);assert.equal(f.calls.filter(x=>/set_schedule|send_now/.test(x.type)).length,0);
+});
+test('server next instant has a friendly local and relative label, while disabled never promises a send',async t=>{
+ const f=await fixture(t,{rows:[row({enabled:true,next_fire:'2026-10-25T00:30:00Z'}),row({id:'disabled',enabled:false,next_fire:'2026-10-25T00:30:00Z'})]});
+ f.window.Date.now=()=>Date.parse('2026-10-23T00:30:00Z');f.hass.locale={language:'en',date_format:'system',time_format:'24',time_zone:'local'};
+ await f.open();const cards=f.root.querySelectorAll('.server-schedule-list > article.schedule-card');const first=cards[0];
+ const next=[...first.querySelectorAll('p')].find(x=>/Next fire from server/.test(x.textContent));assert.ok(next);
+ assert.match(next.textContent,/Oct/,'scheduled instant uses a friendly date');assert.match(next.textContent,/in 2 days/);assert.doesNotMatch(next.textContent,/2026-10-25T/);
+ assert.match(first.querySelector('details').textContent,/2026-10-25T00:30:00/,'raw instant remains available in evidence');
+ assert.match(cards[1].textContent,/Disabled — no next fire/);assert.doesNotMatch(cards[1].textContent,/in 2 days/);
+ assert.equal(f.services.length,0);assert.equal(f.calls.filter(x=>/set_schedule|send_now/.test(x.type)).length,0);
 });

@@ -287,3 +287,20 @@ test('pure factory keeps a successful empty history and exact boundary metadata 
   assert.equal(controller.state.attempts[0].recipient_count,0);assert.equal(controller.state.attempts.length,1);
   assert.match(controller.render('pl'),/Przyjęte przez serwer SMTP/);
 });
+
+test('retained coverage is concise while full count semantics stay in a collapsed disclosure',async()=>{
+ const f=fixture();try{
+  f.hass.callWS=async r=>{f.reads.push(r);return [entry(DAY/2),entry(3*DAY)]};
+  await f.card._fetchLogData();f.card.setActiveTab('overview');const section=f.card.shadowRoot.querySelector('.retained-logs');
+  const detail=section.querySelector('details');assert.ok(detail,'complete limitations are collapsible');assert.equal(detail.open,false);
+  assert.match(detail.textContent,/HA aggregate counts can include older repetitions/);
+  const outside=[...section.querySelectorAll('p')].filter(x=>!x.closest('details')).map(x=>x.textContent).join(' ');
+  assert.match(outside,/system_log\/list/);assert.match(outside,/24/);assert.match(outside,/retained|coverage|complete/i);assert.equal(f.reads.length,1);assert.equal(f.writes.length,0);
+ }finally{f.close()}
+});
+test('missing retained data warning is visible outside collapsed explanatory text',async()=>{
+ const f=fixture();try{
+  f.hass.callWS=async()=>{throw Error('offline')};await f.card._fetchLogData();f.card.setActiveTab('overview');
+  const section=f.card.shadowRoot.querySelector('.retained-logs');const warning=[...section.querySelectorAll('p')].find(x=>/Log data unavailable or not checked yet/.test(x.textContent));assert.ok(warning);assert.equal(warning.closest('details'),null);
+ }finally{f.close()}
+});

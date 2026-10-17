@@ -3,8 +3,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 for(const source of ['ha-log-email.js','ha-tools-email-reports.js']) test(source+': human period labels and timezone-aware metadata',t=>{
- const dom=new JSDOM('<body></body>',{runScripts:'outside-only'});t.after(()=>dom.window.close());dom.window.eval(fs.readFileSync(path.join(__dirname,'..',source),'utf8'));
- const c=dom.window.document.createElement('ha-log-email');c._lang='pl';c._mailCadence='monthly';c._mailPeriodMode='calendar';
+ const dom=new JSDOM('<body></body>',{runScripts:'outside-only',url:'http://localhost/'});t.after(()=>dom.window.close());dom.window.eval(fs.readFileSync(path.join(__dirname,'..',source),'utf8'));
+ const c=dom.window.document.createElement('ha-log-email');c._lang='pl';c._hass={locale:{language:'pl',date_format:'language',time_format:'24',time_zone:'server'},config:{time_zone:'Europe/Warsaw'}};c._mailCadence='monthly';c._mailPeriodMode='calendar';
  const controls=dom.window.document.createElement('div');controls.innerHTML=c._renderMailControls();
  assert.equal(controls.querySelector('option[value="calendar"]').textContent,'Poprzedni pełny miesiąc');
  assert.equal(controls.querySelector('option[value="rolling"]').textContent,'Ostatnie 30 dni');

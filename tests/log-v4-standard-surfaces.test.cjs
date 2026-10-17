@@ -216,6 +216,6 @@ for (const interruption of ['focus-away-and-back', 'keyboard', 'pointer', 'windo
     if (interruption === 'context') f.card.hass = { ...f.hass, user: { id: 'next-admin', is_admin: true } };
     if (interruption === 'disconnect') f.card.remove();
     await f.paint();
-    assert.notEqual(f.root.activeElement, f.root.getElementById('log-severity'));
+    assert.notEqual(f.root.activeElement?.id, 'log-severity');
     assert.deepEqual(f.writes, []);
   });

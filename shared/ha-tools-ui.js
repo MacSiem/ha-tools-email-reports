@@ -18,6 +18,8 @@ function createUiV3({ language = 'en' } = {}) {
     const result = status(value);
     return `<span class="ht-result-state ht-result-state--${result.code}" data-result-state="${result.code}"><span aria-hidden="true">${result.icon}</span> ${result.label}</span>`;
   };
+  // Callers supply honest source/range/coverage labels; this renderer invents no metrics.
+  const sourceSummary = (parts, escape) => `<p data-source-summary>${parts.map(value => escape(value)).join(' · ')}</p>`;
   const css = `
 .ht-result-state { display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.4;white-space:normal; }
 .ht-result-state--success { color:#237b3d;background:rgba(35,123,61,.10); }
@@ -31,7 +33,7 @@ function createUiV3({ language = 'en' } = {}) {
 :host(.bento-dark) .ht-result-state--unconfirmed { color:#ffb97b; }
 :host(.bento-dark) .ht-result-state--error { color:#ff9999; }
 `;
-  return { status, statusHtml, css };
+  return { status, statusHtml, sourceSummary, css };
 }
 // Node tests use the canonical factory; this line is excluded from runtime copies.
 if (typeof module !== 'undefined' && module.exports) module.exports = { createUiV3 };

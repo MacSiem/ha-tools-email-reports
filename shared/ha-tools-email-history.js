@@ -2,7 +2,7 @@
 // Neither the controller nor renderer sends, saves, retries, or reads on open.
 export function createHaToolsEmailHistory({ escape = value => String(value == null ? '' : value).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]), clock = () => Date.now(),
-  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null } = {}) {
+  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null, renderExplanation = null } = {}) {
   const kinds = new Set(['manual', 'test', 'log_digest', 'energy_report']);
   const cadences = new Set(['daily', 'weekly', 'monthly']);
   const outcomes = new Set(['accepted_by_smtp', 'preparation_failed', 'authentication_failed',
@@ -131,14 +131,15 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
     };
     const rows = state.attempts.map(row => [date(row.timestamp), sourceLabels[row.source], kindLabels[row.kind] ?? '—', cadenceLabels[row.cadence] ?? '—',
       periodLabel(row.period), row.recipient_count ?? '—', outcomeLabels[row.outcome]]);
-    return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
-      <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}</h3>
-      <p>${pl ? 'Metadane prób z serwera Home Assistant. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
+    const explanation = `<p>${pl ? 'Metadane prób z serwera Home Assistant. Przyjęcie przez SMTP nie potwierdza dostarczenia. Wyniki nieznane i częściowe nie uruchamiają ponownej wysyłki.' :
         'Attempt metadata from your Home Assistant server. SMTP acceptance does not confirm delivery. Unknown and partial outcomes do not trigger another send.'}</p>
       <p>${pl ? 'Strefa czasu widoku' : 'Display timezone'}: ${escape(timezone)}.</p>
       <p>${pl ? 'Maksymalnie 128 prób / 90 dni. To zachowany zakres, nie pełna historia.' : 'At most 128 attempts / 90 days. This is the retained range, not a complete history.'}</p>
       <p>${pl ? 'Odczytano o' : 'Read at'}: ${state.observedAt ? escape(date(state.observedAt)) : '—'}. ${pl ? 'Zakres dotyczy chwili odczytu.' : 'The range describes the time of this read.'}</p>
-      <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>
+      <p>${pl ? 'Najstarsza' : 'Oldest'}: ${range.length ? escape(date(range[0])) : '—'} · ${pl ? 'Najnowsza' : 'Newest'}: ${range.length ? escape(date(range[range.length - 1])) : '—'}</p>`;
+    return `<section class="attempt-history" aria-label="${pl ? 'Historia prób SMTP' : 'SMTP attempt history'}">
+      <h3>${pl ? 'Serwerowa historia prób wysyłki' : 'Server send attempt history'}${typeof renderExplanation === 'function' ? ` (${rows.length})` : ''}</h3>
+      ${typeof renderExplanation === 'function' ? renderExplanation(explanation, { language, state }) : explanation}
       <div class="history-actions"><button type="button" id="history-refresh" ${state.status === 'loading' ? 'aria-busy="true"' : ''}>${pl ? 'Odśwież historię' : 'Refresh history'}</button>
       <button type="button" id="history-discard">${pl ? 'Odrzuć odczyt' : 'Discard read'}</button></div>
       <p role="status" aria-live="polite">${text[state.status]}</p>

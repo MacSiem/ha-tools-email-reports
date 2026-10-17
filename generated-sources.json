@@ -9,11 +9,11 @@
     "owner": "MacSiem/ha-tools-email-reports",
     "path": "ha-log-email.js",
     "version": "4.8.0",
-    "sha256": "9f1f3180e8c318097dbd6f3b9c0a5ca9c463967cdd0d8ce3837f8e96aa8b562d",
+    "sha256": "106a56ae8be9a1855d202b43f1e54421c0bf1cf43fd5df667b8c5f22ff36888d",
     "sharedEmailHistory": {
       "path": "shared/ha-tools-email-history.js",
-      "sha256": "437d8af929494d3c6ff5724775fe9bb339f1f320661256c7e90646514b2b85e7",
-      "inlineSha256": "02510022c0d58eae11ca91077e4d0b5547a262c5f8796065681bf5f329992f3e"
+      "sha256": "dcb4913c72b86ea9a4b5bb73159cbae75154a5e67987c159582f2b3e83f7eab5",
+      "inlineSha256": "57c608f85504733b82ad75e67f873242e69c35ac675588e689c68e486162c304"
     },
     "sharedEmailSchedules": {
       "path": "shared/ha-tools-email-schedules.js",
@@ -22,13 +22,18 @@
     },
     "sharedUiV3": {
       "path": "shared/ha-tools-ui.js",
-      "sha256": "029c06206e55abad9aa09dfcf65bb13027ec24ce6a0bfacc45a938891b27254e",
-      "inlineSha256": "6f65fa30f5683c1169f65b1ae63f919d0d9d69af3f7928da6848eff9c932cc31"
+      "sha256": "ca353e97ea32ee2a92307fc7ab206978377cbf10685f7634a672cf55ee4b5459",
+      "inlineSha256": "66c1bb2877d8a46948364b4d73bf6e363cbb04c584ed9e6e2bfd3a1889c97724"
     },
     "sharedFormat": {
       "path": "shared/ha-tools-format.js",
       "sha256": "74439e388c76e03837890852840a3df6104c8756dfbce6cd5c0bf173903f12a2",
       "inlineSha256": "c3ca08abc8ef573d5ab1be7cbf458ce77a61025c33074de4fa4553460be8d1bd"
+    },
+    "sharedLists": {
+      "path": "shared/ha-tools-lists.js",
+      "sha256": "f669abcd1c151f99ff2bee1ba93ba508aef1ce93b1fcb7b1cb3a91cf7973296d",
+      "inlineSha256": "d4dd8f9addce340cc288db0385d6ac8d5a8dfe0c5c19381e18a89702d2da14ab"
     }
   },
   "ha-smart-reports.js": {

@@ -10,6 +10,7 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 for (const [modulePath, marker, property] of [
   ['shared/ha-tools-email-schedules.js', 'ha-tools-email-schedules', 'sharedEmailSchedules'],
   ['shared/ha-tools-ui.js', 'ha-tools-ui', 'sharedUiV3'],
+  ['shared/ha-tools-lists.js', 'ha-tools-lists', 'sharedLists'],
 ]) {
   const canonical = fs.readFileSync(path.join(root, modulePath), 'utf8');
   const inline = canonical.replace(/^export function /m, 'function ').split('// Node tests use')[0].trimEnd();

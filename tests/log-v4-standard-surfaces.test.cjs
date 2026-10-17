@@ -106,3 +106,60 @@ test('W8 older server preview keeps partial status outside collapsed limitations
   const status = section.querySelector('[data-result-state="partial"]'); assert.ok(status); assert.equal(status.closest('details'), null);
   assert.deepEqual(f.writes, []); assert.ok(f.calls.every(x => !/send_now|set_schedule/.test(x)));
 });
+test('W9 uses the full HA locale, preserves source identity ties and absent selected labels', async t => {
+  const f = await fixture(t, 'en');
+  const stamp = Date.now() / 1000 - 1;
+  const names = ['Öl 2', 'Zon 10', 'Zon 2', 'Ål 1', 'Älg 1', 'Lampa 10', 'Lampa 2', 'Lampa 2'];
+  f.card._retainedLogs = f.card._groupRetainedLogs(names.map((name, i) => ({ id: 'locale-' + i,
+    name, source: i === 7 ? [] : undefined, level: 'ERROR', timestamp: stamp - i, count: 1, message: [name] })), Date.now());
+  f.card._render();
+  const expected = language => Array.from(f.card._retainedLogs, row => row.domain).sort(new Intl.Collator(language, { numeric: true, sensitivity: 'base' }).compare);
+  const labels = () => Array.from(f.root.getElementById('log-source').options).slice(1).map(option => option.textContent);
+  assert.deepEqual(labels(), expected('en'));
+  const order = Array.from(f.card._retainedModel().rows, row => row.identity);
+  f.card.hass = { ...f.hass, locale: { language: 'sv-SE' } };
+  assert.deepEqual(labels(), expected('sv-SE'));
+  assert.deepEqual(Array.from(f.card._retainedModel().rows, row => row.identity), order);
+  const key = f.source('Lampa 2'); f.choose('source', key);
+  f.card._retainedLogs = f.card._retainedLogs.filter(row => row.sourceKey !== key);
+  f.card._render();
+  const selected = f.root.getElementById('log-source').selectedOptions[0];
+  assert.equal(selected.value, key); assert.match(selected.textContent, /Lampa 2.*absent/);
+  assert.match(f.root.querySelector('[data-log-clear-filter="source"]').textContent, /Lampa 2/);
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.writes, []);
+});
+test('W9 severity reset retains source and period, and focuses the corresponding select', async t => {
+  const f = await fixture(t); const key = f.source('qa2');
+  f.choose('source', key); f.choose('severity', 'WARNING'); f.choose('period', '30d');
+  f.root.querySelector('[data-log-clear-filter="severity"]').click();
+  assert.equal(f.root.getElementById('log-severity').value, 'all');
+  assert.equal(f.root.getElementById('log-source').value, key);
+  assert.equal(f.root.getElementById('log-period').value, '30d');
+  assert.equal(f.root.activeElement, f.root.getElementById('log-severity'));
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.writes, []);
+});
+test('W10 unknown counts remain distinct from measured zero in metric tiles', async t => {
+  const f = await fixture(t);
+  const key = f.source('qa1');
+  f.card._retainedLogs.find(row => row.sourceKey === key).count = null;
+  f.choose('source', key);
+  assert.match(f.root.querySelector('[data-log-metric="unique"]').textContent, /1 unique problem/);
+  assert.match(f.root.querySelector('[data-log-metric="occurrences"]').textContent, /— occurrences/);
+  assert.match(f.root.querySelector('.retained-logs').textContent, /occurrence count unknown/);
+  assert.equal(f.root.querySelector('[data-log-metric="occurrences"]').textContent.includes('0 occurrences'), false);
+});
+test('W8 disclosure state survives repaint and clears when the user context changes', async t => {
+  const f = await fixture(t); f.card.setActiveTab('history');
+  const disclosure = () => f.root.querySelector('[data-log-disclosure-key="snapshots-source"]');
+  assert.equal(disclosure().open, false); disclosure().open = true;
+  f.card._render(); assert.equal(disclosure().open, true);
+  f.card.hass = { ...f.hass, user: { id: 'second-admin', is_admin: true } };
+  await settle(); assert.equal(disclosure().open, false);
+});
+test('W8–W10 keep Smart and Energy sources byte identical', () => {
+  const { createHash } = require('node:crypto');
+  for (const [file, hash] of [
+    ['ha-smart-reports.js', 'b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c'],
+    ['ha-energy-email.js', 'e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5']
+  ]) assert.equal(createHash('sha256').update(readFileSync(join(__dirname, '..', file))).digest('hex'), hash);
+});

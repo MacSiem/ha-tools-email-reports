@@ -5,6 +5,7 @@
 - Summarize retained log source, selected period, observed range and honest coverage; keep full limitations in collapsed native details and missing/partial warnings visible.
 - Format log dates, server next instants with offset and relative time, SMTP history, browser snapshots and preview headers using HA profile preferences. Preserve raw timestamps, server calendar authority and server-composed mail content.
 - Collapse inactive legacy controls, warn only for enabled automations, and preserve disclosure state, keyboard focus and action feedback within the current user context.
+- Rebind read controllers when Lovelace reattaches a card, so schedules and manual previews work without waiting for another Home Assistant state update.
 
 ## [4.7.1] - 2026-10-16
 

@@ -21,7 +21,7 @@ Version 4.6.1 immediately clears accepted Smart measurements and device details 
 
 The generated bundle includes the exact Smart Reports 4.2.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
 
-Log Email 4.8.0 follows the Home Assistant language, date, clock and display timezone preferences for log rows, next server instants, SMTP history, browser snapshots and preview headers. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one concise summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates.
+Log Email 4.8.0 shows readable local dates in log rows, next server instants, SMTP history, browser snapshots and preview headers. The display timezone defaults to your device timezone; your explicit Home Assistant profile choice of the HA timezone and your date/clock preferences are respected. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates. Schedules and previews remain usable when Lovelace reattaches a card after a layout change.
 
 ## How it works
 
@@ -93,8 +93,8 @@ advance the scheduled digest's last-seen keys. Future or missing timestamps are
 excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
 report; aggregate counts are not exact events or complete historical coverage.
 
-The source code and README on this working branch describe the 4.7 candidate;
-public 4.6.1 remains the prior release until a new release is published.
+This README documents the 4.8.0 bundle. Check the installed bundle version when
+comparing it with an older release; update through HACS and reload the browser.
 
 ### What is automatic vs. manual
 
@@ -107,6 +107,22 @@ public 4.6.1 remains the prior release until a new release is published.
 | Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Reviewing and saving Smart Reports JSON / CSV locally |
 
 ## Screenshots
+
+### Log Email 4.8: current native Home Assistant views
+
+| English / light | Polish / dark |
+|---|---|
+| ![Readable retained source, period and local dates](docs/screenshots/card-overview-v48-en-light.jpg) | ![Zachowany zakres i daty systemowe](docs/screenshots/card-overview-v48-pl-dark.jpg) |
+| ![Server next instant in the user timezone, disabled schedules and collapsed legacy controls](docs/screenshots/card-schedule-v48-en-light.jpg) | ![Lokalny następny termin i osobny kalendarz serwera](docs/screenshots/card-schedule-v48-pl-dark.jpg) |
+| ![Empty SMTP history and separate local snapshots with friendly dates](docs/screenshots/card-history-v48-en-light.jpg) | ![Historia SMTP i odczyty sesji przeglądarki](docs/screenshots/card-history-v48-pl-dark.jpg) |
+
+Captured from the actual 4.8.0 bundle on a disposable HA clone with synthetic data,
+HA Tools Email 2.3.1, and device-local Europe/Warsaw display time. The two test
+schedules use Asia/Tokyo; one is disabled. The enabled schedule was safely in the
+future with a loopback SMTP fixture and invalid test recipients. No email was sent.
+The SMTP history is empty; the separate browser snapshot records a log read.
+Polish screenshots intentionally use the system date locale (English month name).
+[Capture provenance](docs/screenshots/provenance.json) records source and image hashes.
 
 ### Actual 4.7 email preview
 

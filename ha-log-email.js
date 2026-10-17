@@ -2948,6 +2948,10 @@ ${_LOG_RECORD_CSS}
 
   connectedCallback() {
     this._bindEmailContext();
+    // Lovelace can reattach the same card without assigning hass again.
+    this._attemptHistory.setContext(this._hass);
+    this._serverSchedules.setContext(this._hass);
+    this._mailPreview.setContext(this._hass);
     if (this._hass) this._render();
     this._ensureInitialLogData();
   }

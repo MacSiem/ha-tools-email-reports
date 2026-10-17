@@ -57,7 +57,7 @@ for (const cadence of ['daily', 'weekly']) for (const initial of ['on', 'off']) 
     const f = fixture(initial);
     try {
       assert.equal(f.requests.length, 0, 'opening has no service side effects');
-      assert.match(f.card.shadowRoot.textContent, /Duplicate reports are possible/);
+      assert.equal(f.card.shadowRoot.querySelectorAll('.schedule-legacy-warning').length,initial === 'on' ? 2 : 0);
       f.start(cadence);
       assert.equal(f.requests.length, 1);
       assert.deepEqual(f.requests[0].slice(0, 2), ['automation', initial === 'on' ? 'turn_off' : 'turn_on']);
@@ -80,6 +80,7 @@ for (const cadence of ['daily', 'weekly']) for (const initial of ['on', 'off']) 
       assert.equal(f.card._legacyStatus.reason, { echo: 'state_confirmed', unchanged: 'state_unconfirmed', reject: 'transport_unknown' }[outcome]);
       assert.match(visibleResult(f).textContent, initial === 'on' ? /Disable requested/ : /Enable requested/);
       assert.match(visibleResult(f).textContent, outcome === 'echo' ? /Success.*confirms the requested state/s : /Unconfirmed/);
+      assert.equal(f.card.shadowRoot.querySelector('details.schedule-legacy').open,true,'action result and focus remain reachable');
       assert.equal(f.card.shadowRoot.activeElement?.id, buttonId(cadence));
       assert.equal(f.card.shadowRoot.activeElement.disabled, false);
       if (outcome === 'echo') assert.match(f.card.shadowRoot.activeElement.textContent, initial === 'on' ? /Enable legacy/ : /Disable legacy/);

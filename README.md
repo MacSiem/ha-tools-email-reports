@@ -112,16 +112,18 @@ comparing it with an older release; update through HACS and reload the browser.
 
 | English / light | Polish / dark |
 |---|---|
-| ![Readable retained source, period and local dates](docs/screenshots/card-overview-v48-en-light.jpg) | ![Zachowany zakres i daty systemowe](docs/screenshots/card-overview-v48-pl-dark.jpg) |
-| ![Server next instant in the user timezone, disabled schedules and collapsed legacy controls](docs/screenshots/card-schedule-v48-en-light.jpg) | ![Lokalny następny termin i osobny kalendarz serwera](docs/screenshots/card-schedule-v48-pl-dark.jpg) |
+| ![Readable retained source, period and local dates](docs/screenshots/card-overview-v48-en-light.jpg) | ![Zachowany zakres i czytelne daty](docs/screenshots/card-overview-v48-pl-dark.jpg) |
+| ![Disabled server schedules and collapsed legacy controls](docs/screenshots/card-schedule-v48-en-light.jpg) | ![Wyłączone harmonogramy i osobny kalendarz serwera](docs/screenshots/card-schedule-v48-pl-dark.jpg) |
 | ![Empty SMTP history and separate local snapshots with friendly dates](docs/screenshots/card-history-v48-en-light.jpg) | ![Historia SMTP i odczyty sesji przeglądarki](docs/screenshots/card-history-v48-pl-dark.jpg) |
+| ![Actual server email and visible partial coverage](docs/screenshots/card-preview-v48-en-light.jpg) | ![Rzeczywista wiadomość i widoczna informacja o częściowych danych](docs/screenshots/card-preview-v48-pl-dark.jpg) |
 
 Captured from the actual 4.8.0 bundle on a disposable HA clone with synthetic data,
 HA Tools Email 2.3.1, and device-local Europe/Warsaw display time. The two test
-schedules use Asia/Tokyo; one is disabled. The enabled schedule was safely in the
-future with a loopback SMTP fixture and invalid test recipients. No email was sent.
+schedules are disabled and use Europe/Warsaw. No email was sent in this batch.
 The SMTP history is empty; the separate browser snapshot records a log read.
-Polish screenshots intentionally use the system date locale (English month name).
+These Polish captures use the Language date setting (paź); System date formatting
+follows your device language even when your Home Assistant language differs.
+The embedded email is the actual server output and retains its own calendar.
 [Capture provenance](docs/screenshots/provenance.json) records source and image hashes.
 
 ### Actual 4.7 email preview

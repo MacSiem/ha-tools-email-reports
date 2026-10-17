@@ -91,135 +91,158 @@
     ]
   },
   "current_log_v48": {
-    "runtime_commit": "171e646186d29aa233a3e6b312cc7ced2dcb5b0e",
-    "bundle_sha256": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef",
-    "log_source_sha256": "9f1f3180e8c318097dbd6f3b9c0a5ca9c463967cdd0d8ce3837f8e96aa8b562d",
+    "runtime_commit": "499f54174d391e73574a322d0da331cdff484e6d",
+    "bundle_sha256": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
+    "log_source_sha256": "5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48",
     "backend_version": "2.3.1",
-    "capture": "Native Chrome Page.captureScreenshot clip within a stable 900x2400 CSS viewport, captureBeyondViewport=false; no pixel editing",
-    "data": "Disposable HA clone, synthetic log source filter, two owned Asia/Tokyo schedules, one disabled, future loopback fixture only. No email sent; SMTP attempt history empty, browser snapshots separate. All original state restored after QA.",
-    "display_preferences": "Device-local Europe/Warsaw, System date locale, EN/light and PL/dark; explicit Language date override separately observed as paź.",
+    "capture": "Actual Chrome Page.captureScreenshot clip in stable900x2400CSS viewport, captureBeyondViewport=false; no pixel editing; all eight viewed by owner",
+    "data": "Disposable HA clone, three synthetic retained logger groups and two owned disabled Europe/Warsaw schedules. No SMTP sends or schedule saves in this capture batch. Server SMTP history empty; browser snapshots separate.",
+    "display_preferences": "Device-local Europe/Warsaw; EN/light and PL/dark with Language date locale. System date locale independence and Asia/Tokyo server calendar were separately observed in the earlier unchanged W7 qualification. The actual server-composed mail retains its own English/UTC calendar.",
     "captures": [
       {
         "file": "card-overview-v48-en-light.jpg",
-        "background": "#fafafa",
-        "clientWidth": 490,
+        "sha256": "33d506b70ba2499361a1dbf03ae7972109e97151935b3419028563ae37131ad9",
+        "bytes": 80533,
+        "background": "#fff",
+        "width": 492,
+        "height": 1058.65625,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
         "clip": {
-          "height": 759.484375,
-          "scale": 1,
-          "width": 492,
           "x": 332,
-          "y": 64
-        },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "e14a73b9a4136d215b5beb50605bd255d775f44194d1e282afe2d3c5ade8ed21",
-        "bytes": 58577,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
-      },
-      {
-        "file": "card-overview-v48-pl-dark.jpg",
-        "background": "#111",
-        "clientWidth": 490,
-        "clip": {
-          "height": 759.484375,
-          "scale": 1,
+          "y": 64,
           "width": 492,
-          "x": 332,
-          "y": 64
+          "height": 1058.65625
         },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "262ecc598bb5c48bbed1191d6054c4d67da9ae005c87a190f4e8a0103790aada",
-        "bytes": 56135,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
+        "surface": "overview"
       },
       {
         "file": "card-schedule-v48-en-light.jpg",
-        "background": "#fafafa",
-        "clientWidth": 490,
+        "sha256": "7b0caac4841757e07a0fc263c646d4f6262404ba35b57b1c2991334445275a24",
+        "bytes": 92499,
+        "background": "#fff",
+        "width": 492,
+        "height": 1399.171875,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
         "clip": {
-          "height": 1385.171875,
-          "scale": 1,
-          "width": 492,
           "x": 332,
-          "y": 64
-        },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "d0707187ed1a4c707147d767a81b1b654c10b40391235c91599aa11170505d5e",
-        "bytes": 89207,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
-      },
-      {
-        "file": "card-schedule-v48-pl-dark.jpg",
-        "background": "#111",
-        "clientWidth": 490,
-        "clip": {
-          "height": 1402.765625,
-          "scale": 1,
+          "y": 64,
           "width": 492,
-          "x": 332,
-          "y": 64
+          "height": 1399.171875
         },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "e910b447503d8ade07a52d51ee25ceba094c9edbdaacbb2d5980e6c32ef2693c",
-        "bytes": 95576,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
+        "surface": "schedule"
       },
       {
         "file": "card-history-v48-en-light.jpg",
-        "background": "#fafafa",
-        "clientWidth": 490,
+        "sha256": "2bb879468da0b032d0d4add0788ad9920389cfa17ce1528be4d930531064cb79",
+        "bytes": 56485,
+        "background": "#fff",
+        "width": 492,
+        "height": 794.96875,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
         "clip": {
-          "height": 888.921875,
-          "scale": 1,
-          "width": 492,
           "x": 332,
-          "y": 64
+          "y": 64,
+          "width": 492,
+          "height": 794.96875
         },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "b2ac7a90e519ebc94a25cbc461917dbfe176d22cce85bb0bf988bc9005a1a1e9",
-        "bytes": 67145,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
+        "surface": "history"
+      },
+      {
+        "file": "card-preview-v48-en-light.jpg",
+        "sha256": "b82be64dbb362764f38c5e9b6bef6687e15db03edd887d5b00843dcc46b4dc87",
+        "bytes": 78451,
+        "background": "#fff",
+        "width": 492,
+        "height": 1212.71875,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
+        "clip": {
+          "x": 332,
+          "y": 64,
+          "width": 492,
+          "height": 1212.71875
+        },
+        "surface": "preview"
+      },
+      {
+        "file": "card-overview-v48-pl-dark.jpg",
+        "sha256": "2a14a9235ec53493d46acfb2de2ee5df5045c9c985ea909ec8f707ebbc2821c7",
+        "bytes": 76172,
+        "background": "#1c1c1c",
+        "width": 492,
+        "height": 1058.65625,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
+        "clip": {
+          "x": 332,
+          "y": 64,
+          "width": 492,
+          "height": 1058.65625
+        },
+        "surface": "overview"
+      },
+      {
+        "file": "card-schedule-v48-pl-dark.jpg",
+        "sha256": "2aebff1f767c8119d52d6386b28119d5a6c9677f1c262eeec0e216381c3def3a",
+        "bytes": 100239,
+        "background": "#1c1c1c",
+        "width": 492,
+        "height": 1416.765625,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
+        "clip": {
+          "x": 332,
+          "y": 64,
+          "width": 492,
+          "height": 1416.765625
+        },
+        "surface": "schedule"
       },
       {
         "file": "card-history-v48-pl-dark.jpg",
-        "background": "#111",
-        "clientWidth": 490,
+        "sha256": "812ceb6e53dcafe9c4a33ff6689680ed3f7c51a7bf41875e3f84ef2041521850",
+        "bytes": 54297,
+        "background": "#1c1c1c",
+        "width": 492,
+        "height": 794.96875,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
         "clip": {
-          "height": 866.53125,
-          "scale": 1,
-          "width": 492,
           "x": 332,
-          "y": 64
+          "y": 64,
+          "width": 492,
+          "height": 794.96875
         },
-        "scrollWidth": 490,
-        "viewport": [
-          900,
-          2400
-        ],
-        "sha256": "5c0bbf021bec54eddbdbe96a97e6b5c4e461b9431b81e7971116c00fa53160b3",
-        "bytes": 62965,
-        "bundle": "87c14043c747f883ebc43a2df71ac61b7922fccf127bc82f55c6547f4d6459ef"
+        "surface": "history"
+      },
+      {
+        "file": "card-preview-v48-pl-dark.jpg",
+        "sha256": "5a7d6b7649b9caec7b4ef85bdf5ab51b263c2ede77ebcb81147ae104a16c3925",
+        "bytes": 79308,
+        "background": "#1c1c1c",
+        "width": 492,
+        "height": 1190.328125,
+        "viewportWidth": 900,
+        "viewportHeight": 2400,
+        "bundleSHA": "05db8c42499e810c4e83deab56fb7d69187bf42c0245e6e08c9932a08a0cb092",
+        "clip": {
+          "x": 332,
+          "y": 64,
+          "width": 492,
+          "height": 1190.328125
+        },
+        "surface": "preview"
       }
-    ],
-    "legacy_materials": "Earlier 4.6 and 4.7 captures remain explicitly historical, with their original hashes and qualifications."
+    ]
   }
 }

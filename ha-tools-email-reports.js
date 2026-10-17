@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.8.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:106a56ae8be9a1855d202b43f1e54421c0bf1cf43fd5df667b8c5f22ff36888d
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -2161,7 +2161,6 @@ class HALogEmail extends HTMLElement {
         source, (pl ? 'Zakres: ' : 'Range: ') + date(preview.period.from) + ' — ' + date(preview.period.to),
         preview.source?.complete === false ? (pl ? 'Pokrycie: częściowe dane' : 'Coverage: partial data') : (pl ? 'Pokrycie: kompletność nieustalona' : 'Coverage: completeness unknown')
       ], _esc)}
-      ${preview.source?.complete === false ? `<p role="status">${pl ? 'częściowe dane' : 'partial data'}</p>` : ''}
       <details data-log-disclosure-key="mail-${_esc(id)}"><summary>${pl ? 'Źródło, zakres i znaczniki czasu' : 'Source, range and timestamps'}</summary>
       <dl><dt>${pl ? 'Od (włącznie)' : 'From (inclusive)'}</dt><dd>${_esc(date(preview.period.from))}</dd>
       <dt>${pl ? 'Do (wyłącznie)' : 'To (exclusive)'}</dt><dd>${_esc(date(preview.period.to))}</dd>
@@ -2391,6 +2390,57 @@ class HALogEmail extends HTMLElement {
     `;
   }
 
+  _cancelFilterFocus() {
+    this._filterFocus?.cancel();
+  }
+
+  _focusFilterAfterPaint(id) {
+    this._cancelFilterFocus();
+    const root = this.shadowRoot, target = root.getElementById(id);
+    const wrapper = target?.closest('ha-card'), win = this.ownerDocument.defaultView;
+    const context = this._captureLogContext(this._hass);
+    if (!target || !this.isConnected || !context.admin || !context.online) return;
+    const pending = { target, wrapper, tab: this._activeTab, epoch: this._dataEpoch, context, frame: null };
+    const cancel = pending.cancel = () => {
+      if (this._filterFocus === pending) this._filterFocus = null;
+      if (pending.frame != null) win.cancelAnimationFrame?.(pending.frame);
+      this.ownerDocument.removeEventListener('focusin', onFocus, true);
+      this.ownerDocument.removeEventListener('keydown', cancel, true);
+      this.ownerDocument.removeEventListener('pointerdown', cancel, true);
+      win.removeEventListener('blur', cancel);
+      win.removeEventListener('offline', cancel);
+      context.connection?.removeEventListener?.('disconnected', cancel);
+      context.connection?.removeEventListener?.('ready', cancel);
+    };
+    const onFocus = event => { if (!event.composedPath().includes(target)) cancel(); };
+    const finish = () => {
+      const current = this._filterFocus === pending;
+      cancel();
+      const now = this._captureLogContext(this._hass);
+      if (!current || !this.isConnected || pending.epoch !== this._dataEpoch || pending.tab !== this._activeTab ||
+          Object.keys(context).some(key => context[key] !== now[key]) ||
+          root.getElementById(id) !== target || root.querySelector('ha-card') !== wrapper ||
+          !target.isConnected || target.disabled || !target.getClientRects().length) return;
+      target.focus({ preventScroll: true });
+    };
+    this._filterFocus = pending;
+    this.ownerDocument.addEventListener('focusin', onFocus, true);
+    this.ownerDocument.addEventListener('keydown', cancel, true);
+    this.ownerDocument.addEventListener('pointerdown', cancel, true);
+    win.addEventListener('blur', cancel);
+    win.addEventListener('offline', cancel);
+    context.connection?.addEventListener?.('disconnected', cancel);
+    context.connection?.addEventListener?.('ready', cancel);
+    target.focus({ preventScroll: true });
+    // A new HA-CARD exposes its slot asynchronously. Complete this one transfer
+    // after its paint, as in Encoding Fixer's native keyboard focus fix.
+    Promise.resolve(wrapper?.updateComplete).then(() => {
+      if (this._filterFocus !== pending) return;
+      if (typeof win.requestAnimationFrame === 'function') pending.frame = win.requestAnimationFrame(finish);
+      else finish();
+    }, cancel);
+  }
+
   _clearActionFocus() {
     const pending = this._actionFocus;
     if (!pending) return;
@@ -2441,6 +2491,7 @@ class HALogEmail extends HTMLElement {
   }
 
   _render() {
+    this._cancelFilterFocus();
     const pending = this._actionFocus;
     if (pending) {
       const context = this._captureLogContext(this._hass);
@@ -2982,7 +3033,7 @@ ${_LOG_RECORD_CSS}
         if (!['severity', 'source', 'period'].includes(key)) return;
         this._logFilters = { ...this._logFilters, [key]: key === 'period' ? '24h' : 'all' };
         this._render();
-        this.shadowRoot.getElementById('log-' + key)?.focus({ preventScroll: true });
+        this._focusFilterAfterPaint('log-' + key);
       });
     }
 
@@ -3169,6 +3220,7 @@ ${_LOG_RECORD_CSS}
   }
 
   disconnectedCallback() {
+    this._cancelFilterFocus();
     this._invalidateEmailResults();
     this._unbindEmailContext();
     _disconnectLogRecords(this);

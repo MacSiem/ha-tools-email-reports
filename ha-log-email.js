@@ -2267,6 +2267,8 @@ class HALogEmail extends HTMLElement {
           !context.online || !context.admin || Object.keys(context).some(key => context[key] !== pending.context[key]) ||
           this.shadowRoot.activeElement !== pending.anchor) this._clearActionFocus();
     }
+    const newLegacyResult = !!this._legacyStatus && this._legacyStatus !== this._legacyDisclosureStatus;
+    this._legacyDisclosureStatus = this._legacyStatus;
     const sameDisclosureContext = this._disclosureEpoch === this._dataEpoch;
     if (!sameDisclosureContext) this._disclosures = new Map();
     this._disclosureEpoch = this._dataEpoch;
@@ -2848,8 +2850,8 @@ ${_LOG_RECORD_CSS}
     for (const element of this.shadowRoot.querySelectorAll('details[data-log-disclosure-key]')) {
       const key = element.dataset.logDisclosureKey;
       if (this._disclosures.has(key)) element.open = this._disclosures.get(key);
-      // Action feedback and its focus anchor must remain reachable after the last off.
-      if (key === 'legacy' && (this._legacyStatus || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
+      // A new result keeps its focus anchor reachable; later user collapse stays respected.
+      if (key === 'legacy' && (newLegacyResult || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
     }
     if (focusId) {
       const target = this.shadowRoot.getElementById(focusId) || (focusId.startsWith('schedule-') ? this.shadowRoot.getElementById('schedule-refresh') : null);

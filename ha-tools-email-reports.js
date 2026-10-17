@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.8.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:013c502efed5f9ee49d932316c660878cb12cb8db3f8c7904a3fcc9ec723fabf
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:9f1f3180e8c318097dbd6f3b9c0a5ca9c463967cdd0d8ce3837f8e96aa8b562d
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -3079,6 +3079,10 @@ ${_LOG_RECORD_CSS}
 
   connectedCallback() {
     this._bindEmailContext();
+    // Lovelace can reattach the same card without assigning hass again.
+    this._attemptHistory.setContext(this._hass);
+    this._serverSchedules.setContext(this._hass);
+    this._mailPreview.setContext(this._hass);
     if (this._hass) this._render();
     this._ensureInitialLogData();
   }

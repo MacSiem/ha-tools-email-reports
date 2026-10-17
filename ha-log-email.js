@@ -2850,7 +2850,6 @@ ${_LOG_RECORD_CSS}
       if (this._disclosures.has(key)) element.open = this._disclosures.get(key);
       // Action feedback and its focus anchor must remain reachable after the last off.
       if (key === 'legacy' && (this._legacyStatus || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
-      if (key === disclosureFocus) element.querySelector('summary')?.focus({ preventScroll: true });
     }
     if (focusId) {
       const target = this.shadowRoot.getElementById(focusId) || (focusId.startsWith('schedule-') ? this.shadowRoot.getElementById('schedule-refresh') : null);
@@ -2863,7 +2862,13 @@ ${_LOG_RECORD_CSS}
       target?.focus({ preventScroll: true });
     }
 
-    _bindLogRecords(this, recordFocus);
+    _bindLogRecords(this, disclosureFocus ? null : recordFocus);
+    if (disclosureFocus) {
+      const element = [...this.shadowRoot.querySelectorAll('details[data-log-disclosure-key]')].find(node => node.dataset.logDisclosureKey === disclosureFocus);
+      const record = element?.parentElement?.closest('.ht-log-records > details');
+      if (record) record.open = true;
+      element?.querySelector('summary')?.focus({ preventScroll: true });
+    }
     const scheduleModel = this._serverSchedules.model();
     if (this._scheduleSaveFocus && !scheduleModel.writing && !scheduleModel.reading) {
       const ownerRoot = this.getRootNode(), active = ownerRoot.activeElement;

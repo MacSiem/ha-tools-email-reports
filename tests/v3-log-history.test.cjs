@@ -310,9 +310,9 @@ test('history follows an in-place System date preference without rereading attem
   Object.defineProperty(f.w.navigator,'language',{value:'en-US',configurable:true});
   f.hass.locale={language:'pl',date_format:'language',time_format:'24',time_zone:'local'};f.card._lang='pl';f.card._firstRender=true;
   f.hass.callWS=async r=>{f.reads.push(r);return response()};await f.card._refreshAttemptHistory();f.card.setActiveTab('history');
-  const before=f.reads.length;f.hass.locale.date_format='system';f.card.hass=f.hass;
+  const historyReads=()=>f.reads.filter(r=>r.type==='ha_tools_email/get_attempt_history').length;const before=historyReads();f.hass.locale.date_format='system';f.card.hass=f.hass;
   assert.match(f.card.shadowRoot.querySelector('.attempt-history').textContent,/Oct/,'history uses system date language independently of Polish UI');
-  assert.equal(f.reads.length,before);assert.equal(f.writes.length,0);
+  assert.equal(historyReads(),before);assert.equal(f.writes.length,0);
  }finally{f.close()}
 });
 

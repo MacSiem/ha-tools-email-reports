@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.8.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:211ee943028eb263b001ed6328037fa72ff6c9ca5c55943d916cfcddcfb3c2f7
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:013c502efed5f9ee49d932316c660878cb12cb8db3f8c7904a3fcc9ec723fabf
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b3b2ea718469081598284eb226066519a3a5b4049847e59872daa3197865155c
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -2398,6 +2398,8 @@ class HALogEmail extends HTMLElement {
           !context.online || !context.admin || Object.keys(context).some(key => context[key] !== pending.context[key]) ||
           this.shadowRoot.activeElement !== pending.anchor) this._clearActionFocus();
     }
+    const newLegacyResult = !!this._legacyStatus && this._legacyStatus !== this._legacyDisclosureStatus;
+    this._legacyDisclosureStatus = this._legacyStatus;
     const sameDisclosureContext = this._disclosureEpoch === this._dataEpoch;
     if (!sameDisclosureContext) this._disclosures = new Map();
     this._disclosureEpoch = this._dataEpoch;
@@ -2979,8 +2981,8 @@ ${_LOG_RECORD_CSS}
     for (const element of this.shadowRoot.querySelectorAll('details[data-log-disclosure-key]')) {
       const key = element.dataset.logDisclosureKey;
       if (this._disclosures.has(key)) element.open = this._disclosures.get(key);
-      // Action feedback and its focus anchor must remain reachable after the last off.
-      if (key === 'legacy' && (this._legacyStatus || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
+      // A new result keeps its focus anchor reachable; later user collapse stays respected.
+      if (key === 'legacy' && (newLegacyResult || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
     }
     if (focusId) {
       const target = this.shadowRoot.getElementById(focusId) || (focusId.startsWith('schedule-') ? this.shadowRoot.getElementById('schedule-refresh') : null);

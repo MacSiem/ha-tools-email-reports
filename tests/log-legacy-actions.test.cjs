@@ -239,3 +239,15 @@ test('confirmed state result translates to Polish without another toggle', async
     assert.equal(f.requests.length, 1);
   } finally { await f.close(); }
 });
+
+test('manual collapse after the final legacy off survives ordinary hass repaint', async () => {
+ const f=fixture('on');try{
+  f.echo('weekly','off');f.start('daily');f.echo('daily','off');await f.settle();
+  const root=f.card.shadowRoot;let details=root.querySelector('details.schedule-legacy');
+  assert.equal(details.open,true,'confirmed final off retains result/focus access');
+  details.open=false;details.querySelector('summary').focus();
+  f.card.hass={...f.card._hass};details=root.querySelector('details.schedule-legacy');
+  assert.equal(details.open,false,'an explicit user collapse must survive the next state update');
+  assert.equal(root.activeElement,details.querySelector('summary'));assert.equal(f.requests.length,1);
+ }finally{await f.close()}
+});

@@ -264,3 +264,14 @@ test('server next instant has a friendly local and relative label, while disable
  assert.match(cards[1].textContent,/Disabled — no next fire/);assert.doesNotMatch(cards[1].textContent,/in 2 days/);
  assert.equal(f.services.length,0);assert.equal(f.calls.filter(x=>/set_schedule|send_now/.test(x.type)).length,0);
 });
+
+
+test('server DST instants stay distinct in the selected display zone without schedule writes',async t=>{
+ const f=await fixture(t,{rows:[row({enabled:true,next_fire:'2026-10-25T00:30:00Z'}),row({id:'after-fold',enabled:true,next_fire:'2026-10-25T01:30:00Z'})]});
+ f.window.Date.now=()=>Date.parse('2026-10-25T02:30:00Z');f.hass.locale={language:'en',date_format:'system',time_format:'24',time_zone:'server'};
+ await f.open();let cards=f.root.querySelectorAll('.server-schedule-list > article.schedule-card');const labels=[...cards].map(card=>[...card.querySelectorAll('p')].find(p=>/Next fire from server/.test(p.textContent)).textContent);
+ assert.match(labels[0],/02:30.*GMT\+2/);assert.match(labels[1],/02:30.*GMT\+1/);assert.match(labels[0],/2 hours ago/);assert.match(labels[1],/1 hour ago/);
+ const reads=f.calls.length;f.hass.locale.time_format='12';f.card.hass=f.hass;
+ cards=f.root.querySelectorAll('.server-schedule-list > article.schedule-card');assert.match(cards[0].textContent,/02:30.*AM/i);assert.equal(f.calls.length,reads);
+ assert.equal(f.services.length,0);assert.equal(f.calls.filter(x=>/set_schedule|send_now/.test(x.type)).length,0);
+});

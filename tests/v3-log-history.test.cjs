@@ -6,14 +6,14 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 const NOW = Date.parse('2026-10-12T12:00:00Z');
 const DAY = 86400000;
-function fixture() {
+function fixture(options = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
   });
   const w = dom.window;
   w.Date.now = () => NOW;
   w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-  w.eval(fs.readFileSync(path.join(__dirname, '..', 'ha-log-email.js'), 'utf8'));
+  w.eval(fs.readFileSync(path.join(__dirname, '..', options.bundle ? 'ha-tools-email-reports.js' : 'ha-log-email.js'), 'utf8'));
   const card = w.document.createElement('ha-log-email');
   w.document.body.append(card);
   card._config = { title: 'Log Email', max_entries: 50, untouched: { future: true } };
@@ -336,5 +336,15 @@ test('retained explanation stays open on repaint and resets for another user',as
   f.card._render();details=f.card.shadowRoot.querySelector(selector);assert.equal(details.open,true);assert.equal(f.card.shadowRoot.activeElement,details.querySelector('summary'));
   f.card.hass={...f.hass,user:{id:'admin-b',is_admin:true}};details=f.card.shadowRoot.querySelector(selector);assert.equal(details.open,false);
   assert.equal(f.writes.length,0);
+ }finally{f.close()}
+});
+
+
+test('shipping bundle applies System dates to the active Log history consumer',async()=>{
+ const f=fixture({bundle:true});try{
+  Object.defineProperty(f.w.navigator,'language',{value:'en-US',configurable:true});f.hass.locale={language:'pl',date_format:'system',time_format:'24',time_zone:'local'};
+  f.hass.callWS=async()=>response();await f.card._refreshAttemptHistory();f.card.setActiveTab('history');
+  const row=f.card.shadowRoot.querySelector('.attempt-history tbody tr');assert.ok(row);const date=row.cells[0].cloneNode(true);date.querySelector('details').remove();
+  assert.match(date.textContent,/Oct/);assert.doesNotMatch(date.textContent,/2026-10-11T/);assert.match(row.querySelector('details').textContent,/2026-10-11T12:00:00.000Z/);assert.equal(f.writes.length,0);
  }finally{f.close()}
 });

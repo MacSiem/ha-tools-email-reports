@@ -292,8 +292,8 @@ test('retained coverage is concise while full count semantics stay in a collapse
  const f=fixture();try{
   f.hass.callWS=async r=>{f.reads.push(r);return [entry(DAY/2),entry(3*DAY)]};
   await f.card._fetchLogData();f.card.setActiveTab('overview');const section=f.card.shadowRoot.querySelector('.retained-logs');
-  const detail=section.querySelector('details');assert.ok(detail,'complete limitations are collapsible');assert.equal(detail.open,false);
-  assert.match(detail.textContent,/HA aggregate counts can include older repetitions/);
+  const limitation=[...section.querySelectorAll('p')].find(x=>/HA aggregate counts can include older repetitions/.test(x.textContent));assert.ok(limitation);
+  const detail=limitation.closest('details');assert.ok(detail,'complete limitations are collapsible');assert.equal(detail.open,false);
   const outside=[...section.querySelectorAll('p')].filter(x=>!x.closest('details')).map(x=>x.textContent).join(' ');
   assert.match(outside,/system_log\/list/);assert.match(outside,/24/);assert.match(outside,/retained|coverage|complete/i);assert.equal(f.reads.length,1);assert.equal(f.writes.length,0);
  }finally{f.close()}
@@ -302,5 +302,16 @@ test('missing retained data warning is visible outside collapsed explanatory tex
  const f=fixture();try{
   f.hass.callWS=async()=>{throw Error('offline')};await f.card._fetchLogData();f.card.setActiveTab('overview');
   const section=f.card.shadowRoot.querySelector('.retained-logs');const warning=[...section.querySelectorAll('p')].find(x=>/Log data unavailable or not checked yet/.test(x.textContent));assert.ok(warning);assert.equal(warning.closest('details'),null);
+ }finally{f.close()}
+});
+
+test('history follows an in-place System date preference without rereading attempts',async()=>{
+ const f=fixture();try{
+  Object.defineProperty(f.w.navigator,'language',{value:'en-US',configurable:true});
+  f.hass.locale={language:'pl',date_format:'language',time_format:'24',time_zone:'local'};f.card._lang='pl';f.card._firstRender=true;
+  f.hass.callWS=async r=>{f.reads.push(r);return response()};await f.card._refreshAttemptHistory();f.card.setActiveTab('history');
+  const before=f.reads.length;f.hass.locale.date_format='system';f.card.hass=f.hass;
+  assert.match(f.card.shadowRoot.querySelector('.attempt-history').textContent,/Oct/,'history uses system date language independently of Polish UI');
+  assert.equal(f.reads.length,before);assert.equal(f.writes.length,0);
  }finally{f.close()}
 });

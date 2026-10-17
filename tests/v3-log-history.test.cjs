@@ -315,3 +315,26 @@ test('history follows an in-place System date preference without rereading attem
   assert.equal(f.reads.length,before);assert.equal(f.writes.length,0);
  }finally{f.close()}
 });
+
+test('friendly attempt dates keep original timestamps in closed details through repaint',async()=>{
+ const f=fixture();try{
+  Object.defineProperty(f.w.navigator,'language',{value:'en-US',configurable:true});f.hass.locale={language:'en',date_format:'system',time_format:'24',time_zone:'local'};
+  f.hass.callWS=async()=>response();await f.card._refreshAttemptHistory();f.card.setActiveTab('history');
+  const selector='details[data-log-disclosure-key^="attempt-"]';let details=f.card.shadowRoot.querySelector(selector);assert.ok(details);assert.equal(details.open,false);
+  assert.match(details.textContent,/2026-10-11T12:00:00.000Z/);
+  const cell=details.closest('td').cloneNode(true);cell.querySelector('details').remove();assert.match(cell.textContent,/Oct/);assert.doesNotMatch(cell.textContent,/2026-10-11T/);
+  details.open=true;details.querySelector('summary').focus();f.card._render();details=f.card.shadowRoot.querySelector(selector);
+  assert.equal(details.open,true);assert.equal(f.card.shadowRoot.activeElement,details.querySelector('summary'));
+  assert.equal(f.writes.length,0);
+ }finally{f.close()}
+});
+
+test('retained explanation stays open on repaint and resets for another user',async()=>{
+ const f=fixture();try{
+  f.hass.callWS=async()=>[entry(DAY/2)];await f.card._fetchLogData();f.card.setActiveTab('overview');
+  const selector='details[data-log-disclosure-key="retained"]';let details=f.card.shadowRoot.querySelector(selector);details.open=true;details.querySelector('summary').focus();
+  f.card._render();details=f.card.shadowRoot.querySelector(selector);assert.equal(details.open,true);assert.equal(f.card.shadowRoot.activeElement,details.querySelector('summary'));
+  f.card.hass={...f.hass,user:{id:'admin-b',is_admin:true}};details=f.card.shadowRoot.querySelector(selector);assert.equal(details.open,false);
+  assert.equal(f.writes.length,0);
+ }finally{f.close()}
+});

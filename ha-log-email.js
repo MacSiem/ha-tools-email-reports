@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.7.1 (2026-10-15) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.8.0 (2026-10-17) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -14,6 +14,95 @@ const _logEmailExcerpt = (text) => {
   return text.substring(0, end).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g,
     pair => pair.length === 2 ? pair : '\uFFFD');
 };
+
+// BEGIN vendored ha-tools-format factory
+// Localized presentation; raw values remain available to callers for details/export.
+function createFormatUi(language = 'en', timeZone = 'UTC', preferences = {}) {
+  const hourCycle = preferences.hourCycle || 'h23';
+  const dateLanguage = preferences.dateLanguage || language;
+  const stamp = value => typeof value === 'number' ? (Number.isFinite(value) ? value : NaN) : typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? Date.parse(value) : NaN;
+  const localized = (value, options, locale = language) => {
+    const time = stamp(value);
+    if (!Number.isFinite(time)) return null;
+    try { return new Intl.DateTimeFormat(locale, {timeZone, ...options}).format(time); } catch (_) { return null; }
+  };
+  const clock = (value, withOffset = false) => localized(value, {hour:'2-digit', minute:'2-digit', hourCycle, ...(withOffset ? {timeZoneName:'shortOffset'} : {})});
+  const date = (value, short = false) => localized(value, {day:'numeric', month:'short', ...(short ? {} : {year:'numeric'})}, dateLanguage);
+  const pointLabel = value => localized(value, {year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hourCycle, timeZoneName:'shortOffset'}, dateLanguage);
+  const chartLabels = (values, resolution = 'hour') => {
+    const showDate = resolution === 'day' || values.length > 1 && stamp(values.at(-1)) - stamp(values[0]) >= 86400000;
+    const labels = values.map(value => resolution === 'day' ? date(value, true) : `${showDate ? date(value, true) + ' ' : ''}${clock(value)}`);
+    const counts = new Map();
+    for (const label of labels) counts.set(label, (counts.get(label) || 0) + 1);
+    return labels.map((label, index) => counts.get(label) < 2 ? label : resolution === 'day' ? pointLabel(values[index])
+      : `${showDate ? date(values[index], true) + ' ' : ''}${clock(values[index], true)}`);
+  };
+  const key = JSON.stringify([language, timeZone, hourCycle, dateLanguage]);
+  const numbers = new Intl.NumberFormat(language);
+  const plurals = new Intl.PluralRules(language);
+  const count = (value, forms) => `${numbers.format(value)} ${forms[plurals.select(value)] || forms.other}`;
+  const dateTime = value => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
+    const time = Date.parse(value);
+    if (!Number.isFinite(time)) return null;
+    try { return new Intl.DateTimeFormat(dateLanguage, {timeZone, dateStyle:'medium', timeStyle:'short', hourCycle}).format(new Date(time)); }
+    catch (_) { return null; }
+  };
+  const range = (from, to) => {
+    const first = Date.parse(from), last = Date.parse(to);
+    if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return null;
+    try {
+      const day = new Intl.DateTimeFormat(dateLanguage, {timeZone, dateStyle:'medium'});
+      const clock = new Intl.DateTimeFormat(language, {timeZone, hour:'2-digit', minute:'2-digit', hourCycle});
+      return day.format(first) === day.format(last)
+        ? `${day.format(first)} (${clock.format(first)}–${clock.format(last)})`
+        : `${dateTime(from)} – ${dateTime(to)}`;
+    } catch (_) { return null; }
+  };
+  const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const periodMarkup = ({start, end, label, source, measured, expected, unit, details = '', sourceTimeZone = ''}) => {
+    const local = range(start, end);
+    if (!local) return '';
+    const coverage = typeof measured === 'number' && Number.isFinite(measured) && typeof expected === 'number' && Number.isFinite(expected)
+      ? `${numbers.format(measured)}/${numbers.format(expected)} ${unit}` : '';
+    const pl = String(language).startsWith('pl');
+    return `<div class="energy-period-v4" style="overflow-wrap:anywhere"><p data-energy-period-summary>${[source, label, local, coverage, timeZone].filter(Boolean).map(escape).join(' · ')}</p><details data-energy-period-details data-energy-period-key="${escape(start + '|' + end)}"><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;display:list-item;list-style-position:inside;cursor:pointer">${pl ? 'Źródło i szczegóły czasu' : 'Source and time details'}</summary><p>${escape(details)}</p>${sourceTimeZone && sourceTimeZone !== timeZone ? `<p>${escape(pl ? 'Strefa pomiarów i granic okresu' : 'Measurement calendar time zone')}: ${escape(sourceTimeZone)}</p>` : ''}<p>UTC: ${escape(start)} — ${escape(end)}</p></details></div>`;
+  };
+  const capturePeriods = (root, previous, current) => {
+    if (!previous || ['epoch','connection','user'].some(key => previous[key] !== current[key])) return [];
+    return [...root.querySelectorAll('[data-energy-period-key]')].map(element => ({
+      key:element.dataset.energyPeriodKey, open:element.open, focused:root.activeElement === element.querySelector('summary')
+    }));
+  };
+  const restorePeriods = (root, records) => {
+    for (const element of root.querySelectorAll('[data-energy-period-key]')) {
+      const record = records.find(row => row.key === element.dataset.energyPeriodKey);
+      if (!record) continue;
+      element.open = record.open;
+      if (record.focused) element.querySelector('summary')?.focus({preventScroll:true});
+    }
+  };
+  return {timeZone, key, clock, date, pointLabel, chartLabels, number:(value, options)=>options ? new Intl.NumberFormat(language, options).format(value) : numbers.format(value), count, dateTime, range, periodMarkup, capturePeriods, restorePeriods};
+}
+// Presentation follows the HA profile; measurement and tariff calendars remain separate.
+createFormatUi.forHass = hass => {
+  const locale = hass?.locale || {};
+  const systemLanguage = typeof navigator !== 'undefined' ? navigator.language : undefined;
+  const language = locale.language || hass?.language || systemLanguage || 'en';
+  const validZone = value => {
+    if (typeof value !== 'string' || !(value === 'UTC' || value.includes('/')) || /^[+-]/.test(value)) return null;
+    try { new Intl.DateTimeFormat('en', {timeZone:value}).format(0); return value; } catch (_) { return null; }
+  };
+  let systemZone;
+  try { systemZone = validZone(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch (_) {}
+  const serverZone = validZone(hass?.config?.time_zone);
+  const timeZone = (locale.time_zone === 'server' ? serverZone : systemZone) || serverZone || 'UTC';
+  const clockLanguage = locale.time_format === 'system' ? systemLanguage || language : language;
+  const hourCycle = locale.time_format === '12' ? 'h12' : locale.time_format === '24' ? 'h23'
+    : new Intl.DateTimeFormat(clockLanguage, {hour:'numeric'}).resolvedOptions().hourCycle;
+  return createFormatUi(language, timeZone, {hourCycle, dateLanguage:locale.date_format === 'system' ? systemLanguage || language : language});
+};
+// END vendored ha-tools-format factory
 
 // BEGIN vendored ha-tools-ui factory
 // HA Tools v3: vendored inside each consumer's own closure, never a window API.
@@ -362,7 +451,7 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
 // Neither the controller nor renderer sends, saves, retries, or reads on open.
 function createHaToolsEmailHistory({ escape = value => String(value == null ? '' : value).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]), clock = () => Date.now(),
-  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {} } = {}) {
+  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null } = {}) {
   const kinds = new Set(['manual', 'test', 'log_digest', 'energy_report']);
   const cadences = new Set(['daily', 'weekly', 'monthly']);
   const outcomes = new Set(['accepted_by_smtp', 'preparation_failed', 'authentication_failed',
@@ -443,7 +532,7 @@ function createHaToolsEmailHistory({ escape = value => String(value == null ? ''
   };
   controller.render = (language = 'en') => {
     const pl = language === 'pl', state = controller.state;
-    let timezone = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let timezone = (typeof displayTimezone === 'function' ? displayTimezone() : null) || context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(); }
     catch (_) { timezone = 'UTC'; }
     const labels = pl ? ['Data', 'Źródło', 'Rodzaj', 'Częstotliwość', 'Okres', 'Odbiorcy (liczba)', 'Wynik'] :
@@ -458,6 +547,7 @@ function createHaToolsEmailHistory({ escape = value => String(value == null ? ''
         (pl ? 'Brak zachowanych prób wysyłki.' : 'No retained send attempts.')
     };
     const date = stamp => {
+      if (typeof formatDate === 'function') return formatDate(stamp) || '—';
       const dt = new Date(stamp);
       return `${dt.toLocaleString(pl ? 'pl-PL' : 'en-US', { timeZone: timezone })} (${stamp})`;
     };
@@ -504,7 +594,7 @@ function createHaToolsEmailHistory({ escape = value => String(value == null ? ''
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Zachowane metadane prób' : 'Retained attempt metadata'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead>
         <tbody role="rowgroup">${rows.map((cells, index) => {
           const row = state.attempts[index];
-          return `<tr role="row" data-attempt-id="${escape(row.id)}" data-source="${escape(row.source)}" data-kind="${escape(row.kind ?? '')}" data-cadence="${escape(row.cadence ?? '')}" data-period="${escape(row.period ?? '')}" data-outcome="${escape(row.outcome)}">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}</td>`).join('')}</tr>`;
+          return `<tr role="row" data-attempt-id="${escape(row.id)}" data-source="${escape(row.source)}" data-kind="${escape(row.kind ?? '')}" data-cadence="${escape(row.cadence ?? '')}" data-period="${escape(row.period ?? '')}" data-outcome="${escape(row.outcome)}">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}${i === 0 && typeof formatDate === 'function' ? `<details data-log-disclosure-key="attempt-${escape(row.id)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${escape(row.timestamp)}</p></details>` : ''}</td>`).join('')}</tr>`;
         }).join('')}</tbody></table>` : ''}
     </section>`;
   };
@@ -561,12 +651,13 @@ function _bindLogRecords(card, focusKey) {
       const key = JSON.stringify([kind, card._dataEpoch, row.dataset.attemptId || row.dataset.logIdentity || row.dataset.snapshotKey]);
       row.dataset.logRecordKey = key;
       const cells = Array.from(row.cells);
+      const compactText = cell => { const copy = cell.cloneNode(true); copy.querySelectorAll('details').forEach(node => node.remove()); return copy.textContent; };
       const detail = doc.createElement('details'); detail.dataset.recordKey = key;
       const summary = doc.createElement('summary');
       const name = doc.createElement('strong');
-      name.textContent = nameIndices.map(index => cells[index].textContent).join(' · ');
+      name.textContent = nameIndices.map(index => compactText(cells[index])).join(' · ');
       const state = doc.createElement('span'); state.className = 'log-record-state';
-      state.textContent = stateIndices.map(index => stateIndices.length === 1 ? cells[index].textContent : headers[index] + ': ' + cells[index].textContent).join(' · ');
+      state.textContent = stateIndices.map(index => stateIndices.length === 1 ? compactText(cells[index]) : headers[index] + ': ' + compactText(cells[index])).join(' · ');
       summary.append(name, state); detail.append(summary);
       const fields = doc.createElement('dl'); fields.className = 'record-fields'; detail.append(fields);
       const values = cells.map((cell, index) => {
@@ -653,7 +744,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.7.1
+ * HA Log Email Card v4.8.0
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1150,6 +1241,9 @@ pre {
   .overview-grid, .stats-grid, .summary-grid { grid-template-columns: 1fr 1fr; }
   .stat-value, .stat-val, .kpi-val { font-size: 18px; }
 }
+
+details[data-log-disclosure-key] > summary { min-height:44px; box-sizing:border-box; padding:12px 4px; cursor:pointer; overflow-wrap:anywhere; }
+details[data-log-disclosure-key] > summary:focus-visible { outline:2px solid var(--primary-color,#3b82f6); outline-offset:2px; }
 `;
 
 class HALogEmail extends HTMLElement {
@@ -1175,7 +1269,8 @@ class HALogEmail extends HTMLElement {
     this._logReadToken = 0;
     this._logRead = null;
     this._initialLogSettled = false;
-    this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render() });
+    this._attemptHistory = createHaToolsEmailHistory({ escape: _esc, changed: () => this._render(),
+      formatDate: stamp => this._formatUi().pointLabel(stamp), displayTimezone: () => this._formatUi().timeZone });
     this._serverSchedules = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailPreview = createHaToolsEmailSchedules({ changed: () => this._render() });
     this._mailCadence = 'daily'; this._mailPeriodMode = 'rolling';
@@ -1233,6 +1328,9 @@ class HALogEmail extends HTMLElement {
     const language = hass?.locale?.language || hass?.language || navigator.language || 'en';
     const nextLang = /^pl(?:[-_]|$)/i.test(language) ? 'pl' : 'en';
     const languageChanged = nextLang !== this._lang;
+    const formatKey = createFormatUi.forHass(hass).key;
+    const formatChanged = formatKey !== this._formatKey;
+    this._formatKey = formatKey;
     this._lang = nextLang;
     this._hass = hass;
     this._bindEmailContext();
@@ -1268,7 +1366,7 @@ class HALogEmail extends HTMLElement {
     if (!this._firstRender && hass) {
       this._firstRender = true;
       this._render();
-    } else if (identityChanged || !hass || languageChanged) this._render();
+    } else if (identityChanged || !hass || languageChanged || formatChanged) this._render();
     else if (previousAdmin !== hass?.user?.is_admin || this._activeTab === 'schedule') this._render();
     this._ensureInitialLogData();
   }
@@ -1870,20 +1968,32 @@ class HALogEmail extends HTMLElement {
     this._finishEmailRequest(request, reason);
   }
 
+  _formatUi() { return createFormatUi.forHass(this._hass); }
+
+  _nextFireMarkup(row) {
+    const pl = this._lang === 'pl', format = this._formatUi();
+    if (!row.enabled) return pl ? 'Wyłączony — brak następnego terminu' : 'Disabled — no next fire';
+    const label = format.pointLabel(row.next_fire), stamp = Date.parse(row.next_fire);
+    if (!label || !Number.isFinite(stamp)) return pl ? 'Brak danych' : 'No data';
+    const seconds = (stamp - Date.now()) / 1000;
+    const [unit, size] = Math.abs(seconds) >= 86400 ? ['day', 86400] : Math.abs(seconds) >= 3600 ? ['hour', 3600] : Math.abs(seconds) >= 60 ? ['minute', 60] : ['second', 1];
+    let relative = '';
+    try { relative = new Intl.RelativeTimeFormat(this._hass?.locale?.language || this._hass?.language || navigator.language || 'en', { numeric: 'always' }).format(Math.round(seconds / size), unit); } catch (_) {}
+    return `${_esc(label)}${relative ? ' · ' + _esc(relative) : ''} · ${_esc(format.timeZone)}`;
+  }
+
   _renderMailFrame(preview, id) {
     if (!preview || typeof preview.html !== 'string') return '';
-    const pl = this._lang === 'pl', locale = pl ? 'pl-PL' : 'en-US';
-    const zone = preview.effective_timezone || 'UTC';
-    const date = value => {
-      try { return new Intl.DateTimeFormat(locale, { timeZone: zone, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }).format(new Date(value)); }
-      catch (_) { return pl ? 'Czas niedostępny' : 'Time unavailable'; }
-    };
+    const pl = this._lang === 'pl', format = this._formatUi();
+    const date = value => format.pointLabel(value) || (pl ? 'Czas niedostępny' : 'Time unavailable');
     const source = preview.source?.name === 'system_log' ? (pl ? 'Zachowane wpisy dziennika HA' : 'Retained HA log entries') : (pl ? 'Statystyki energii Recorder' : 'Recorder energy statistics');
     return `<section class="schedule-preview"><h4>${_esc(preview.subject)}</h4>
       <dl><dt>${pl ? 'Od (włącznie)' : 'From (inclusive)'}</dt><dd>${_esc(date(preview.period.from))}</dd>
       <dt>${pl ? 'Do (wyłącznie)' : 'To (exclusive)'}</dt><dd>${_esc(date(preview.period.to))}</dd>
       <dt>${pl ? 'Wygenerowano' : 'Generated'}</dt><dd>${_esc(date(preview.generated_at))}</dd>
       <dt>${pl ? 'Źródło' : 'Source'}</dt><dd>${_esc(source)}${preview.source?.complete === false ? (pl ? ' — częściowe dane' : ' — partial data') : ''}</dd></dl>
+      <p>${pl ? 'Strefa czasu widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${pl ? 'Strefa kalendarza serwera' : 'Server calendar timezone'}: ${_esc(preview.effective_timezone || '—')}</p>
+      <details data-log-disclosure-key="mail-${_esc(id)}"><summary>${pl ? 'Surowe znaczniki czasu' : 'Raw timestamps'}</summary><p>${_esc(preview.period.from)} / ${_esc(preview.period.to)} · ${_esc(preview.generated_at)}</p></details>
       <iframe id="${id}" title="${_esc(this._t.emailPreview)}" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:600px;border:1px solid var(--divider-color,#ddd);background:white"></iframe></section>`;
   }
 
@@ -1998,10 +2108,11 @@ class HALogEmail extends HTMLElement {
     const p = m.preview;
     const preview = p?.html !== undefined ? this._renderMailFrame(p, 'schedule-mail-frame') : p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
       <p>${tr('Poprzedni zakończony okres kalendarzowy; do nie obejmuje końca przedziału.', 'Previous completed calendar period; the end is exclusive.')}</p>
-      <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(p.period.from)} / ${_esc(p.period.to)}</dd>
+      <dl><dt>${tr('Od / do', 'From / to')}</dt><dd>${_esc(this._formatUi().pointLabel(p.period.from) || p.period.from)} / ${_esc(this._formatUi().pointLabel(p.period.to) || p.period.to)}</dd>
       <dt>${tr('Efektywna strefa', 'Effective timezone')}</dt><dd>${_esc(p.effective_timezone)}</dd>
       <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${tr('zachowane agregaty Home Assistant', 'retained Home Assistant aggregates')}</dd>
       <dt>${tr('Zachowane wpisy / różne problemy / wystąpienia (HA)', 'Retained entries / unique problems / occurrences (HA)')}</dt><dd>${_esc(p.source.retained_entries)} / ${_esc(p.unique_problems ?? tr('Brak danych', 'No data'))} / ${_esc(p.total ?? tr('Brak danych', 'No data'))}</dd></dl>
+      <details data-log-disclosure-key="summary-preview"><summary>${tr('Surowy okres serwera', 'Raw server period')}</summary><p>${_esc(p.period.from)} / ${_esc(p.period.to)}</p></details>
       <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></section>` :
       m.previewStatus.reason !== 'initial' ? `<section class="schedule-preview">${state(m.previewStatus)}<p>${_esc(reason[m.previewStatus.reason] || reason.read_failed)}</p></section>` : '';
     const legacy = ['daily', 'weekly'].map(c => {
@@ -2009,8 +2120,8 @@ class HALogEmail extends HTMLElement {
       const known = value === 'on' || value === 'off';
       return `<article class="schedule-card"><strong>${_esc(cadence(c))}</strong><p><code>${id}</code></p>
         <p>${known ? (value === 'on' ? tr('Włączona', 'Enabled') : tr('Wyłączona', 'Disabled')) : tr('Nieznany stan', 'Unknown state')}</p>
-        ${entity ? `<p class="schedule-legacy-warning">⚠ ${tr('Skonfigurowana starsza automatyzacja może wysyłać ten sam raport. Możliwe duplikaty po włączeniu obu torów. Sprawdź powyższe ID w HA.', 'A configured legacy automation may send the same report. Duplicate reports are possible if both paths are enabled. Inspect this ID in HA.')}</p>` :
-          `<p>${tr('Brak encji w odczycie; nie potwierdza to braku automatyzacji.', 'Entity absent from the read; this does not confirm that no automation exists.')}</p>`}
+        ${value === 'on' ? `<p class="schedule-legacy-warning">⚠ ${tr('Skonfigurowana starsza automatyzacja może wysyłać ten sam raport. Możliwe duplikaty po włączeniu obu torów. Sprawdź powyższe ID w HA.', 'A configured legacy automation may send the same report. Duplicate reports are possible if both paths are enabled. Inspect this ID in HA.')}</p>` :
+          !entity ? `<p>${tr('Brak encji w odczycie; nie potwierdza to braku automatyzacji.', 'Entity absent from the read; this does not confirm that no automation exists.')}</p>` : ''}
         ${known ? `<button type="button" class="toggle-btn" id="btn-${c}-toggle" ${m.writing || this._legacyRequest || !this._emailAllowed() ? 'disabled' : ''}>${value === 'on' ? tr('Wyłącz starszą automatyzację', 'Disable legacy automation') : tr('Włącz starszą automatyzację', 'Enable legacy automation')}</button>` : ''}${this._renderLegacyResult(id)}</article>`;
     }).join('');
     return `<section class="server-schedules"><h3>${tr('Harmonogramy serwerowe dziennika', 'Server log schedules')}</h3>
@@ -2023,12 +2134,15 @@ class HALogEmail extends HTMLElement {
         <p>${tr('Strefa', 'Timezone')}: ${_esc(row.timezone || tr('Podąża za HA', 'Follows HA'))}; ${tr('efektywna', 'effective')}: ${_esc(row.effective_timezone || tr('Brak danych', 'No data'))}</p>
         ${row.cadence === 'weekly' ? `<p>${tr('Dzień tygodnia', 'Weekday')}: ${_esc(days[row.weekday ?? 0])}</p>` : ''}
         ${row.cadence === 'monthly' ? `<p>${tr('Dzień miesiąca', 'Day of month')}: ${_esc(row.month_day ?? 1)}</p>` : ''}
-        <p>${tr('Następny termin z serwera', 'Next fire from server')}: ${row.enabled ? _esc(row.next_fire || tr('Brak danych', 'No data')) : tr('Wyłączony — brak następnego terminu', 'Disabled — no next fire')}</p>
+        <p>${tr('Następny termin z serwera', 'Next fire from server')}: ${this._nextFireMarkup(row)}</p>
+        <details data-log-disclosure-key="next-${_esc(row.id)}"><summary>${tr('Szczegóły terminu', 'Time details')}</summary>
+          <p>${tr('Surowy termin z serwera', 'Raw server instant')}: ${_esc(row.next_fire || tr('Brak danych', 'No data'))}</p>
+          <p>${tr('Strefa kalendarza serwera', 'Server calendar timezone')}: ${_esc(row.effective_timezone || tr('Brak danych', 'No data'))}</p></details>
         <button type="button" id="schedule-edit-${i}" data-schedule-edit="${i}" ${editable ? '' : 'disabled'}>${tr('Edytuj', 'Edit')}</button></article>`).join('')}</div>
       ${!logRows.length ? `<p>${tr('Brak danych harmonogramów dziennika.', 'No data for log schedules.')}</p>` : ''}${editor}${preview}
-      <section class="schedule-legacy"><h3>${tr('Starsze automatyzacje HA — osobny tor', 'Legacy HA automations — separate path')}</h3>
+      <details class="schedule-legacy" data-log-disclosure-key="legacy" ${['daily', 'weekly'].some(c => this._hass?.states?.['automation.ha_tools_log_email_' + c]?.state === 'on') ? 'open' : ''}><summary>${tr('Starsze automatyzacje HA — osobny tor', 'Legacy HA automations — separate path')}</summary>
         <p>${tr('Otwarcie i zapis harmonogramu nie przełączają, nie usuwają i nie migrują automatyzacji. Ich przyciski działają tylko po świadomym wyborze. Ostrzeżenie nie sprawdza treści innych automatyzacji.', 'Opening or saving a schedule does not toggle, delete or migrate automations. Their buttons act only on explicit selection. This warning does not inspect other automation contents.')}</p>
-        <div class="server-schedule-list">${legacy}</div></section></section>`;
+        <div class="server-schedule-list">${legacy}</div></details></section>`;
   }
 
   _bindServerSchedules() {
@@ -2060,7 +2174,7 @@ class HALogEmail extends HTMLElement {
 
     const errors = data.errors || [];
     const warnings = data.warnings || [];
-    const date = new Date().toLocaleString((this._lang === 'pl' ? 'pl-PL' : 'en-US'), { timeZone: 'Europe/Warsaw' });
+    const date = this._formatUi().pointLabel(Date.now());
 
     return `
       <div style="font-family:Arial,sans-serif;background:#1a1a2e;color:#e2e8f0;padding:16px;border-radius:8px;font-size:13px;max-height:300px;overflow-y:auto">
@@ -2072,7 +2186,7 @@ class HALogEmail extends HTMLElement {
           ${errors.length === 0 ? '<p style="color:#10b981">\u2705 No errors in last 24h</p>' :
             errors.slice(0, 10).map(e => `
               <div style="background:#2d1b1b;border-left:3px solid #ef4444;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
-                <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
+                <span style="color:#94a3b8;font-size:11px">${e.when ? this._formatUi().pointLabel(e.when) || '—' : ''}</span>
                 ${e.domain ? `<span style="color:#f87171;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
                 <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
@@ -2085,7 +2199,7 @@ class HALogEmail extends HTMLElement {
           ${warnings.length === 0 ? '<p style="color:#10b981">\u2705 No warnings in last 24h</p>' :
             warnings.slice(0, 10).map(e => `
               <div style="background:#2d2410;border-left:3px solid #f59e0b;padding:6px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">
-                <span style="color:#94a3b8;font-size:11px">${e.when ? new Date(e.when).toLocaleTimeString((this._lang === 'pl' ? 'pl-PL' : 'en-US')) : ''}</span>
+                <span style="color:#94a3b8;font-size:11px">${e.when ? this._formatUi().pointLabel(e.when) || '—' : ''}</span>
                 ${e.domain ? `<span style="color:#fbbf24;font-size:11px"> [${_esc(e.domain)}]</span>` : ''}
                 <div style="margin-top:2px">${_esc((e.message || '').substring(0, 120))}${(e.message || '').length > 120 ? '...' : ''}</div>
               </div>
@@ -2153,6 +2267,13 @@ class HALogEmail extends HTMLElement {
           !context.online || !context.admin || Object.keys(context).some(key => context[key] !== pending.context[key]) ||
           this.shadowRoot.activeElement !== pending.anchor) this._clearActionFocus();
     }
+    const sameDisclosureContext = this._disclosureEpoch === this._dataEpoch;
+    if (!sameDisclosureContext) this._disclosures = new Map();
+    this._disclosureEpoch = this._dataEpoch;
+    const activeDisclosure = sameDisclosureContext && this.shadowRoot.activeElement?.closest('details[data-log-disclosure-key]');
+    const disclosureFocus = activeDisclosure && this.shadowRoot.activeElement === activeDisclosure.querySelector('summary') ? activeDisclosure.dataset.logDisclosureKey : null;
+    if (sameDisclosureContext) for (const element of this.shadowRoot.querySelectorAll('details[data-log-disclosure-key]'))
+      this._disclosures.set(element.dataset.logDisclosureKey, element.open);
     const recordFocus = _rememberLogRecords(this);
     _disconnectLogRecords(this);
     const focused = this.shadowRoot.activeElement;
@@ -2253,7 +2374,7 @@ class HALogEmail extends HTMLElement {
               <button class="toggle-btn" id="btn-poll-toggle" style="padding:6px 14px;font-size:11px;">
                 ${this._pollingEnabled ? (this._lang === 'pl' ? 'Wyłącz' : 'Disable') : (this._lang === 'pl' ? 'Włącz' : 'Enable')}
               </button>
-              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">' + (this._lang === 'pl' ? 'ostatnio: ' : 'last: ') + new Date(this._lastPollTime).toLocaleTimeString(this._t.locale) + '</span>' : ''}
+              ${this._pollingEnabled && this._lastPollTime ? '<span style="font-size:10px;color:var(--bento-text-secondary,#64748B);margin-left:6px">' + (this._lang === 'pl' ? 'ostatnio: ' : 'last: ') + this._formatUi().clock(this._lastPollTime) + '</span>' : ''}
             </div>
           </div>
           <p style="margin:0 0 8px 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">
@@ -2724,6 +2845,13 @@ ${_LOG_RECORD_CSS}
       });
     }
 
+    for (const element of this.shadowRoot.querySelectorAll('details[data-log-disclosure-key]')) {
+      const key = element.dataset.logDisclosureKey;
+      if (this._disclosures.has(key)) element.open = this._disclosures.get(key);
+      // Action feedback and its focus anchor must remain reachable after the last off.
+      if (key === 'legacy' && (this._legacyStatus || this._legacyRequest || focusId?.startsWith('btn-daily-') || focusId?.startsWith('btn-weekly-'))) element.open = true;
+      if (key === disclosureFocus) element.querySelector('summary')?.focus({ preventScroll: true });
+    }
     if (focusId) {
       const target = this.shadowRoot.getElementById(focusId) || (focusId.startsWith('schedule-') ? this.shadowRoot.getElementById('schedule-refresh') : null);
       target?.focus({ preventScroll: true });
@@ -2754,7 +2882,9 @@ ${_LOG_RECORD_CSS}
 
   _renderRetainedLogs() {
     const pl = this._lang === 'pl', model = this._retainedModel();
-    const rangeDate = stamp => stamp == null || !Number.isFinite(new Date(stamp).getTime()) ? '—' : new Date(stamp).toLocaleString(pl ? 'pl-PL' : 'en-US') + ' (' + new Date(stamp).toISOString() + ')';
+    const format = this._formatUi();
+    const rangeDate = stamp => stamp == null ? '—' : format.pointLabel(stamp) || '—';
+    const rawDate = stamp => stamp == null || !Number.isFinite(stamp) ? '—' : new Date(stamp).toISOString();
     const select = (key, label, options) => `<label for="log-${key}">${label}<select id="log-${key}">${options.map(([value, text]) =>
       `<option value="${_esc(value)}" ${this._logFilters[key] === value ? 'selected' : ''}>${_esc(text)}</option>`).join('')}</select></label>`;
     const severities = [...new Set(['ERROR', 'CRITICAL', 'WARNING', ...model.severities, this._logFilters.severity])].filter(value => value !== 'all');
@@ -2769,19 +2899,24 @@ ${_LOG_RECORD_CSS}
         ${select('period', pl ? 'Zachowany okres' : 'Retained period', [['24h', '24 h'], ['7d', pl ? '7 dni' : '7 days'], ['30d', pl ? '30 dni' : '30 days']])}
         <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
       </div>
-      <p class="log-filter-scope">${pl ? 'Filtry dotyczą tylko tej listy. Nie zmieniają podglądu emaila, wysyłki ani harmonogramów.' : 'Filters apply only to this list. They do not change the email preview, sends or schedules.'}</p>
       <p class="log-model-counts">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')} · ${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}
         ${model.filteredUnique > model.unique ? ` · ${pl ? 'pokazano' : 'shown'} ${model.unique}/${model.filteredUnique} (${pl ? 'limit karty' : 'card cap'})` : ''}</p>
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
         `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
-        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}
+        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
+      <p data-log-source-summary>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)} · ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)} · ${pl ? 'Zaobserwowany zakres' : 'Observed retained range'}: ${_esc(rangeDate(model.first))} — ${_esc(rangeDate(model.last))} · ${pl ? 'Pokazano / limit' : 'Shown / cap'}: ${model.unique} / ${model.cap} · ${pl ? 'Strefa widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${model.unavailable ? (pl ? 'Dane niedostępne' : 'Data unavailable') : model.partial ? (pl ? 'Bieżący odczyt sensora; brak pokrycia historii' : 'Current sensor snapshot; historical coverage unavailable') : (pl ? 'Zachowane agregaty; kompletność historii nieustalona' : 'Retained aggregates; completeness of history unknown')}</p>
+      ${model.occurrences == null && !model.unavailable ? `<p role="status">${pl ? 'Liczba wystąpień (HA) nieznana.' : 'HA occurrence count unknown.'}</p>` : ''}
+      ${model.partial ? `<p role="status">${!this._logData || this._logData.unavailable ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.')}</p>` : ''}
+      <details data-log-disclosure-key="retained"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>
+      <p class="log-filter-scope">${pl ? 'Filtry dotyczą tylko tej listy. Nie zmieniają podglądu emaila, wysyłki ani harmonogramów.' : 'Filters apply only to this list. They do not change the email preview, sends or schedules.'}</p>
       <p>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)}. ${pl ? 'Limit' : 'Limit'} max_entries: ${model.cap}. ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)}.</p>
       <p>${pl ? 'Pierwszy zachowany' : 'First retained'}: ${_esc(rangeDate(model.first))} · ${pl ? 'Ostatni zachowany' : 'Last retained'}: ${_esc(rangeDate(model.last))}</p>
       <p>${model.partial && (!this._logData || this._logData.unavailable) ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : model.partial ? (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.') :
         (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
         'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
+      <p>ISO: ${_esc(rawDate(model.first))} — ${_esc(rawDate(model.last))}</p></details>
     </section>`;
 
 
@@ -2799,7 +2934,7 @@ ${_LOG_RECORD_CSS}
         'Local read counts, not SMTP attempts or evidence of delivery. At most 24 snapshots in the browser session.'}
       ${this._browserCountsLegacy ? (pl ? ' Starsze liczniki nie mają potwierdzonej tożsamości użytkownika.' : ' Legacy counts have no confirmed user identity.') : ''}</p>
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Lokalne odczyty liczników' : 'Local count snapshots'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">${rows.map(row =>
-        `<tr role="row" data-snapshot-key="${_logSnapshotKey(this,row)}">${[new Date(row.ts).toLocaleString(pl ? 'pl-PL' : 'en-US'), row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
+        `<tr role="row" data-snapshot-key="${_logSnapshotKey(this,row)}">${[this._formatUi().pointLabel(row.ts) || '—' , row.errors, row.warnings, row.total].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}${i === 0 ? `<details data-log-disclosure-key="snapshot-time-${_logSnapshotKey(this,row)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.ts)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}</tbody></table>` :
         `<p>${pl ? 'Brak lokalnych odczytów.' : 'No local snapshots.'}</p>`}
     </section>`;
   }
@@ -2844,7 +2979,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.7.1 registered');
+  console.log('[ha-log-email] v4.8.0 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

@@ -23,6 +23,11 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Deterministic bundle gate
         run: node scripts/build-bundle.mjs --check
+      - name: Advisory HA frontend review hints
+        continue-on-error: true
+        run: |
+          python3 scripts/ha_ci_advisory.py --root . ha-log-email.js shared/ha-tools-format.js shared/ha-tools-email-history.js > "$RUNNER_TEMP/ha-ci-advisory.json"
+          python3 -m json.tool "$RUNNER_TEMP/ha-ci-advisory.json"
       - name: Repository hygiene
         run: |
           if git ls-files 'codex-runs/**' | grep -q .; then

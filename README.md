@@ -21,6 +21,8 @@ Version 4.6.1 immediately clears accepted Smart measurements and device details 
 
 The generated bundle includes the exact Smart Reports 4.2.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
 
+Log Email 4.8.0 follows the Home Assistant language, date, clock and display timezone preferences for log rows, next server instants, SMTP history, browser snapshots and preview headers. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one concise summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates.
+
 ## How it works
 
 This plugin ships one Lovelace resource (`ha-tools-email-reports.js`) — a

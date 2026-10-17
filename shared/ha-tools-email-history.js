@@ -2,7 +2,7 @@
 // Neither the controller nor renderer sends, saves, retries, or reads on open.
 export function createHaToolsEmailHistory({ escape = value => String(value == null ? '' : value).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]), clock = () => Date.now(),
-  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {} } = {}) {
+  setTimer = setTimeout, clearTimer = clearTimeout, changed = () => {}, formatDate = null, displayTimezone = null } = {}) {
   const kinds = new Set(['manual', 'test', 'log_digest', 'energy_report']);
   const cadences = new Set(['daily', 'weekly', 'monthly']);
   const outcomes = new Set(['accepted_by_smtp', 'preparation_failed', 'authentication_failed',
@@ -83,7 +83,7 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
   };
   controller.render = (language = 'en') => {
     const pl = language === 'pl', state = controller.state;
-    let timezone = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let timezone = (typeof displayTimezone === 'function' ? displayTimezone() : null) || context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(); }
     catch (_) { timezone = 'UTC'; }
     const labels = pl ? ['Data', 'Źródło', 'Rodzaj', 'Częstotliwość', 'Okres', 'Odbiorcy (liczba)', 'Wynik'] :
@@ -98,6 +98,7 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
         (pl ? 'Brak zachowanych prób wysyłki.' : 'No retained send attempts.')
     };
     const date = stamp => {
+      if (typeof formatDate === 'function') return formatDate(stamp) || '—';
       const dt = new Date(stamp);
       return `${dt.toLocaleString(pl ? 'pl-PL' : 'en-US', { timeZone: timezone })} (${stamp})`;
     };
@@ -144,7 +145,7 @@ export function createHaToolsEmailHistory({ escape = value => String(value == nu
       ${rows.length ? `<table class="history-records" role="table"><caption>${pl ? 'Zachowane metadane prób' : 'Retained attempt metadata'}</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead>
         <tbody role="rowgroup">${rows.map((cells, index) => {
           const row = state.attempts[index];
-          return `<tr role="row" data-attempt-id="${escape(row.id)}" data-source="${escape(row.source)}" data-kind="${escape(row.kind ?? '')}" data-cadence="${escape(row.cadence ?? '')}" data-period="${escape(row.period ?? '')}" data-outcome="${escape(row.outcome)}">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}</td>`).join('')}</tr>`;
+          return `<tr role="row" data-attempt-id="${escape(row.id)}" data-source="${escape(row.source)}" data-kind="${escape(row.kind ?? '')}" data-cadence="${escape(row.cadence ?? '')}" data-period="${escape(row.period ?? '')}" data-outcome="${escape(row.outcome)}">${cells.map((cell, i) => `<td role="cell" data-label="${labels[i]}">${escape(cell)}${i === 0 && typeof formatDate === 'function' ? `<details data-log-disclosure-key="attempt-${escape(row.id)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${escape(row.timestamp)}</p></details>` : ''}</td>`).join('')}</tr>`;
         }).join('')}</tbody></table>` : ''}
     </section>`;
   };

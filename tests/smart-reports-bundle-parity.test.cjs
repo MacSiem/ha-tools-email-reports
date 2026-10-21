@@ -128,7 +128,7 @@ test('generated bundle passes shared behavior and rendered-theme contrast suites
   });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.doesNotMatch(result.stderr, /skipping running files/, 'shared behavior suite must execute');
-  assert.match(result.stdout, /# tests 23(?:\r?\n|$)/, 'all fifteen behavior and eight contrast cases must run');
+  assert.match(result.stdout, /# tests 24(?:\r?\n|$)/, 'all fifteen behavior and nine contrast cases must run');
   for (const id of ['N-01', 'N-02', 'N-03', 'N-04', 'N-05']) assert.ok(result.stdout.includes(id), `${id} must run against the generated bundle`);
 });
 

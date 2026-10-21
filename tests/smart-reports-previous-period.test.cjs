@@ -244,7 +244,7 @@ test('approved comparison keeps current KPIs first and the previous amount besid
  try{
   const root=f.card.shadowRoot,main=root.getElementById('content');
   const headline=[...main.querySelectorAll('.metric')].find(e=>e.querySelector('.metric-label')?.textContent==='Grid import');
-  assert.ok(headline);assert.match(headline.textContent,/312\.00 kWh/);assert.match(headline.textContent,/Previous period.*156\.00 kWh/);assert.match(headline.textContent,/100\.00%/);
+  assert.ok(headline);assert.match(headline.textContent,/312\.00 kWh/);assert.match(headline.textContent,/Previous period.*156\.00 kWh/);assert.match(headline.textContent,/\+156 kWh \(\+100%\)/);
   const details=[...main.querySelectorAll('details')].find(e=>e.querySelector('summary')?.textContent==='Comparison details');
   assert.ok(details,'full ranges and hourly records remain accessible');assert.equal(details.open,false);
   assert.ok(headline.compareDocumentPosition(details)&f.window.Node.DOCUMENT_POSITION_FOLLOWING);
@@ -276,4 +276,86 @@ for(const missing of [['sensor.money'],['sensor.grid_import','sensor.money']])te
   assert.ok(hint);assert.match(hint.textContent,/Incomplete (cost|energy) history/);assert.equal(hint.textContent.includes('%'),false);
   const exported=f.card._buildExportDocument();assert.equal(exported.energy.cost.currency,null);assert.equal(exported.comparison.metrics.cost.unit,'PLN');
  }finally{f.close();}
+});
+
+for (const [language, delta, percent, expected] of [
+  ['en', 3.07, 20, '+3.07 kWh (+20%)'],
+  ['pl', 3.07, 20, '+3,07 kWh (+20%)'],
+  ['en', -3.07, -20, '−3.07 kWh (−20%)'],
+  ['pl', 0.004, 0.02, '+0,004 kWh (+0,02%)'],
+  ['en', 0, 0, 'No change'],
+  ['pl', 0, 0, 'Bez zmiany'],
+]) test(`headline comparison keeps local signed delta and percent: ${language} ${delta}`, () => {
+  const dom = loadRuntime();
+  try {
+    const card = dom.window.document.createElement('ha-smart-reports');
+    const hass = makeHass(); hass.language = language; card.hass = hass;
+    const metric = dom.window.document.createElement('div');
+    const pair = { previous: { cost: {}, cost_sources: [] }, metrics: {
+      energy: { previous: 15.35, delta, percent, unit: 'kWh' },
+    } };
+    const before = JSON.stringify(pair);
+    card._comparisonHint(metric, pair, 'energy');
+    assert.ok(metric.textContent.includes(expected), metric.textContent);
+    assert.equal(metric.textContent.includes('Δ'), false);
+    assert.equal(JSON.stringify(pair), before, 'display leaves exact model/export input unchanged');
+  } finally { dom.window.close(); }
+});
+
+for (const [partial, coverage] of [[false, '1/1 source complete'], [true, '0/1 source complete']]) {
+  test(`range context is one concise line with exact window in Details: partial=${partial}`, async () => {
+    const f = await fixture({ alter: (message, data) => {
+      if (partial && Date.parse(message.start_time) >= Date.parse('2026-08-24T00:00:00Z')) data['sensor.grid_import'].pop();
+      return data;
+    } });
+    try {
+      const root = f.card.shadowRoot, context = root.querySelector('.report-context');
+      assert.ok(context.textContent.includes(coverage), context.textContent);
+      assert.match(context.textContent, /7 days/);
+      assert.doesNotMatch(context.textContent, /Time zone:|Period:|12:00|00:00/);
+      const details = root.querySelector('.report-context-details');
+      assert.ok(details); assert.equal(details.open, false);
+      const period = f.card._energyViewState.period;
+      for (const exact of [period.start, period.end, period.time_zone]) assert.ok(details.textContent.includes(exact));
+      assert.equal(context.dataset.periodStart, period.start); assert.equal(context.dataset.periodEnd, period.end);
+      const reads = callsOf(f.hass, 'recorder/statistics_during_period').length;
+      const stamp = new Date('2026-08-30T12:00:00Z');
+      const exported = JSON.stringify(f.card._buildExportDocument(stamp));
+      details.open = true; details.dispatchEvent(new f.window.Event('toggle'));
+      f.card._renderEnergyState();
+      assert.equal(root.querySelector('.report-context-details').open, true);
+      assert.equal(callsOf(f.hass, 'recorder/statistics_during_period').length, reads);
+      assert.equal(JSON.stringify(f.card._buildExportDocument(stamp)), exported);
+    } finally { f.close(); }
+  });
+}
+
+test('summary shows one period context while both exact comparison windows remain in Details', async () => {
+  const f = await fixture();
+  try {
+    const root = f.card.shadowRoot, overview = root.querySelector('.comparison-overview');
+    assert.equal(overview.querySelectorAll(':scope > .comparison-context').length, 0);
+    const details = overview.querySelector('.comparison-details');
+    assert.equal(details.open, false);
+    for (const side of ['current', 'previous']) {
+      const period = f.card._energyViewState.comparison[side].period;
+      const evidence = details.querySelector(`[data-comparison-period="${side}"]`).textContent;
+      for (const exact of [period.start, period.end, period.time_zone]) assert.ok(evidence.includes(exact));
+    }
+  } finally { f.close(); }
+});
+
+for (const [zone, now, end] of [
+  ['UTC', '2026-08-31T00:00:00Z', '2026-08-31T00:00:00.000Z'],
+  ['Europe/Warsaw', '2026-08-30T22:00:00Z', '2026-08-30T22:00:00.000Z'],
+]) test(`brief date range excludes an exclusive midnight endpoint in ${zone}`, async () => {
+  const f = await fixture({zone, now});
+  try {
+    const context = f.card.shadowRoot.querySelector('.report-context');
+    assert.equal(context.dataset.periodEnd, end);
+    assert.match(context.textContent, /Aug.*25.*30.*2026/);
+    assert.doesNotMatch(context.textContent, /31/);
+    assert.ok(f.card.shadowRoot.querySelector('.report-context-details').textContent.includes(end));
+    assert.equal(f.card._energyViewState.period.end, end);
+  } finally { f.close(); }
 });

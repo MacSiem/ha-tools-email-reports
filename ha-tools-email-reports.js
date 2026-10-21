@@ -1,8 +1,8 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.8.0
+ * HA Tools Email Reports bundle v4.9.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.2.0 sha256:b2461a50c942b768c9d6ac9df52971db87931923bbe411ebbd2ca0891d2a2c00
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:9e680c2aae99993c2708ab72012481b1caedcd901e32d5cb5b602f074a202bc3
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -3341,7 +3341,7 @@ window.customCards.push({ type: 'ha-log-email', name: 'Log Email Summary', descr
 /**
  * Home Assistant Smart Reports Card
  * Recorder-backed energy reports, automation statistics, and system overview.
- * Version: 4.2.0
+ * Version: 4.3.0
  */
 
 (function registerHASmartReports() {
@@ -4321,7 +4321,7 @@ function createTariffHostV3({ card, kind, createModel, legacyProfile, createSett
 
   // END mirror shared/ha-tools-tariff-host.js
 
-  const VERSION = '4.2.0';
+  const VERSION = '4.3.0';
   const VALID_PERIODS = new Set(['1d', '7d', '30d']);
   const ENERGY_UNITS = new Set(['Wh', 'kWh', 'MWh']);
 
@@ -4437,6 +4437,31 @@ function createTariffHostV3({ card, kind, createModel, legacyProfile, createSett
     "Recorder-backed": "Na podstawie danych rejestratora",
     "Report sections": "Sekcje raportu",
     "Energy": "Energia",
+    "Settings": "Ustawienia",
+    "Access to HA Tools features": "Dostęp do funkcji HA Tools",
+    "Back to reports": "Wróć do raportów",
+    "View": "Widok",
+    "Full": "Pełny",
+    "Compact": "Skrót",
+    "Tile": "Kafelek",
+    "Initial report": "Początkowy raport",
+    "How to read the report": "Jak czytać raport?",
+    "The energy report uses history recorded by Home Assistant. By default, selected statistics use the Energy dashboard sources. A sensor’s current state does not replace missing history.": "Raport energii korzysta z historii zapisanej przez Home Assistant. Wybrane statystyki domyślnie używają źródeł z panelu Energia. Bieżący stan czujnika nie zastępuje brakującej historii.",
+    "Selected statistics and Calendar are separate reports. Calendar uses HA Energy sources and requires access confirmed by HA Tools Email. It does not fall back to a different report when access is unavailable.": "Wybrane statystyki i Kalendarz to osobne raporty. Kalendarz używa źródeł Energia HA i wymaga dostępu potwierdzonego przez HA Tools Email. Brak dostępu nie przełącza go na inne dane.",
+    "Periods use Home Assistant’s time zone. Selected statistics end at the last completed hour. Calendar shows its own exact interval and coverage. A daylight-saving day can have 23 or 25 hours.": "Okresy używają strefy czasowej Home Assistant. Wybrane statystyki kończą się na ostatniej pełnej godzinie. Kalendarz pokazuje własny dokładny przedział i pokrycie. Dzień zmiany czasu może mieć 23 lub 25 godzin.",
+    "Missing measurements are not zero. Confirmed readings and complete totals have separate coverage. A complete total remains unavailable when required data is missing.": "Brak pomiarów nie oznacza zera. Potwierdzone odczyty i pełne sumy mają osobne pokrycie. Pełna suma pozostaje niedostępna, jeśli brakuje wymaganych danych.",
+    "A nested device is already included in its parent. Each device may have different coverage. Rooms follow the entity or device assignment in HA; No room and Unmeasured are separate categories.": "Urządzenie podrzędne jest już uwzględnione w nadrzędnym. Każde urządzenie może mieć inne pokrycie. Pokój wynika z przypisania encji lub urządzenia w HA; Bez pokoju i Niezmierzone to osobne kategorie.",
+    "Recorded costs, configured historical tariff costs and explicit flat-rate estimates have separate labels. Missing rates leave costs unavailable. Fixed fees stay separate from usage; a common-measurement comparison is not a whole-period bill.": "Zapisane koszty, koszty według historycznej taryfy i jawne szacunki po stałej stawce mają osobne oznaczenia. Brak stawek pozostawia koszt niedostępny. Opłaty stałe są oddzielne od zużycia; porównanie wspólnych pomiarów nie jest rachunkiem całego okresu.",
+    "Comparison uses the selected reference and confirmed comparable measurements. A zero baseline has no percentage. Search changes the visible device list; totals and exports still cover the loaded report.": "Porównanie używa wybranego odniesienia i potwierdzonych porównywalnych pomiarów. Zerowa wartość odniesienia nie ma procentu. Wyszukiwanie zmienia listę urządzeń; sumy i eksport nadal obejmują wczytany raport.",
+    "Chart and Data show the same snapshot. Switching between them does not fetch measurements again. Data and export retain the precise values behind shortened labels.": "Wykres i Dane pokazują ten sam odczyt. Przełączenie nie pobiera pomiarów ponownie. Dane i eksport zachowują dokładne wartości kryjące się za skróconymi etykietami.",
+    "Before saving an export, review its complete preview and included fields. Names and source IDs use aliases by default; private fields require a separate choice for each export. Calendar exports include the historical rate versions used in calculations. Tokens, access policies and SMTP settings are excluded. This is not an HA backup.": "Przed zapisem eksportu sprawdź pełny podgląd i uwzględnione pola. Nazwy i identyfikatory źródeł mają domyślnie aliasy; pola prywatne włączasz osobno dla każdego eksportu. Eksport Kalendarza zawiera historyczne wersje stawek użyte w obliczeniach. Tokeny, polityki dostępu i ustawienia SMTP są pomijane. To nie jest kopia zapasowa HA.",
+    "Full report window opens the real report with current access checks. Adding to a dashboard requires an administrator and an explicit preview. Undo is available only for the confirmed change in the open session; a later dashboard edit blocks it.": "Pełny raport w oknie otwiera rzeczywisty raport z bieżącą kontrolą dostępu. Dodawanie do dashboardu wymaga administratora i jawnego podglądu. Cofnij dotyczy tylko potwierdzonej zmiany w otwartej sesji; późniejsza edycja dashboardu je blokuje.",
+    "Automations and System show the current HA state. The energy-report period does not change those views.": "Automatyzacje i System pokazują bieżący stan HA. Okres raportu energii nie zmienia tych widoków.",
+    "Show help": "Pokaż pomoc",
+    "Open report in": "Otwórz raport",
+    "This card": "W tej karcie",
+    "Full report window": "Pełny raport w oknie",
+    "Administrator access is required.": "Wymagany jest dostęp administratora.",
     "Automations": "Automatyzacje",
     "System": "System",
     "Period": "Okres",
@@ -6248,26 +6273,404 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
 if (typeof module !== 'undefined') module.exports = {createEnergyAnalysisViewV53};
 
 // END SMART CALENDAR ha-tools-energy-analysis-view.js
+// BEGIN SMART CALENDAR ha-smart-reports-calendar-export.js
+'use strict';
+// Pure, local reviewed export. Call only with the already validated calendar DTO.
+// CSV accepts this factory's immutable projection, never an arbitrary raw object.
+const smartCalendarCsvRowsV53 = new WeakMap();
+function projectSmartCalendarV53(snapshot, {includePrivate = false} = {}) {
+  if (!snapshot || snapshot.schema !== 2 || !['day','week','month','year'].includes(snapshot.period?.kind)) {
+    throw new TypeError('Expected validated calendar schema2 snapshot');
+  }
+  const maps = new Map();
+  const identity = kind => value => {
+    if (typeof value !== 'string' || !value) return null;
+    if (includePrivate === true) return value;
+    if (!maps.has(kind)) maps.set(kind,new Map());
+    const map = maps.get(kind);
+    if (!map.has(value)) map.set(value,`${kind}-${map.size + 1}`);
+    return map.get(value);
+  };
+  const source = identity('source'), area = identity('area'), floor = identity('floor');
+  const zone = identity('zone'), version = identity('version'), tariff = identity('tariff');
+  const label = identity('label');
+  const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const bool = v => typeof v === 'boolean' ? v : null;
+  // Do not coerce Decimal strings through Number: retain precision and exponent.
+  const amount = v => typeof v === 'string' && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(v) ? v : num(v);
+  const choice = values => v => values.includes(v) ? v : v == null ? null : 'unknown';
+  const timestamp = v => typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(v) && Number.isFinite(Date.parse(v)) ? v : null;
+  const date = v => typeof v === 'string' && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v ? v : null;
+  const tz = v => { if(typeof v !== 'string') return null; try {new Intl.DateTimeFormat('en',{timeZone:v});return v;} catch {return null;} };
+  const currency = v => typeof v === 'string' && /^[A-Z]{3}$/.test(v) ? v : null;
+  const fields = (keys, type) => Object.fromEntries(keys.split(' ').map(k=>[k,type]));
+  const status = choice(['ready','partial','unknown','unavailable','not_configured','no_data','noncomparable','invalid','error']);
+  const reason = choice(['incomplete_period','incomplete_coverage','incomplete_household_measurements','incomplete_classification','no_recorded_hours','zero_total_kwh','tariff_unavailable','classification_unavailable','measurement_timezone_unavailable','currency_or_basis_mismatch','missing_statistics','missing_rate','missing_currency','partial_cost','previous_zero','previous_nonpositive','no_data','not_configured','unsupported','unavailable','noncomparable','invalid_measurement','outside_validity','incomplete_measurements','unknown']);
+  const basis = choice(['gross','net']);
+  const scope = choice(['calendar_totals','common_measurements','per_group_calendar_totals','complete_household_hours','household_period_only','grid_import_recorded_cost']);
+  const costFields = fields('energy_cost variable_cost legacy_combined_cost usage_cost fixed_cost total_cost effective_price',amount);
+  const known = fields('energy_cost variable_cost legacy_combined_cost usage_cost',amount);
+  const components = fields('subscription capacity distribution other legacy_combined',amount);
+  const rounding = {quantum:amount,mode:choice(['ROUND_HALF_UP','partition_components_largest_remainder']),stage:choice(['component_period_totals_then_sum']),row_costs:choice(['unrounded_decimal']),partial_day:choice(['overlap_seconds/actual_local_day_seconds'])};
+  const coverage = {...fields('ratio expected_source_seconds measured_source_seconds observed_hours expected_hours expected_source_hours measured_source_hours current baseline common_current common_baseline expected_current_seconds expected_baseline_seconds measured_current_seconds measured_baseline_seconds common_group_seconds common_source_seconds',num),complete:bool};
+  // Two explicitly supported shapes for group-comparison coverage.
+  const comparisonCoverage = {...coverage,baselines:[coverage],current:v=>typeof v==='number'?num(v):project(v,coverage),baseline:v=>typeof v==='number'?num(v):project(v,coverage)};
+  const period = {status,reason,kind:choice(['day','week','month','year']),...fields('start end local_start local_end calendar_end calendar_local_end',timestamp),...fields('start_fold end_fold hours calendar_hours',num),timezone:tz,...fields('partial recorder_hour_aligned calendar_clamped',bool),clamps:[choice(['future','recorder','current_time','calendar_end','unknown'])]};
+  const periodFees = {components,known_components:components,complete:bool,days:[{day:date,version_id:version,day_fraction:amount}]};
+  const fees = {...periodFees,periods:[periodFees]};
+  const costs = {...costFields,known_costs:known,currency,price_basis:basis,...fields('measurement_complete pricing_complete components_complete compatible comparable',bool),mask_source_seconds:num,priced_source_seconds:fields('energy_cost variable_cost legacy_combined_cost usage_cost',num),fixed_scope:choice(['household_period','arithmetic_mean_seven_household_periods']),period_count:num,aggregation:choice(['arithmetic_mean_seven_unrounded_components']),fees,rounding,rate_semantics:[choice(['components','legacy_combined'])],issues:[reason]};
+  const totals = {...costs,...fields('kwh recorded_household_kwh',amount)};
+  const zoneRow = {...costFields,known_costs:known,tariff_id:tariff,version_id:version,zone_id:zone,label,...fields('kwh recorded_kwh',amount),measured_seconds:num,complete:bool};
+  const zoneBreakdown = {status,reason,scope,fixed_fee_scope:scope,currency,price_basis:basis,reconciles_recorded_kwh:bool,reconciles_known_costs:bool,zones:[zoneRow],unattributed:{recorded_kwh:amount,measured_seconds:num,missing_seconds:num,known_costs:known,reasons:[reason]}};
+  const bin = {...costs,...fields('from to fold end_fold expected_seconds measured_seconds',num),...fields('start end local_start local_end',timestamp),...fields('kwh recorded_kwh',amount),complete:bool,zone_breakdown:zoneBreakdown};
+  const chart = {status,reason,timezone:tz,grain:choice(['hour','day','month']),fixed_fee_scope:scope,coverage_kind:choice(['complete_household_hours']),bins:[bin]};
+  const group = {...costs,...fields('kwh recorded_kwh measured_kwh',amount),measurement_complete:bool,coverage,name:label,statistic_id:source,device_id:source,area_id:area,area_name:label,floor_id:floor,floor_name:label,parent_id:source,included_in:source,included_in_stat:source,attribution:choice(['measured','nested','unassigned','unmeasured'])};
+  const mapOf = (key,shape) => ({mapKey:key,mapShape:shape});
+  const groupsMeta = {revision:num,registry_revision:num,captured_at:timestamp,membership_as_of:timestamp,membership_mode:choice(['current_snapshot']),floor_supported:bool,energy_domain:choice(['grid_import']),partition_complete:bool,currency,price_basis:basis,issues:[reason],rounding,domain_provenance:choice(['ha_energy_grid_only_configuration']),reconciles_household_delta:bool,reconciles_household_cost_delta:bool,attribution_label:choice(['current_registry_assignments'])};
+  const groups = {...groupsMeta,devices:mapOf(source,group),areas:mapOf(area,group),floors:mapOf(floor,group),unassigned:group,unmeasured:group};
+  const clock = {mode:choice(['civil','fixed']),offsetMinutes:num};
+  const time = v => typeof v==='string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null;
+  const seasonDate = v => typeof v==='string' && /^\d\d-\d\d$/.test(v) ? v : null;
+  const rule = {zone,weekdays:[num],dates:[date],season:{from:seasonDate,to:seasonDate},intervals:[{from:time,to:time}],priority:num};
+  const rate = {zone_usage_rates:[{zone_id:zone,usage_rate:amount}],version_id:version,valid_from:date,valid_to:date,validity_clock:choice(['civil','fixed']),rate_semantics:choice(['components','legacy_combined']),currency,price_basis:basis,fixed_monthly:components,legacy_combined_monthly:amount,clock,profile:{schema:num,currency,timezone:tz,priceBasis:basis,defaultZone:zone,clock,zones:[{id:zone,label,energyRate:amount,variableRate:amount,classification:choice(['cheap','expensive'])}],rules:[rule],exceptions:[rule],dynamic:{intervals:[{from:timestamp,to:timestamp,energyRate:amount,variableRate:amount}]}},provenance:choice(['configured_valid_from'])};
+  const summary = {zone_breakdown:zoneBreakdown,window:{start:timestamp,end:timestamp,timezone:tz},cheap_zone_share:{status,reason,scope,classification_source:choice(['explicit_tariff_classification']),...fields('known_cheap_kwh classified_kwh total_kwh ratio',amount)},peak_hour:{status,reason,scope,id:v=>typeof v==='string'&&/^\d+:\d+$/.test(v)?v:null,...fields('from to fold end_fold tied_count',num),...fields('start end local_start local_end',timestamp),kwh:amount}};
+  const native = {schema:num,source:choice(['ha_energy']),period_cost:{status,amount,recorded_amount:amount,currency,scope,coverage,components_status:choice(['unknown']),fixed_fees_status:choice(['unknown']),reason},current_prices:[{source_id:source,origin:choice(['number_energy_price','entity_energy_price']),price:amount,currency,energy_unit:choice(['kWh']),observed_at:timestamp,historical:bool,status,reason}],provenance:[{energy_source_id:source,cost_statistic_id:source}]};
+  const analysis = {generated_at:timestamp,period,coverage,status,pricing_status:status,totals,chart,groups,rates:[rate],fees,rounding,period_summary:summary,native_pricing:native,active_tariff_id:tariff,issues:[reason]};
+  const delta = {status,reason,comparison_scope:scope,...fields('current_kwh baseline_kwh own_current_kwh own_baseline_kwh full_current_kwh full_baseline_kwh delta_kwh percent delta_energy_cost delta_variable_cost delta_legacy_combined_cost delta_usage_cost delta_fixed_cost',amount),coverage:comparisonCoverage,costs:{current:costs,baseline:costs,status,reason,comparison_scope:scope,delta_cost:amount,delta_fixed_cost:amount}};
+  const instant = v => typeof v==='number'?num(v):timestamp(v);
+  const range = {from:instant,to:instant};
+  const comparisonChart = {status,reason,grain:chart.grain,timezone:tz,coverage_kind:choice(['selected_household_comparison_mask']),fixed_fee_scope:scope,comparison_scope:scope,reconciles_comparison_energy:bool,baseline_aggregation:choice(['mean7']),baseline_periods:[range],markers:[{status,reason,mapping:choice(['mean7_common_source_frame_intersection','mean7_calendar_frames','common_source_frame_intersection','calendar_frame_bijection']),...fields('current_from current_to baseline_from baseline_to',instant),...fields('current_kwh baseline_kwh',amount),...fields('expected_current_source_seconds selected_current_source_seconds',num),expected_baseline_source_seconds:v=>Array.isArray(v)?v.map(num):num(v),selected_baseline_source_seconds:v=>Array.isArray(v)?v.map(num):num(v),baseline_aggregation:choice(['mean7']),baseline_ranges:[range]}]};
+  const comparison = {...delta,chart:comparisonChart,baseline_kind:choice(['previous','same_weekday','mean7','year_ago']),baseline_periods:[period],baseline_analysis:analysis,costs:{current:costs,baseline:costs,status,reason,comparison_scope:scope,metric:choice(['usage_cost','total_cost']),delta_cost:amount,percent:amount,delta_total_cost:amount,rounding},groups:{...groupsMeta,devices:mapOf(source,delta),areas:mapOf(area,delta),floors:mapOf(floor,delta),unassigned:delta,unmeasured:delta}};
+  const shape = {...analysis,context:{tariff_revision:num,registry_revision:num,feature_access_revision:num,measurement_timezone:tz,period_kind:period.kind,period_anchor:date,comparison_kind:comparison.baseline_kind},alternatives:[{...totals,tariff_id:tariff,tariff_name:label,timezone:tz,delta_cost:amount,comparison_reason:reason,issues:[reason]}],comparisons:{previous:comparison,same_weekday:comparison,mean7:comparison,year_ago:comparison}};
+  function project(value, schema) {
+    if (value === null) return null;
+    if (typeof schema === 'function') return schema(value);
+    if (Array.isArray(schema)) return Array.isArray(value) ? value.map(v=>project(v,schema[0])) : null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const result = Object.create(null);
+    if (schema.mapKey) {
+      for (const key of Object.keys(value).sort()) {
+        const item=project(value[key],schema.mapShape);
+        if(!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).length===0)continue;
+        const id=schema.mapKey(key); if(id!==null) result[id]=item;
+      }
+    } else {
+      for (const key of Object.keys(schema)) if (Object.hasOwn(value,key) && value[key] !== undefined) result[key]=project(value[key],schema[key]);
+    }
+    return result;
+  }
+  const output = project(snapshot,shape);
+  output.schema_version = 4;
+  output.report_kind = 'calendar_energy';
+  output.private_fields = includePrivate === true;
+  output.export_scope = {policy:'smart-calendar-report-v1',result_state:snapshot.status==='ready' && snapshot.pricing_status==='ready'?'success':'partial',source:'already_read_calendar_snapshot',cost_semantics:'tariff_book_totals_and_separate_native_recorded_cost',fixed_fees:'household_period_only',recalculated:false,truncated:false};
+  const rows=[];
+  const rowType = path => path[0]==='comparisons' ? 'comparison' : ({totals:'household_total',chart:'chart_fact',groups:'group_fact',rates:'rate_version',fees:'fee_component',period_summary:'period_fact',native_pricing:'native_ha_cost',alternatives:'alternative_tariff',period:'period',coverage:'coverage'})[path[0]] || 'report_metadata';
+  // Traverse ONLY newly constructed allowlisted output; no raw DTO flattening.
+  // JSON-pointer paths escape IDs and retain array positions; type distinguishes null/0/empty.
+  const capture = (value,path=[]) => {
+    if(value && typeof value==='object') {
+      const keys=Object.keys(value);
+      if (!keys.length) rows.push([rowType(path),'/'+path.join('/'),Array.isArray(value)?'empty_array':'empty_object','']);
+      for(const key of keys) capture(value[key],[...path,key.replace(/~/g,'~0').replace(/\//g,'~1')]);
+      Object.freeze(value);return;
+    }
+    rows.push([rowType(path),'/'+path.join('/'),value===null?'null':typeof value,value===null?'':String(value)]);
+  };
+  capture(output);
+  smartCalendarCsvRowsV53.set(output,rows);
+  return output;
+}
+function calendarReportCsvV53(projected) {
+  const rows=smartCalendarCsvRowsV53.get(projected);
+  if(!rows) throw new TypeError('CSV requires a projection returned by projectSmartCalendarV53');
+  const cell = value => {
+    let text=String(value);
+    // Quote every cell and neutralize formula prefixes even after whitespace/control chars.
+    if (/^[\s\u0000-\u001f]*[=+\-@]/u.test(text)) text="'"+text;
+    return '"'+text.replace(/"/g,'""')+'"';
+  };
+  return [['row_type','path','value_type','value'],...rows].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';
+}
+if(typeof module!=='undefined' && module.exports) module.exports={projectSmartCalendarV53,calendarReportCsvV53};
+
+// END SMART CALENDAR ha-smart-reports-calendar-export.js
+// BEGIN SMART CALENDAR ha-tools-feature-access.js
+"use strict";
+// Settings only. This editor never derives grants from visibility or from a user list.
+// Native HA authorization is independently rechecked by the backend on every call.
+function createFeatureAccessV53({card, guard}) {
+  const catalog={energy_analysis:['visible','read'],energy_tariff:['visible','read','execute'],energy_reports:['visible','read','execute'],log_reports:['visible','read','execute']};
+  const modes=['inherit','household','admin','selected_users'];
+  const clone=value=>value===null?null:JSON.parse(JSON.stringify(value));
+  const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+  const language=()=>String(card._hass?.locale?.language||card._hass?.language||card._lang||'en').startsWith('pl');
+  const text=(en,pl)=>language()?pl:en;
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const userId=id=>typeof id==='string'&&id.length>0&&id.length<=128&&id===id.trim()&&!/[\u0000-\u001f\u007f-\u009f]/.test(id);
+  function policy(value) {
+    if(!value||typeof value!=='object'||Array.isArray(value)||value.schema!==1||!value.features||typeof value.features!=='object'||Array.isArray(value.features)||Object.keys(value).sort().join(',')!=='features,schema')throw {code:'invalid_feature_access'};
+    if(JSON.stringify(value).length>65536)throw {code:'invalid_feature_access'};
+    for(const [feature,operations] of Object.entries(value.features)) {
+      if(!Object.hasOwn(catalog,feature)||!operations||typeof operations!=='object'||Array.isArray(operations))throw {code:'invalid_feature_access'};
+      for(const [operation,rule] of Object.entries(operations)) {
+        if(!catalog[feature].includes(operation)||!rule||!modes.includes(rule.mode)||Array.isArray(rule))throw {code:'invalid_feature_access'};
+        const selected=rule.mode==='selected_users',keys=Object.keys(rule).sort().join(',');
+        if(keys!=='mode'&&(!selected||keys!=='mode,user_ids'))throw {code:'invalid_feature_access'};
+        if(selected&&rule.user_ids!==undefined&&(!Array.isArray(rule.user_ids)||rule.user_ids.length>128||!rule.user_ids.every(userId)))throw {code:'invalid_feature_access'};
+      }
+    }
+    return clone(value);
+  }
+  function envelope(value) {
+    if(value?.status!=='ready'||!Number.isSafeInteger(value.revision)||value.revision<0)throw {code:'invalid_feature_access'};
+    return {policy:policy(value.policy),revision:value.revision};
+  }
+  let root=null,identity=null,generation=0,opened=false,running=false,pendingLoad=false;
+  let draft=null,revision=null,baseline=null,users=[],usersUnavailable=false,dirty=false,blocked=false,revoked=false,status='idle';
+  let unsubscribe=null,unsubscribeWire=null;
+  const same=(a,b)=>a&&b&&a.length===b.length&&a.every((v,i)=>v===b[i]);
+  const context=()=>{const t=guard.observe();return [t.connection,t.callWS,t.user,t.admin,t.owner,t.active,t.groups,t.groupIds,t.connected,t.online,card._hass?.connected,card.isConnected,card._activeTab,t.epoch];};
+  const allowed=()=>card.isConnected&&card._activeTab==='config'&&card._hass?.connected!==false&&guard.current(guard.observe(),true);
+  const active=()=>allowed()&&opened&&root?.open&&root.isConnected&&!revoked;
+  const busy=()=>running||guard.occupied();
+  function clear(close=true) {
+    generation++;pendingLoad=false;draft=null;revision=null;baseline=null;users=[];dirty=false;blocked=false;revoked=false;usersUnavailable=false;status='idle';
+    // running and the shared guard's raw occupation intentionally survive epochs.
+    if(close){opened=false;if(root)root.open=false;}
+    root?.querySelector('[data-feature-access-body]')?.replaceChildren();
+  }
+  function observe() {
+    const next=context(),contextChanged=!same(identity,next);
+    if(contextChanged) {
+      if(!same(identity?.slice(0,-1),next.slice(0,-1)))clear();
+      else {
+        // A tariff/config epoch is not a user gesture to discard an access draft.
+        // Keep it, fence old responses and require an explicit policy reload.
+        generation++;pendingLoad=false;blocked=true;
+        if(!revoked)status=draft?'conflict':'error';
+      }
+      identity=next;paint();
+    }
+    return {contextChanged};
+  }
+  const current=(g,token)=>g===generation&&active()&&guard.current(token,true)&&same(identity,context());
+  function failure(error,writing=false) {
+    if(error?.code==='unauthorized'||error?.code==='not_allowed') {
+      generation++;pendingLoad=false;draft=null;revision=null;baseline=null;users=[];usersUnavailable=false;dirty=false;blocked=true;revoked=true;status='denied';
+    } else {
+      if(writing)blocked=true;
+      status=error?.code==='unknown_command'?'unsupported':error?.code==='feature_access_revision_conflict'||error?.code==='feature_access_changed'?'conflict':writing?'unconfirmed':'error';
+    }
+  }
+  function queueLoad() {
+    observe();if(!active())return;
+    pendingLoad=true;status='loading';paint();pump();
+  }
+  function nativeUsers(value) {
+    if(!Array.isArray(value))throw {code:'user_list_unavailable'};
+    const ids=new Set(),result=[];
+    for(const user of value) {
+      if(!user||!userId(user.id)||ids.has(user.id)||user.system_generated===true)continue;
+      ids.add(user.id);result.push({id:user.id,name:typeof user.name==='string'&&user.name.trim()?user.name.slice(0,256):text('Unnamed account','Konto bez nazwy'),active:user.is_active!==false});
+    }
+    return result.sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
+  }
+  async function pump() {
+    if(!pendingLoad||running||guard.occupied()||!active())return;
+    pendingLoad=false;running=true;
+    const g=generation,token=guard.observe();status='loading';paint();
+    try {
+      const result=envelope(await guard.call(token,{type:'ha_tools_email/get_feature_access'},true));
+      if(!current(g,token))return;
+      let choices=[],unavailable=false;
+      try {choices=nativeUsers(await guard.call(token,{type:'config/auth/list'},true));}
+      catch(error){if(error?.code==='unauthorized'||error?.code==='not_allowed')throw error;unavailable=true;}
+      if(!current(g,token))return;
+      draft=result.policy;revision=result.revision;baseline=canonical(draft);dirty=false;blocked=false;users=choices;usersUnavailable=unavailable;status='ready';
+    } catch(error) {if(current(g,token))failure(error);}
+    finally {running=false;paint();pump();}
+  }
+  async function save() {
+    observe();if(!active()||busy()||blocked||!dirty||draft===null||revision===null)return;
+    const g=generation,token=guard.observe(),expected=revision,sent=policy(draft);
+    running=true;status='saving';paint();
+    try {
+      const result=envelope(await guard.call(token,{type:'ha_tools_email/set_feature_access',policy:sent,expected_revision:expected},true));
+      if(!current(g,token))return;
+      if(result.revision!==expected+1||canonical(result.policy)!==canonical(sent))throw {code:'feature_access_save_unconfirmed'};
+      draft=result.policy;revision=result.revision;baseline=canonical(draft);dirty=false;blocked=false;status='saved';
+    } catch(error) {if(current(g,token))failure(error,true);}
+    finally {running=false;paint();pump();}
+  }
+  function changed() {dirty=canonical(draft)!==baseline;if(!blocked)status='ready';paint();}
+  function action(event) {
+    const node=event.target.closest?.('[data-feature-access]');if(!node||!root?.contains(node))return;
+    if(event.type==='click') {if(node.dataset.featureAccess==='save')void save();else if(node.dataset.featureAccess==='reload'&&!busy()&&!revoked)queueLoad();return;}
+    observe();if(!active()||busy()||!draft)return;
+    const row=node.closest('[data-access-feature]'),feature=row?.dataset.accessFeature,operation=row?.dataset.accessOperation;
+    if(!Object.hasOwn(catalog,feature)||!catalog[feature].includes(operation))return;
+    if(node.dataset.featureAccess==='mode') {
+      if(!modes.includes(node.value))return;
+      const previous=draft.features[feature]?.[operation];
+      const rule={mode:node.value};if(node.value==='selected_users')rule.user_ids=previous?.mode==='selected_users'?[...(previous.user_ids||[])]:[];
+      (draft.features[feature]||={})[operation]=rule;changed();
+    } else if(node.dataset.featureAccess==='user') {
+      const user=users[Number(node.dataset.accessUser)],rule=draft.features[feature]?.[operation];
+      if(!user?.active||rule?.mode!=='selected_users')return;
+      const ids=new Set(rule.user_ids||[]);if(node.checked)ids.add(user.id);else ids.delete(user.id);
+      if(ids.size>128)return;rule.user_ids=[...ids].sort();changed();
+    }
+  }
+  function toggle() {
+    if(!root)return;
+    const next=root.open;if(next===opened)return;
+    if(!next){clear();paint();return;}
+    observe();if(!allowed()){root.open=false;return;}
+    opened=true;queueLoad();
+  }
+  function watch() {
+    if(unsubscribe)return;
+    unsubscribe=guard.subscribe(()=>{root?.querySelector('[data-feature-access-body]')?.replaceChildren();queueMicrotask(()=>{observe();paint();});});
+    unsubscribeWire=guard.subscribeWire(()=>queueMicrotask(()=>{observe();paint();pump();}));
+  }
+  function message() {
+    if(!allowed()||status==='denied')return text('Administrator access is required. Reopen after your account access is confirmed.','Wymagany jest dostęp administratora. Otwórz ponownie po potwierdzeniu uprawnień konta.');
+    if(status==='unsupported')return text('Update HA Tools Email to manage household access, then reload. No changes were saved.','Zaktualizuj HA Tools Email, aby zarządzać dostępem domowników, a następnie wczytaj ponownie. Nie zapisano zmian.');
+    if(status==='conflict')return text('Access settings changed elsewhere. Your draft is kept. Reload explicitly before saving.','Ustawienia dostępu zmieniły się w innym miejscu. Zachowano szkic. Przed zapisem wczytaj ponownie.');
+    if(status==='unconfirmed')return text('Save could not be confirmed. Your draft is kept. Reload before trying another save.','Nie udało się potwierdzić zapisu. Zachowano szkic. Wczytaj ponownie przed kolejnym zapisem.');
+    if(status==='error')return text('Access settings could not be read. Reload explicitly to retry.','Nie udało się odczytać ustawień dostępu. Wczytaj ponownie, aby ponowić próbę.');
+    if(busy()||pendingLoad)return text('Waiting for the current operation…','Oczekiwanie na bieżącą operację…');
+    if(usersUnavailable&&status==='ready')return text('Access loaded. The user account list is unavailable; saved choices are kept.','Wczytano dostęp. Lista kont użytkowników jest niedostępna; zachowano zapisane wybory.');
+    if(status==='saved')return text('Saved. Home Assistant still checks each user’s own permissions.','Zapisano. Home Assistant nadal sprawdza własne uprawnienia każdego użytkownika.');
+    return dirty?text('Unsaved changes. Save explicitly to apply them.','Niezapisane zmiany. Użyj Zapisz, aby je zastosować.'):text('Choose access separately for each action.','Ustaw dostęp osobno dla każdego działania.');
+  }
+  function paint() {
+    const body=root?.querySelector('[data-feature-access-body]');if(!body)return;
+    if(!opened){body.replaceChildren();return;}
+    const focus=root.getRootNode().activeElement?.id,disabled=!active()||busy()||pendingLoad;
+    const titles={energy_analysis:text('Energy analysis','Analiza energii'),energy_tariff:text('Energy tariffs','Taryfy energii'),energy_reports:text('Energy reports','Raporty energii'),log_reports:text('Log reports','Raporty dziennika')};
+    const operations={visible:text('Visible in the interface','Widoczność w interfejsie'),read:text('Read data','Odczyt danych'),execute:text('Run actions or change settings','Uruchamianie działań lub zmiana ustawień')};
+    const modeName={inherit:text('Default','Domyślnie'),household:text('Household','Domownicy'),admin:text('Administrators','Administratorzy'),selected_users:text('Selected users','Wybrani użytkownicy')};
+    const defaultRole=(feature,operation)=>feature==='energy_analysis'||feature==='energy_tariff'&&operation!=='execute'?modeName.household:modeName.admin;
+    const row=(feature,operation)=>{
+      const rule=draft.features[feature]?.[operation]||{mode:'inherit'},prefix='feature-access-'+feature+'-'+operation;
+      let choices='';
+      if(rule.mode==='selected_users') {
+        const ids=new Set(rule.user_ids||[]),available=new Set(users.map(user=>user.id));
+        choices=users.map((user,index)=>!user.active&&!ids.has(user.id)?'':`<label class="fa-user"><input id="${prefix}-user-${index}" type="checkbox" data-feature-access="user" data-access-user="${index}" ${ids.has(user.id)?'checked':''} ${disabled||!user.active?'disabled':''}><span>${esc(user.name)}${!user.active?' ('+text('inactive; saved choice retained','nieaktywne; zachowano wybór')+')':''}</span></label>`).join('');
+        const missing=[...ids].filter(id=>!available.has(id)).length;
+        if(missing)choices+=`<p>${missing} ${text('saved account choices are unavailable; they are kept.','zapisanych kont jest niedostępnych; zachowano je.')}</p>`;
+        if(!users.some(user=>user.active))choices+=`<p>${text('No available accounts to add. Existing choices are kept.','Brak dostępnych kont do dodania. Zachowano dotychczasowe wybory.')}</p>`;
+      }
+      return `<div class="fa-rule" data-access-feature="${feature}" data-access-operation="${operation}"><label for="${prefix}">${operations[operation]}</label><select id="${prefix}" data-feature-access="mode" ${disabled?'disabled':''}>${modes.map(mode=>`<option value="${mode}" ${mode===rule.mode?'selected':''}>${modeName[mode]}${mode==='inherit'?' ('+defaultRole(feature,operation)+')':''}</option>`).join('')}</select>${choices}</div>`;
+    };
+    body.innerHTML=`<style>[data-feature-access-body]{font-size:14px;overflow-wrap:anywhere;min-width:0}[data-feature-access-body] fieldset{border:1px solid var(--divider-color,#888);border-radius:8px;margin:16px 0;padding:12px;min-width:0}[data-feature-access-body] legend{font-weight:600;padding:0 4px}[data-feature-access-body] .fa-rule{display:grid;gap:6px;margin:10px 0}[data-feature-access-body] select,[data-feature-access-body] button{font:inherit;min-height:44px;color:var(--primary-text-color,#202124);background:var(--card-background-color,#fff);border:1px solid var(--divider-color,#888);border-radius:8px;padding:8px;max-width:100%}[data-feature-access-body] .fa-user{display:flex;align-items:center;gap:8px;min-height:44px}[data-feature-access-body] .fa-user input{width:22px;height:22px;flex:0 0 auto}[data-feature-access-body] :focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}[data-feature-access-body] .fa-actions{display:flex;flex-wrap:wrap;gap:8px}</style>
+      <p data-feature-access="explanation">${text('Visibility controls whether a feature is shown; visibility does not grant permission to read data or run actions. Home Assistant permissions remain the upper bound for each user. Active administrators retain access. Default keeps the existing household and administrator rules.','Widoczność określa, czy funkcja jest pokazywana; widoczność nie nadaje uprawnień do odczytu ani uruchamiania działań. Uprawnienia Home Assistant pozostają górną granicą dla każdego użytkownika. Aktywni administratorzy zachowują dostęp. Domyślnie zachowuje dotychczasowe reguły domowników i administratorów.')}</p>
+      <p data-feature-access="status" role="status" aria-live="polite">${message()}</p>
+      ${usersUnavailable?`<p>${text('The account list is unavailable. Existing selected users are kept. Reload to try again.','Lista kont jest niedostępna. Zachowano dotychczasowych wybranych użytkowników. Wczytaj ponownie, aby spróbować jeszcze raz.')}</p>`:''}
+      ${draft?Object.keys(catalog).map(feature=>`<fieldset><legend>${titles[feature]}</legend>${catalog[feature].map(op=>row(feature,op)).join('')}</fieldset>`).join(''):''}
+      <div class="fa-actions"><button id="feature-access-save" type="button" data-feature-access="save" ${disabled||blocked||!dirty||!draft?'disabled':''}>${text('Save','Zapisz')}</button><button id="feature-access-reload" type="button" data-feature-access="reload" ${!active()||busy()?'disabled':''}>${dirty?text('Discard changes and reload','Odrzuć zmiany i wczytaj ponownie'):text('Reload','Wczytaj ponownie')}</button></div>
+      <p>${text('Closing this section discards unsaved changes.','Zamknięcie tej sekcji odrzuca niezapisane zmiany.')}</p>`;
+    if(focus)body.querySelectorAll('[id]').forEach(node=>{if(node.id===focus)node.focus({preventScroll:true});});
+  }
+  function mount(next) {
+    observe();watch();
+    if(!next?.isConnected||!allowed()){stop();return;}
+    if(root!==next){if(root){root.removeEventListener('click',action);root.removeEventListener('change',action);root.removeEventListener('toggle',toggle);root.replaceChildren();}root=next;root.open=opened;root.addEventListener('click',action);root.addEventListener('change',action);root.addEventListener('toggle',toggle);paint();}
+  }
+  function stop() {
+    clear();if(root){root.removeEventListener('click',action);root.removeEventListener('change',action);root.removeEventListener('toggle',toggle);root.replaceChildren();root=null;}
+    unsubscribe?.();unsubscribeWire?.();unsubscribe=null;unsubscribeWire=null;identity=null;
+  }
+  function state() {observe();return {draft:clone(draft),revision,users:clone(users),dirty,status,opened,busy:busy()};}
+  return {mount,stop,observe,state};
+}
+if (typeof module !== 'undefined' && module.exports) module.exports={createFeatureAccessV53};
+
+// END SMART CALENDAR ha-tools-feature-access.js
+// BEGIN SMART CALENDAR ha-smart-reports-feature-gate.js
+'use strict';
+// Capability negotiation only: Rich schema2 analysis retains its own native-source checks.
+function createSmartCalendarAccessV53({card,guard,onChange=()=>{},onInvalidate=()=>{}}){
+ const copy=v=>JSON.parse(JSON.stringify(v));
+ let enabled=false,identity=null,epoch=0,raw=null,pending=false,ack=false,off=null,subscribing=null,authority=null,wire=null;
+ let view={status:'idle',revision:null,analysis:null};
+ const context=()=>{const t=guard.observe();return [t.connection,t.callWS,t.user,t.active,t.admin,t.owner,t.groups,t.groupIds,t.connected,t.online,t.epoch,card.isConnected,card._activeTab,card.preview];};
+ const same=(a,b)=>a&&b&&a.length===b.length&&a.every((v,i)=>v===b[i]);
+ const available=()=>enabled&&card.isConnected&&card._activeTab==='energy'&&card.preview!==true&&card._hass?.connected!==false&&guard.available(guard.snapshot());
+ const emit=()=>onChange();
+ function clear(status='idle'){epoch++;pending=false;view={status,revision:null,analysis:null};onInvalidate();emit();}
+ function disposeSubscription(){try{const result=off?.();result?.catch?.(()=>{});}catch(_){}off=null;ack=false;subscribing=null;}
+ function observe(){const next=context();if(!same(identity,next)){identity=next;disposeSubscription();clear(available()?'loading':'idle');pending=available();if(pending)queueMicrotask(()=>pump());}return available();}
+ const current=e=>e===epoch&&available()&&same(identity,context());
+ function invalidate(){if(!enabled)return;clear(available()?'loading':'idle');pending=available();if(pending)queueMicrotask(()=>pump());}
+ function envelope(value){
+  const a=value?.capabilities?.energy_analysis;
+  if(value?.status!=='ready'||!Number.isSafeInteger(value.revision)||value.revision<0||!a||typeof a.visible!=='boolean'||typeof a.read!=='boolean')throw {code:'invalid_capabilities'};
+  return {status:'ready',revision:value.revision,analysis:{visible:a.visible,read:a.read}};
+ }
+ async function subscribe(e){
+  if(ack)return true;
+  if(subscribing)return subscribing;
+  const connection=card._hass?.connection;
+  if(typeof connection?.subscribeMessage!=='function')throw {code:'analysis_subscription_unavailable'};
+  const association=identity;
+  const task=(async()=>{
+   const unsub=await connection.subscribeMessage(()=>{if(enabled&&same(association,context()))invalidate();},{type:'ha_tools_email/subscribe_analysis_updates'});
+   if(typeof unsub!=='function')throw {code:'analysis_subscription_unavailable'};
+   if(!current(e)){try{unsub();}catch(_){}return false;}
+   off=unsub;ack=true;return true;
+  })();subscribing=task;
+  try{return await task;}finally{if(subscribing===task)subscribing=null;}
+ }
+ async function pump(){
+  if(!observe()||!pending||raw||guard.occupied())return;
+  pending=false;const e=epoch,token=guard.snapshot(),lane={};raw=lane;view={status:'loading',revision:null,analysis:null};emit();
+  try{
+   let grant=envelope(await guard.call(token,{type:'ha_tools_email/feature_capabilities'}));
+   if(!current(e))return;
+   // ACK first, then reconfirm the current actor's grants. Control events contain no report data.
+   if(!ack){if(!await subscribe(e)||!current(e))return;grant=envelope(await guard.call(token,{type:'ha_tools_email/feature_capabilities'}));if(!current(e))return;}
+   view=grant;emit();
+  }catch(error){if(current(e)){view={status:error?.code==='unknown_command'?'unsupported':['unauthorized','not_allowed'].includes(error?.code)?'denied':'error',revision:null,analysis:null};onInvalidate();emit();}}
+  finally{if(raw===lane)raw=null;if(pending)void pump();}
+ }
+ function start(){if(!enabled){enabled=true;authority=guard.subscribe(()=>{if(enabled)observe();});wire=guard.subscribeWire(()=>{if(enabled)void pump();});}observe();if(pending)void pump();}
+ function stop(){enabled=false;disposeSubscription();authority?.();wire?.();authority=wire=null;identity=null;clear();}
+ function state(){if(enabled)observe();return copy(view);}
+ return {start,stop,observe,state,refresh:invalidate};
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={createSmartCalendarAccessV53};
+
+// END SMART CALENDAR ha-smart-reports-feature-gate.js
 // BEGIN SMART CALENDAR ha-smart-reports-analysis-host.js
 // Smart owns only the selected HA Energy calendar snapshot. No Recorder fallback.
-function createSmartAnalysisHostV53({card}) {
- let root=null,started=false,ticket=0,section='overview',identity=null,calendarOpen=false;
+function createSmartAnalysisHostV53({card,initialSelection={}}) {
+ let root=null,started=false,ticket=0,section='overview',identity=null,calendarOpen=false,selectionPending=false;
+ const exportButtons=new Map();
  let selection={period:'day',comparison:'previous'},options={level:'areas',view:'chart',selected:null};
- const context=()=>[card._hass?.connection,card._hass?.user?.id,card._hass?.user?.is_active,card._hass?.user?.is_admin,card._hass?.connected,card._hass?.config?.time_zone,card._hass?.connection?.connected];
+ if(['day','week','month','year'].includes(initialSelection.period))selection.period=initialSelection.period;
+ const allowed=selection.period==='day'?['previous','same_weekday','mean7']:['previous','year_ago'];
+ if(allowed.includes(initialSelection.comparison))selection.comparison=initialSelection.comparison;
+ if(typeof initialSelection.anchor==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(initialSelection.anchor)&&Number.isFinite(Date.parse(initialSelection.anchor+'T12:00:00Z'))&&new Date(initialSelection.anchor+'T12:00:00Z').toISOString().slice(0,10)===initialSelection.anchor)selection.anchor=initialSelection.anchor;
+ const context=()=>[card._hass?.connection,card._hass?.user?.id,card._hass?.user?.is_active,card._hass?.user?.is_admin,card._hass?.connected,card._hass?.config?.time_zone,card._hass?.connection?.connected,card._hass?.callWS,JSON.stringify([card._hass?.user?.is_owner,card._hass?.user?.groups,card._hass?.user?.group_ids])];
  const same=(a,b)=>a&&b&&a.every((v,i)=>v===b[i]);
  const active=()=>card.isConnected&&root?.isConnected&&card._analysisMode==='calendar'&&card._activeTab==='energy';
  const text=(en,pl)=>String(card._hass?.locale?.language||card._hass?.language||'en').startsWith('pl')?pl:en;
- const controller=createEnergyAnalysisV53({card,onChange:()=>paint()});
+ const controller=createEnergyAnalysisV53({card,onChange:()=>{paint();card._invalidateReviewedExport?.();}});
  const binding=createEnergyAnalysisBindingV53({card,controller,onInvalidate:()=>{started=false;ticket++;root?.replaceChildren();if(active())void read();}});
- function observe(){const next=context(),changed=!same(identity,next);if(changed){calendarOpen=false;started=false;ticket++;root?.replaceChildren();binding.stop();identity=next;}binding.observe();return changed;}
+ function observe(){const next=context(),changed=!same(identity,next);if(changed){calendarOpen=false;started=false;ticket++;root?.replaceChildren();identity=next;binding.stop();}binding.observe();return changed;}
+ function exportState(){if(!active())return {status:'idle',selection:null,snapshot:null,error:null};observe();const state=binding.observe(),grant=card._calendarAccessGate?.state();if(grant&&(grant.status!=='ready'||grant.analysis?.visible!==true||grant.analysis?.read!==true||state.snapshot&&state.snapshot.context.feature_access_revision!==grant.revision))return {status:'error',selection:state.selection,snapshot:null,error:'analysis_access_unconfirmed'};return selectionPending?{status:'loading',selection:{...selection},snapshot:null,error:null}:state;}
  function paint(){
   if(!active())return;
-  const state=binding.observe(),view=createEnergyAnalysisViewV53({card});
+  const state=exportState(),view=createEnergyAnalysisViewV53({card});
+  if(card._simpleReport?.()){card._renderSimpleReport(root,state,true);return;}
   const calendar=root.querySelector('[data-analysis-calendar-options]');if(calendar)calendarOpen=calendar.open;
   const focused=root.getRootNode().activeElement,saved=root.contains(focused)?{action:focused.dataset.analysisAction,value:focused.dataset.analysisValue,draft:focused.matches('input')?focused.value:null}:null;
   root.innerHTML=`<style>${view.styles()}</style>`;
   const nav=root.ownerDocument.createElement('nav');nav.setAttribute('aria-label',text('Calendar report views','Widoki raportu kalendarzowego'));
-  for(const [key,en,pl]of [['overview','Summary','Podsumowanie'],['comparison','Comparison','Porównanie'],['rates','Rates and costs','Stawki i koszty']]){const b=root.ownerDocument.createElement('button');b.type='button';b.className='action';b.dataset.analysisAction='section';b.dataset.analysisValue=key;b.setAttribute('aria-pressed',String(section===key));b.textContent=text(en,pl);nav.append(b);}root.append(nav);
+  for(const [key,en,pl]of [['overview','Summary','Podsumowanie'],['comparison','Comparison','Porównanie'],['rates','Rates and costs','Stawki i koszty']]){const b=root.ownerDocument.createElement('button');b.type='button';b.className='action';b.dataset.analysisAction='section';b.dataset.analysisValue=key;b.setAttribute('aria-pressed',String(section===key));b.textContent=text(en,pl);nav.append(b);}for(const format of ['csv','json']){let b=exportButtons.get(format);if(!b){b=root.ownerDocument.createElement('button');b.type='button';b.className='action';b.dataset.smartCalendarExport=format;b.addEventListener('click',()=>card._downloadExport(format));exportButtons.set(format,b);}b.disabled=state.status!=='ready';b.textContent=text('Export ','Eksport ')+format.toUpperCase();nav.append(b);}root.append(nav);
   const body=root.ownerDocument.createElement('div');
   if(state.status==='ready')body.innerHTML=view.markup(state.snapshot,{...selection,...options,section});
   else{const p=root.ownerDocument.createElement('p');p.setAttribute('role','status');p.textContent=state.status==='error'?(state.error==='unknown_command'?text('Install or update HA Tools Email to use calendar analysis. Your standalone reports remain available.','Zainstaluj lub zaktualizuj HA Tools Email, aby korzystać z analizy kalendarzowej. Samodzielne raporty pozostają dostępne.'):text('Calendar analysis unavailable. Access or the server response could not be confirmed.','Analiza kalendarzowa niedostępna. Nie potwierdzono dostępu lub odpowiedzi serwera.')):text('Loading calendar analysis…','Ładowanie analizy kalendarzowej…');body.append(p);}root.append(body);
@@ -6275,12 +6678,12 @@ function createSmartAnalysisHostV53({card}) {
   const nextCalendar=root.querySelector('[data-analysis-calendar-options]');if(nextCalendar)nextCalendar.open=calendarOpen;
   if(saved){const next=[...root.querySelectorAll('[data-analysis-action]')].find(e=>e.dataset.analysisAction===saved.action&&e.dataset.analysisValue===saved.value);if(next){if(saved.draft!==null&&next.matches('input'))next.value=saved.draft;next.focus({preventScroll:true});}}
  }
- async function read(){if(!active())return;const token=++ticket;started=true;await binding.read(selection);if(token===ticket&&active())paint();}
+ async function read(){if(!active())return;const token=++ticket,before=binding.observe();started=true;await binding.read(selection);if(token===ticket&&active()){const changed=selectionPending;selectionPending=false;const after=binding.observe();if(changed||before.status!==after.status||before.error!==after.error||before.snapshot?.snapshot_id!==after.snapshot?.snapshot_id)paint();if(changed)card._invalidateReviewedExport?.();}}
  function action(event){
   const el=event.target.closest('[data-analysis-action]');if(!el||!root?.contains(el))return;
   if(event.type==='click'&&el.matches('select,input')||event.type==='change'&&!el.matches('select,input'))return;
   const key=el.dataset.analysisAction,value=el.matches('select,input')?el.value:el.dataset.analysisValue;
-  if(key==='retry'){binding.invalidate();started=false;void read();return;}
+  if(key==='retry'){card._calendarAccessGate?.refresh();binding.invalidate();started=false;void read();return;}
   if(key==='section'&&['overview','comparison','rates'].includes(value))section=value;
   else if(key==='period'&&['day','week','month','year'].includes(value)){selection.period=value;if(value!=='day'&&['same_weekday','mean7'].includes(selection.comparison))selection.comparison='previous';}
   else if(key==='anchor'){if(value)selection.anchor=value;else delete selection.anchor;}
@@ -6289,16 +6692,607 @@ function createSmartAnalysisHostV53({card}) {
   else if(key==='view'&&['chart','data'].includes(value))options.view=value;
   else if(key==='point')options.selected=value;
   else return;
-  if(['period','anchor','comparison'].includes(key)){options.selected=null;void read();}else paint();
+  if(['period','anchor','comparison'].includes(key)){options.selected=null;selectionPending=true;card._invalidateReviewedExport?.();void read();}else paint();
  }
  function mount(next){observe();if(!next?.isConnected){stop();return;}if(root!==next){if(root){root.removeEventListener('click',action);root.removeEventListener('change',action);}root=next;root.addEventListener('click',action);root.addEventListener('change',action);}paint();if(!started)void read();}
  function refresh(){observe();if(!active())return;const focused=root.getRootNode().activeElement;if(root.contains(focused)&&focused.matches('input,select'))return;void read();}
- function stop(){calendarOpen=false;started=false;ticket++;if(root){root.removeEventListener('click',action);root.removeEventListener('change',action);root.replaceChildren();root=null;}binding.stop();identity=null;}
- return {mount,stop,observe,refresh,state:binding.observe};
+ function stop(){exportButtons.clear();selectionPending=false;calendarOpen=false;started=false;ticket++;if(root){root.removeEventListener('click',action);root.removeEventListener('change',action);root.replaceChildren();root=null;}binding.stop();identity=null;}
+ return {mount,stop,observe,refresh,state:exportState,selection:()=>({...selection})};
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalysisHostV53};
 
 // END SMART CALENDAR ha-smart-reports-analysis-host.js
+
+// BEGIN SMART SURFACE ha-smart-reports-panel.js
+// Adapted from Baby b9c920486de82e06873a820f9fbe4733b8d1ac3f.
+// HA owns the live hass after source detach. The real Smart child owns its reads.
+function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelection,
+  applySelection,createGuard=typeof createTariffGuardV3==='function'?createTariffGuardV3:null}) {
+  const doc=host.ownerDocument,win=doc.defaultView,tag='ha-tools-smart-report-panel-dialog-v53';
+  const route=()=>win.location.pathname+win.location.search+win.location.hash;
+  const clone=value=>JSON.parse(JSON.stringify(value));
+  const identity=h=>[h?.user?.id,h?.user?.is_admin===true,h?.user?.is_owner===true,
+    h?.user?.is_active!==false,JSON.stringify(h?.user?.groups||[]),JSON.stringify(h?.user?.group_ids||[]),h?.connection,h?.callWS];
+  const same=(a,b)=>a.length===b.length&&a.every((value,index)=>value===b[index]);
+  // Only selection primitives cross the boundary, never host/controller state.
+  const seed=value=>{
+    value=value||{};
+    const selected={tab:['energy','automations','system'].includes(value.tab)?value.tab:null};
+    if(['1d','7d','30d'].includes(value.recordedPeriod))selected.recordedPeriod=value.recordedPeriod;
+    if(['summary','devices','costs'].includes(value.energyView))selected.energyView=value.energyView;
+    if(['recorded','calendar'].includes(value.analysisMode))selected.analysisMode=value.analysisMode;
+    const calendar=value.calendarSelection;
+    if(calendar&&['day','week','month','year'].includes(calendar.period)){
+      selected.calendarSelection={period:calendar.period};
+      if(typeof calendar.anchor==='string')selected.calendarSelection.anchor=calendar.anchor;
+      const comparisons=calendar.period==='day'?['previous','same_weekday','mean7']:['previous','year_ago'];
+      if(comparisons.includes(calendar.comparison))selected.calendarSelection.comparison=calendar.comparison;
+    }
+    return selected;
+  };
+  if(!win.customElements.get(tag))win.customElements.define(tag,class extends win.HTMLElement {
+    set hass(value){
+      this._hass=value;this.style.colorScheme=value?.themes?.darkMode?'dark':'light';
+      if(!this._request)return;
+      this._guard?.observe();
+      if(!this._current()){this.closeDialog();return;}
+      if(this._card)this._card.hass=value;const close=this.querySelector('[data-smart-panel-close]');if(close)close.textContent=String(value?.locale?.language||value?.language||'en').startsWith('pl')?'Zamknij raport':'Close report';
+      this._start();
+    }
+    get hass(){return this._hass;}
+    _current(){
+      const r=this._request,h=this._hass;
+      return !!r&&!r.closed&&same(identity(h),r.identity)&&route()===r.route&&
+        h?.connection?.connected!==false&&win.navigator.onLine!==false&&
+        (!this._guard||this._guard.current(this._token,false));
+    }
+    showDialog(request){
+      this.closeDialog();
+      if(request.closed)return;
+      this._request=request;request.owner=this;
+      // HA can call showDialog before attaching the element/providing hass.
+      win.queueMicrotask(()=>this._start());
+    }
+    connectedCallback(){this._start();}
+    disconnectedCallback(){this.closeDialog();}
+    _start(){
+      const r=this._request;
+      if(!r||r.closed||this._dialog||!this.isConnected||!this._hass)return;
+      if(!this._current()){this.closeDialog();return;}
+      if(!this._guard){
+        this._guard=r.createGuard({getHass:()=>this._hass,
+          getContext:()=>({config:r.config,route:route()}),browser:win});
+        this._token=this._guard.snapshot();
+        if(!this._guard.current(this._token,false)){this.closeDialog();return;}
+        this._unsubscribe=this._guard.subscribe(()=>{if(!this._current())this.closeDialog();});
+      }
+      const dialog=doc.createElement('dialog');
+      dialog.setAttribute('data-smart-report-panel','');dialog.setAttribute('aria-label',r.title);
+      const style=doc.createElement('style');
+      style.textContent='dialog[data-smart-report-panel]{box-sizing:border-box;width:min(1100px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:12px;border:1px solid var(--divider-color,#888);border-radius:16px;background:var(--primary-background-color,#fff);color:var(--primary-text-color,#222);overflow:auto}dialog[data-smart-report-panel]::backdrop{background:rgba(0,0,0,.5)}dialog[data-smart-report-panel] [data-smart-panel-close]{min-width:44px;min-height:44px;font:inherit;float:right}dialog[data-smart-report-panel] :focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}';
+      const close=doc.createElement('button');close.type='button';close.setAttribute('data-smart-panel-close','');
+      close.textContent=r.language==='pl'?'Zamknij raport':'Close report';
+      close.addEventListener('click',()=>this.closeDialog());
+      const card=doc.createElement('ha-smart-reports');
+      card._inReportPanelV53=true; // Before config, hass, or connectedCallback.
+      this._card=card;this._dialog=dialog;
+      try{
+        card.setConfig(clone(r.config));
+        // Pure owner-supplied adapter; runs before hass/connected reads start.
+        r.applySelection(card,clone(r.selection));
+        card.hass=this._hass;
+        dialog.append(style,close,card);this.append(dialog);
+        dialog.addEventListener('cancel',event=>{event.preventDefault();if(this._dialog===dialog)this.closeDialog();});
+        dialog.addEventListener('close',()=>{if(this._dialog===dialog)this.closeDialog();});
+        this._leave=()=>this.closeDialog();
+        for(const name of ['offline','location-changed','popstate','hashchange'])win.addEventListener(name,this._leave);
+        dialog.showModal();close.focus({preventScroll:true});
+      }catch(error){this.closeDialog();throw error;}
+    }
+    closeDialog(){
+      const r=this._request;if(!r)return true;
+      this._request=null;r.owner=null;r.closed=true;
+      this._unsubscribe?.();this._unsubscribe=null;
+      this._guard?.dispose();this._guard=null;this._token=null;
+      for(const name of ['offline','location-changed','popstate','hashchange'])win.removeEventListener(name,this._leave);
+      this._leave=null;
+      this._card?.remove();this._card=null;
+      const dialog=this._dialog;this._dialog=null;dialog?.close();dialog?.remove();
+      if(r.opener?.isConnected)r.opener.focus({preventScroll:true});
+      r.opener=null;r.config=null;r.selection=null;r.identity=null;r.applySelection=null;r.createGuard=null;
+      this.dispatchEvent(new win.CustomEvent('dialog-closed',{detail:{dialog:tag},bubbles:true,composed:true}));
+      if(r.standalone)this.remove();
+      return true;
+    }
+  });
+  let request=null;
+  const close=()=>{
+    const r=request;request=null;if(!r)return;
+    if(r.owner)r.owner.closeDialog();
+    else{r.closed=true;r.opener=null;r.config=null;r.selection=null;r.identity=null;r.applySelection=null;r.createGuard=null;}
+  };
+  return {
+    open(opener){
+      if(request&&!request.closed)return true;
+      const h=getHass();
+      if(!host.isConnected||host.preview||host._inReportPanelV53||!h?.user?.id||h.user.is_active===false||
+        !h.connection||h.connection.connected===false||typeof h.callWS!=='function'||win.navigator.onLine===false||
+        typeof createGuard!=='function'||typeof applySelection!=='function')return false;
+      const config=clone(getConfig()),selection=seed(getSelection?.());
+      const available=['energy','automations','system'].filter(tab=>config['show_'+tab]!==false);
+      selection.tab=available.includes(selection.tab)?selection.tab:available.includes(config.default_tab)?config.default_tab:available[0]||null;
+      let ancestor=host;
+      while(ancestor&&ancestor.localName!=='home-assistant')ancestor=ancestor.parentElement||ancestor.getRootNode?.().host;
+      const native=typeof ancestor?.provideHass==='function';
+      request={config:{...config,type:'custom:ha-smart-reports',variant:'full',compact:false,tap_target:'full',default_tab:selection.tab||'energy'},
+        selection,identity:identity(h),route:route(),source:JSON.stringify(getSourceKey()),
+        title:config.title||'Smart Reports',language:String(h.locale?.language||h.language||'en').startsWith('pl')?'pl':'en',
+        opener,applySelection,createGuard,closed:false,standalone:!native};
+      if(native)host.dispatchEvent(new win.CustomEvent('show-dialog',{bubbles:true,composed:true,
+        detail:{dialogTag:tag,dialogImport:()=>Promise.resolve(),dialogParams:request,addHistory:false}}));
+      else{
+        const owner=doc.createElement(tag);owner.hass=h;owner.showDialog(request);doc.body.append(owner);
+      }
+      return true;
+    },
+    update(){
+      if(!request||request.closed)return;
+      // Native ownership survives source removal; never authorize from stale hass.
+      if(!host.isConnected){if(request.standalone)close();return;}
+      if(JSON.stringify(getSourceKey())!==request.source){close();return;}
+      const h=getHass();
+      if(!same(identity(h),request.identity)||h?.connection?.connected===false||route()!==request.route||win.navigator.onLine===false){close();return;}
+      if(request.standalone&&request.owner)request.owner.hass=h;
+    },
+    close,
+    sourceDisconnected(){if(request?.standalone)close();}
+  };
+}
+if(typeof module!=='undefined'&&module.exports)module.exports={createSmartReportPanelV53};
+
+// END SMART SURFACE ha-smart-reports-panel.js
+
+// BEGIN SMART SURFACE ha-tools-dashboard-placement.js
+// Smart adaptation: Energy a1d333dc3fef54e8a1fb430202d275699b65b016. Distinct tag and Smart-only allowlists.
+// Native HA dialog-manager (frontend 20260826.7) owns this transient session.
+// Its provideHass subscription supplies current identity after Lovelace replaces
+// the initiating card. Neither an old card nor a cached hass authorizes Undo.
+function createNativeDashboardPlacementV53(options) {
+  const {host, getHass, getCardConfig, getSourceKey, createGuard} = options;
+  let ancestor = host;
+  while (ancestor && ancestor.localName !== 'home-assistant')
+    ancestor = ancestor.parentElement || ancestor.getRootNode?.().host;
+  if (!ancestor || typeof ancestor.provideHass !== 'function') return null;
+  const doc = host.ownerDocument, win = doc.defaultView;
+  const tag = 'ha-tools-smart-dashboard-placement-dialog-v53';
+  const copy = value => JSON.parse(JSON.stringify(value));
+  const route = () => win.location.pathname + win.location.search + win.location.hash;
+  if (!win.customElements.get(tag)) {
+    win.customElements.define(tag, class extends win.HTMLElement {
+      set hass(value) {
+        this._hass = value;
+        this._guard?.observe(value);
+        if (this._request && !this._sourceCurrent()) this.closeDialog();
+        this._controller?.update();
+      }
+      get hass() { return this._hass; }
+      _sourceCurrent() {
+        const request = this._request;
+        if (!request || request.cancelled || route() !== request.route) return false;
+        return request.transferred || request.sourceCurrent();
+      }
+      showDialog(request) {
+        this.closeDialog();
+        if (request.cancelled) return;
+        this._request = request; request.owner = this;
+        // HA calls showDialog before appending the native element.
+        win.queueMicrotask(() => this._start());
+      }
+      connectedCallback() { this._start(); }
+      disconnectedCallback() { this.closeDialog(); }
+      _start() {
+        const request = this._request;
+        if (!request || this._guard || !this.isConnected) return;
+        if (!this._sourceCurrent() || this._hass?.connection !== request.connection ||
+            this._hass?.user?.id !== request.user) { this.closeDialog(); return; }
+        const guard = createGuard({getHass:() => this._hass,
+          getContext:() => ({card:request.card,route:route()}),browser:win});
+        this._guard = guard; this._token = guard.snapshot();
+        if (!guard.current(this._token,true)) { this.closeDialog(); return; }
+        this._unsubscribe = guard.subscribe(() => this.closeDialog());
+        this._routeChanged = () => { if (!this._sourceCurrent()) this.closeDialog(); };
+        for (const event of ['location-changed','popstate','hashchange']) win.addEventListener(event,this._routeChanged);
+        this._controller ||= createDashboardPlacementV53({host:this,nativeOwned:true,
+          getHass:() => this._sourceCurrent() && this._guard?.current(this._token,true) ? this._hass : null,
+          getCardConfig:() => this._request?.card,
+          getSourceKey:() => this._token?.epoch,
+          onClose:() => { if (this._request) this.closeDialog(); }});
+        if (!this._controller.open()) this.closeDialog();
+      }
+      transfer(request) {
+        // Only a transaction already sent by the user's Add/Undo may outlive
+        // a real source disconnect. A preview or unrelated teardown closes.
+        if (this._request !== request || request.cancelled || route() !== request.route ||
+            !this.isConnected || !this._guard?.current(this._token,true)) return false;
+        // The source is already disconnected when its lifecycle callback runs.
+        // Validate the sent transaction using the live native owner, rather
+        // than requiring that detached source to remain connected.
+        request.transferred = true;
+        if (!this._controller?.acceptsOwnRemount()) { request.transferred = false; return false; }
+        request.sourceCurrent = null; // Release all references to the old source.
+        return true;
+      }
+      closeDialog() {
+        const request = this._request;
+        if (!request) return true;
+        this._request = null; request.cancelled = true; request.owner = null;
+        request.sourceCurrent = null; request.card = null; request.connection = null; request.user = null;
+        this._unsubscribe?.(); this._unsubscribe = null;
+        for (const event of ['location-changed','popstate','hashchange']) win.removeEventListener(event,this._routeChanged);
+        this._routeChanged = null;
+        const guard = this._guard; this._guard = null; this._token = null;
+        this._controller?.close(); // Retain the raw lane until actual settlement.
+        guard?.dispose();
+        this.dispatchEvent(new win.CustomEvent('dialog-closed',{detail:{dialog:tag},bubbles:true,composed:true}));
+        return true;
+      }
+    });
+  }
+  let request = null;
+  function close() {
+    if (!request) return;
+    request.cancelled = true;
+    if (request.owner?._request === request) request.owner.closeDialog();
+    request.sourceCurrent = null; request.card = null; request = null;
+  }
+  return {
+    open() {
+      if (request && !request.cancelled) return true;
+      const hass = getHass();
+      if (!hass || !host.isConnected) return false;
+      const card = copy(getCardConfig());
+      const known = ['custom:ha-smart-reports'];
+      if (!known.includes(card?.type) || !options.cardTypes.includes(card.type)) return false;
+      const source = JSON.stringify(getSourceKey()), signature = JSON.stringify(card);
+      const next = {card,route:route(),connection:hass.connection,user:hass.user.id,cancelled:false,transferred:false,owner:null,
+        sourceCurrent:() => {
+          const live = getHass();
+          return host.isConnected && live?.connection === next.connection && live?.user?.id === next.user &&
+            JSON.stringify(getCardConfig()) === signature && JSON.stringify(getSourceKey()) === source;
+        }};
+      request = next;
+      host.dispatchEvent(new win.CustomEvent('show-dialog',{bubbles:true,composed:true,detail:{
+        dialogTag:tag,dialogImport:() => Promise.resolve(),dialogParams:next,addHistory:false}}));
+      return true;
+    },
+    close,destroy:close,
+    update() {
+      if (!request || request.cancelled) return;
+      if (!request.transferred && !request.sourceCurrent()) close();
+      else request.owner?._controller?.update();
+    },
+    sourceDisconnected() {
+      if (request?.owner?.transfer(request)) return true;
+      close(); return false;
+    }
+  };
+}
+// Lovelace save has no CAS: compare-before-save reduces, but cannot eliminate,
+// the race with another editor between the final read and the native save.
+function createDashboardPlacementV53({host, getHass, getCardConfig,
+  cardTypes = ['custom:ha-smart-reports'],
+  getSourceKey = () => null, createGuard, nativeOwned = false, onClose = () => {}}) {
+  if (!nativeOwned) {
+    const native = createNativeDashboardPlacementV53({host,getHass,getCardConfig,getSourceKey,cardTypes,createGuard});
+    if (native) return native;
+  }
+  const known = ['custom:ha-smart-reports'];
+  const allowed = known.filter(type => cardTypes.includes(type));
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const key = value => JSON.stringify(value);
+  const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const pathOK = path => path === null || typeof path === 'string' && /^[a-z0-9][a-z0-9_-]*$/.test(path);
+  const titleId = 'ha-tools-placement-' + Math.random().toString(36).slice(2);
+  let session = null, dialog = null, destroyed = false, running = false, queued = null, returnFocus = null;
+  let cancelledWrite = false;
+  const text = (en, pl) => String(getHass()?.locale?.language || getHass()?.language || 'en').startsWith('pl') ? pl : en;
+  function identity() {
+    const hass = getHass();
+    if (!host.isConnected || hass?.connected === false || !hass?.connection || hass.connection.connected === false ||
+        typeof hass.callWS !== 'function' || typeof hass.user?.id !== 'string' || !hass.user.id ||
+        hass.user.is_admin !== true || hass.user.is_active === false) return null;
+    const card = clone(getCardConfig());
+    if (!object(card) || !allowed.includes(card.type)) return null;
+    return {connection:hass.connection, user:hass.user.id, card, signature:key(card), source:key(getSourceKey())};
+  }
+  function current(s, intent = s?.intent) {
+    if (!s || session !== s || destroyed || s.intent !== intent) return false;
+    if (!dialog?.isConnected) { close(); return false; }
+    let live;
+    try { live = identity(); } catch (_) { live = null; }
+    if (!live || live.connection !== s.connection || live.user !== s.user || live.signature !== s.signature || live.source !== s.source) {
+      close(); // Purge private snapshots and detached previews on identity/source revocation.
+      return false;
+    }
+    return true;
+  }
+  // Single raw operation lane, including reads. Replacement intent never starts
+  // another operation while a previous promise is unsettled, even after close().
+  function enqueue(task) { queued = task; pump(); }
+  async function pump() {
+    if (running || !queued || destroyed) return;
+    const task = queued; queued = null; running = true; paint();
+    try { await task(); } catch (_) { /* Tasks expose localized states, never raw backend/private errors. */ }
+    finally { running = false; paint(); pump(); }
+  }
+  async function call(s, intent, type, extra = {}) {
+    if (!current(s, intent)) throw Error('cancelled');
+    const message = {type, ...extra};
+    if (type !== 'lovelace/dashboards/list' && s.target !== null) message.url_path = s.target;
+    // Native HA performs fresh require_admin authorization independently.
+    let value;
+    try { value = await getHass().callWS(message); }
+    catch (error) {
+      if (['unauthorized','not_allowed','forbidden'].includes(error?.code) && session === s) close();
+      throw error;
+    }
+    if (!current(s, intent)) throw Error('cancelled');
+    return value;
+  }
+  function read(s, intent) { return call(s, intent, 'lovelace/config', {force:true}); }
+  function validateConfig(config) {
+    if (!object(config) || !Array.isArray(config.views) && !object(config.strategy)) throw Error('invalid_config');
+    return clone(config);
+  }
+  function destination(s) {
+    const config = s.baseline, view = config?.views?.[s.view];
+    if (!object(config) || config.strategy || !object(view) || view.strategy) return null;
+    const type = view.type || (view.panel === true ? 'panel' : 'masonry');
+    if (type === 'sections') {
+      const section = view.sections?.[s.section];
+      return object(section) && !section.strategy && section.type === 'grid' &&
+        (section.cards === undefined || Array.isArray(section.cards)) ? ['views',s.view,'sections',s.section,'cards'] : null;
+    }
+    if (type !== 'masonry' && type !== 'panel' || view.cards !== undefined && !Array.isArray(view.cards)) return null;
+    if (type === 'panel' && view.cards?.length) return null;
+    return ['views',s.view,'cards'];
+  }
+  function candidate(s) {
+    const path = destination(s);
+    if (!path) throw Error('readonly');
+    const result = clone(s.baseline);
+    let parent = result;
+    for (const segment of path.slice(0,-1)) parent = parent[segment];
+    parent.cards = [...(parent.cards || []), clone(s.card)];
+    return result;
+  }
+  function clearTarget(s) {
+    s.baseline = null; s.tx = null; s.previewReady = false; s.blocked = false;
+    s.view = 0; s.section = 0; s.status = 'select';
+    dialog?.querySelector('[data-preview]')?.replaceChildren();
+  }
+  function selectDashboard(value) {
+    const s = session;
+    if (!current(s) || s.writing) return;
+    s.intent++; clearTarget(s);
+    const choice = s.dashboards[Number(value)];
+    if (value === '' || !choice) { s.target = undefined; paint(); return; }
+    s.target = choice.url_path;
+    if (choice.mode !== 'storage') { s.status = 'readonly'; paint(); return; }
+    const intent = s.intent; s.status = 'loading'; paint();
+    enqueue(async () => {
+      if (!current(s, intent)) return;
+      try {
+        const config = validateConfig(await read(s, intent));
+        if (!current(s, intent)) return;
+        s.baseline = config; s.status = 'ready'; chooseView(0);
+      } catch (_) { if (current(s, intent)) { s.status = 'error'; paint(); } }
+    });
+  }
+  function chooseView(value) {
+    const s = session;
+    if (!current(s) || s.writing || !s.baseline) return;
+    s.intent++; s.view = Number(value); s.tx = null; s.blocked = false; s.status = 'ready';
+    const sections = s.baseline.views?.[s.view]?.sections;
+    s.section = Array.isArray(sections) ? sections.findIndex(section => section?.type === 'grid' && !section.strategy) : -1;
+    preview(); paint();
+  }
+  function chooseSection(value) {
+    const s = session;
+    if (!current(s) || s.writing) return;
+    s.intent++; s.section = Number(value); s.tx = null; s.blocked = false; s.status = 'ready'; preview(); paint();
+  }
+  function preview() {
+    const s = session, area = dialog?.querySelector('[data-preview]');
+    if (!current(s) || !area) return;
+    area.replaceChildren(); s.previewReady = false;
+    if (!destination(s)) { s.status = 'readonly'; return; }
+    // The allowlist is intersected with the concrete Smart type. No user HTML,
+    // YAML forms, guessed dialog imports, or arbitrary custom-element names.
+    const name = s.card.type.slice(7);
+    if (!host.ownerDocument.defaultView.customElements.get(name)) { s.status = 'previewerror'; return; }
+    try {
+      const card = host.ownerDocument.createElement(name);
+      // Prevent interactions in the visual preview from invoking card actions.
+      card.preview = true; card.inert = true; card.setAttribute('inert',''); card.setConfig(clone(s.card)); card.hass = getHass();
+      area.append(card); s.previewReady = true;
+    } catch (_) { area.replaceChildren(); s.status = 'previewerror'; }
+  }
+  async function confirm(s, intent) {
+    const value = validateConfig(await read(s, intent));
+    if (!current(s, intent)) return;
+    const tx = s.tx;
+    if (key(value) === key(tx.expected)) {
+      s.baseline = clone(value); s.blocked = true;
+      if (tx.undoing) { s.tx = null; s.status = 'undone'; }
+      else { tx.confirmed = clone(value); s.status = 'confirmed'; }
+    } else { s.status = 'unconfirmed'; s.blocked = true; }
+  }
+  function write(undoing) {
+    const s = session;
+    if (!current(s) || running || s.writing || !s.baseline || s.target === undefined) return;
+    if (undoing ? !s.tx?.confirmed : s.blocked || !s.previewReady || !destination(s)) return;
+    const intent = s.intent, expectedCurrent = clone(undoing ? s.tx.confirmed : s.baseline);
+    const expected = clone(undoing ? s.tx.before : candidate(s));
+    const before = clone(undoing ? s.tx.before : s.baseline);
+    s.writing = true; s.status = 'saving'; paint();
+    enqueue(async () => {
+      try {
+        const latest = validateConfig(await read(s, intent));
+        if (!current(s, intent)) return;
+        if (key(latest) !== key(expectedCurrent)) { s.blocked = true; s.tx = null; s.status = 'conflict'; return; }
+        // Private backup is detached and bound to this session's user,
+        // connection and target. No persistent storage or exports.
+        s.tx = {before, expected, confirmed:null, undoing}; s.blocked = true;
+        // Deliberate compare-before-save, NOT atomic compare-and-swap.
+        // Call exactly once, even if the response is lost or rejected.
+        try { await call(s, intent, 'lovelace/config/save', {config:clone(expected)}); }
+        catch (_) { if (!current(s, intent)) return; }
+        if (!current(s, intent)) return;
+        s.status = 'unconfirmed';
+        await confirm(s, intent); // Reconcile an uncertain ACK using a read only.
+      } catch (_) { if (current(s, intent)) { s.blocked = true; s.status = s.tx ? 'unconfirmed' : 'error'; } }
+      finally { if (current(s, intent)) { s.writing = false; paint(); } }
+    });
+  }
+  function reconcile() {
+    const s = session;
+    if (!current(s) || running || s.writing || !s.tx || s.tx.confirmed) return;
+    const intent = s.intent; s.status = 'loading';
+    enqueue(async () => {
+      try { await confirm(s, intent); }
+      catch (_) { if (current(s, intent)) s.status = 'unconfirmed'; }
+    });
+  }
+  const messages = {
+    select: ['Choose an existing dashboard.', 'Wybierz istniejący dashboard.'],
+    loading: ['Loading…', 'Wczytywanie…'],
+    ready: ['Preview only. Add saves this card to the selected place.', 'To podgląd. Dodaj zapisze kartę w wybranym miejscu.'],
+    saving: ['Saving once and checking the result…', 'Jednorazowy zapis i sprawdzanie wyniku…'],
+    confirmed: ['Save confirmed. Undo is available while nobody changes this dashboard.', 'Zapis potwierdzony. Cofnij jest dostępne, dopóki nikt nie zmieni tego dashboardu.'],
+    undone: ['Original configuration restored and confirmed.', 'Przywrócenie pierwotnej konfiguracji potwierdzone.'],
+    conflict: ['Dashboard changed. Nothing was overwritten. Reopen to review the current version.', 'Dashboard zmienił się. Niczego nie nadpisano. Otwórz ponownie, aby sprawdzić bieżącą wersję.'],
+    unconfirmed: ['Save unconfirmed. Do not repeat Add. Check the result using read only.', 'Zapis niepotwierdzony. Nie powtarzaj Dodaj. Sprawdź wynik przez sam odczyt.'],
+    error: ['Cannot load or compare the dashboard. Reopen to review it.', 'Nie można wczytać lub porównać dashboardu. Otwórz ponownie, aby go sprawdzić.'],
+    readonly: ['Read-only here: YAML, strategy, occupied Panel or unsupported layout. Use the native HA editor.', 'Tutaj tylko odczyt: YAML, strategia, zajęty Panel lub nieobsługiwany układ. Użyj natywnego edytora HA.'],
+    previewerror: ['Card preview unavailable. Add is disabled.', 'Podgląd karty jest niedostępny. Dodaj jest wyłączone.']
+  };
+  function options(select, choices, value) {
+    // Preserve focused native select nodes and avoid rebuilding their options on busy changes.
+    const signature = key(choices);
+    if (select._choices !== signature) {
+      select.replaceChildren();
+      for (const [id, label] of choices) {
+        const option = host.ownerDocument.createElement('option'); option.value = id; option.textContent = label; select.append(option);
+      }
+      select._choices = signature;
+    }
+    select.value = String(value);
+  }
+  function paint() {
+    const s = session;
+    if (!s || !dialog || !current(s)) return;
+    const q = selector => dialog.querySelector(selector);
+    q('h2').textContent = text('Add to dashboard', 'Dodaj do dashboardu');
+    q('[data-label-dashboard]').textContent = text('Dashboard', 'Dashboard');
+    q('[data-label-view]').textContent = text('View', 'Widok'); q('[data-label-section]').textContent = text('Section', 'Sekcja');
+    q('[data-preview-label]').textContent = text('Card preview (destination layout may resize it)', 'Podgląd karty (układ miejsca docelowego może zmienić rozmiar)');
+    q('[data-limit]').textContent = (cancelledWrite ? text('A previous save was cancelled while pending and may have completed. Inspect the dashboard in HA before another Add. ', 'Poprzedni zapis anulowano w trakcie i mógł się zakończyć. Przed kolejnym Dodaj sprawdź dashboard w HA. ') : '') + text('You can undo this addition until this window closes.', 'Możesz cofnąć dodanie karty do zamknięcia tego okna.');
+    q('[role=status]').textContent = text(...messages[s.status]);
+    const selected = s.dashboards.findIndex(d => d.url_path === s.target);
+    options(q('[data-dashboard]'), [['',text('Choose…','Wybierz…')],...s.dashboards.map((d,i)=>[String(i),d.title])], selected < 0 ? '' : selected);
+    options(q('[data-view]'), (s.baseline?.views || []).map((v,i)=>[String(i),v.title || v.path || text(`View ${i+1}`,`Widok ${i+1}`)]), s.view);
+    const sections = s.baseline?.views?.[s.view]?.sections;
+    options(q('[data-section]'), Array.isArray(sections) ? sections.flatMap((v,i)=>v?.type === 'grid' && !v.strategy ? [[String(i),v.title || text(`Section ${i+1}`,`Sekcja ${i+1}`)]] : []) : [], s.section);
+    q('[data-section-label]').hidden = !Array.isArray(sections);
+    q('[data-dashboard]').disabled = s.writing || !s.dashboards.length;
+    q('[data-view]').disabled = s.writing || !s.baseline;
+    q('[data-section]').disabled = s.writing || !s.baseline;
+    q('[data-add]').textContent = text('Add','Dodaj');
+    q('[data-add]').disabled = running || s.writing || s.blocked || !s.previewReady || !destination(s);
+    q('[data-undo]').textContent = text('Undo','Cofnij'); q('[data-undo]').disabled = running || s.writing || !s.tx?.confirmed;
+    q('[data-reconcile]').textContent = text('Check result (read only)','Sprawdź wynik (tylko odczyt)');
+    q('[data-reconcile]').hidden = !s.tx || !!s.tx.confirmed; q('[data-reconcile]').disabled = running || s.writing;
+    q('[data-cancel]').textContent = text('Cancel','Anuluj');
+    const native = q('[data-native]'); native.textContent = text('Open dashboard in Home Assistant','Otwórz dashboard w Home Assistant');
+    native.hidden = s.target === undefined;
+    native.setAttribute('href', s.target === undefined ? '/lovelace' : `/${s.target || 'lovelace'}`);
+  }
+  function mount() {
+    dialog = host.ownerDocument.createElement('dialog');
+    dialog.setAttribute('data-ha-tools-placement','');
+    dialog.setAttribute('aria-labelledby',titleId);
+    dialog.setAttribute('aria-describedby',titleId+'-limit');
+    dialog.innerHTML = `<style>
+dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid var(--divider-color,#888);border-radius:var(--ha-card-border-radius,12px);background:var(--card-background-color,#fff);color:var(--primary-text-color,#202124);font:14px/1.5 var(--paper-font-body1_-_font-family,system-ui)}dialog[data-ha-tools-placement]::backdrop{background:rgba(0,0,0,.45)}dialog[data-ha-tools-placement] h2{font-size:20px;margin:0 0 16px}dialog[data-ha-tools-placement] label{display:block;margin:12px 0}dialog[data-ha-tools-placement] select,dialog[data-ha-tools-placement] button,dialog[data-ha-tools-placement] a{box-sizing:border-box;min-height:44px;font:inherit}dialog[data-ha-tools-placement] select{width:100%;padding:8px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px}dialog[data-ha-tools-placement] button{padding:10px 16px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px;cursor:pointer}dialog[data-ha-tools-placement] button:disabled{opacity:.55;cursor:default}dialog[data-ha-tools-placement] [data-add]{background:var(--primary-color,#1565c0);color:var(--text-primary-color,#fff)}dialog[data-ha-tools-placement] button:focus-visible,dialog[data-ha-tools-placement] select:focus-visible,dialog[data-ha-tools-placement] a:focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}dialog[data-ha-tools-placement] [data-actions]{display:flex;gap:8px;flex-wrap:wrap}dialog[data-ha-tools-placement] [data-preview]{max-width:100%;overflow:hidden}dialog[data-ha-tools-placement] [data-meta]{font-size:12px;color:var(--secondary-text-color,#555)}dialog[data-ha-tools-placement] a{display:inline-flex;align-items:center;color:var(--primary-color,#1565c0)}dialog[data-ha-tools-placement] [hidden]{display:none!important}
+      </style><h2 id="${titleId}"></h2>
+      <label><span data-label-dashboard></span><select data-dashboard></select></label>
+      <label><span data-label-view></span><select data-view></select></label>
+      <label data-section-label hidden><span data-label-section></span><select data-section></select></label>
+      <p data-preview-label></p><div data-preview></div><p role="status" aria-live="polite"></p>
+      <p data-meta data-limit id="${titleId}-limit"></p><a data-native hidden></a>
+      <div data-actions><button type="button" data-add></button><button type="button" data-undo></button><button type="button" data-reconcile hidden></button><button type="button" data-cancel></button></div>`;
+    dialog.querySelector('[data-dashboard]').addEventListener('change', e => selectDashboard(e.target.value));
+    dialog.querySelector('[data-view]').addEventListener('change', e => chooseView(e.target.value));
+    dialog.querySelector('[data-section]').addEventListener('change', e => chooseSection(e.target.value));
+    dialog.querySelector('[data-add]').addEventListener('click', () => write(false));
+    dialog.querySelector('[data-undo]').addEventListener('click', () => write(true));
+    dialog.querySelector('[data-reconcile]').addEventListener('click', reconcile);
+    dialog.querySelector('[data-cancel]').addEventListener('click', close);
+    dialog.addEventListener('cancel', e => {e.preventDefault(); close();});
+    dialog.addEventListener('close', () => { if (dialog && !dialog.open) close(); });
+    host.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.open = true;
+  }
+  function open() {
+    if (destroyed) return false;
+    if (session && current(session)) { dialog.querySelector('[data-dashboard]').focus(); return true; }
+    let token;
+    try { token = identity(); } catch (_) { return false; }
+    if (!token) return false;
+    returnFocus = host.ownerDocument.activeElement;
+    while (returnFocus?.shadowRoot?.activeElement) returnFocus = returnFocus.shadowRoot.activeElement;
+    const s = {...token,intent:0,dashboards:[],target:undefined,baseline:null,tx:null,view:0,section:0,writing:false,blocked:false,previewReady:false,status:'loading'};
+    session = s; mount(); paint();
+    dialog.querySelector('[data-cancel]').focus();
+    enqueue(async () => {
+      if (!current(s)) return;
+      const intent = s.intent;
+      try {
+        const result = await call(s, intent, 'lovelace/dashboards/list');
+        if (!current(s, intent)) return;
+        if (!Array.isArray(result)) throw Error('invalid_dashboards');
+        const mode = getHass()?.panels?.lovelace?.config?.mode;
+        const list = mode === 'storage' || mode === 'yaml' ? [{url_path:null,title:text('Default dashboard','Domyślny dashboard'),mode}] : [];
+        for (const d of result) if (object(d) && typeof d.url_path === 'string' && pathOK(d.url_path) && !list.some(v=>v.url_path===d.url_path)) {
+          list.push({url_path:d.url_path,title:typeof d.title === 'string' ? d.title : d.url_path,mode:d.mode});
+        }
+        s.dashboards = list; s.status = list.length ? 'select' : 'readonly';
+      } catch (_) { if (current(s, intent)) s.status = 'error'; }
+    });
+    return true;
+  }
+  function close() {
+    const old = session; session = null; queued = null;
+    // In-flight promise cannot be cancelled at HA. The lane remains occupied
+    // until it settles; its continuation cannot render, read or write again.
+    if (old) { if (old.writing && old.tx) cancelledWrite = true; old.intent++; old.baseline = null; old.tx = null; old.card = null; old.dashboards = []; }
+    const node = dialog; dialog = null; node?.remove();
+    if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+    returnFocus = null;
+    if (old) onClose();
+  }
+  function update() {
+    if (!session || !current(session)) return;
+    const card = dialog.querySelector('[data-preview]')?.firstElementChild;
+    if (card) card.hass = getHass();
+    paint();
+  }
+  function destroy() { close(); destroyed = true; }
+  return {open,close,destroy,update,acceptsOwnRemount:() => !!session?.tx && current(session)};
+}
+
+// END SMART SURFACE ha-tools-dashboard-placement.js
 
   class HASmartReports extends HTMLElement {
     constructor() {
@@ -6307,6 +7301,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       this._hass = null;
       this._config = {
         energy_cost_mode: 'auto',
+        variant:'full',
         title: 'Smart Reports',
         show_energy: true,
         show_automations: true,
@@ -6339,6 +7334,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       this._bindReviewedExportEvents();
       this._observeReviewedExportSource();
       this._tariffGuard?.resume();
+      this._featureAccessGuard?.resume();
       this._tariffGuard?.observe();
       this._renderScaffold();
       this._syncTheme();
@@ -6347,7 +7343,10 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
     }
 
     disconnectedCallback() {
+      this._stopPlacementV53();
+      this._reportPanelV53?.sourceDisconnected();
       this._connected = false;
+      this._calendarAccessGate?.stop();this._featureAccessV53?.stop();
       this._calendarHost?.stop();
       this._navigationObserver?.disconnect(); this._navigationObserver = null;
       this._pendingReportFocus = null;
@@ -6355,6 +7354,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       this._unbindReviewedExportEvents();
       this._observeReviewedExportSource();
       this._tariffGuard?.suspend();
+      this._featureAccessGuard?.suspend();
       this._tariffGuard?.observe();
       if (this._refreshTimer !== null) clearTimeout(this._refreshTimer);
       this._refreshTimer = null;
@@ -6373,6 +7373,10 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       const languageChanged = language !== this._language;
       this._language = language;
       this._hass = hass;
+      this._reportPanelV53?.update();
+      this._placementGuardV53?.observe();
+      this._featureAccessGuard?.observe();
+      this._calendarAccessGate?.observe();this._featureAccessV53?.observe();
       const calendarChanged=this._calendarHost?.observe();
       if(this._analysisMode==='calendar'&&this._connected&&this._activeTab==='energy'&&(calendarChanged||languageChanged))this._renderEnergyState();
       if (this._connected) this._bindReviewedExportEvents();
@@ -6382,6 +7386,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       else this._tariffGuard?.observe();
       this._syncTheme();
       this._syncSupport();
+      if(this._scaffoldRendered){this.shadowRoot.querySelector('[data-smart-access-settings]').hidden=!this._canManageAccess()||this._simpleReport();if(this._activeTab==='config')this._renderAccessSettings();this._syncVariantChrome();}
       if (languageChanged && this._scaffoldRendered) {
         this._syncLabels();
         this._syncTabs();
@@ -6405,6 +7410,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       // Clear accepted source DOM before a throttled/new-session read starts.
       // Request/export association and any occupied tariff wire keep their fences.
       if (this._scaffoldRendered && (allViews || this._activeTab === 'energy')) this.shadowRoot.getElementById('content')?.replaceChildren();
+      if(this._scaffoldRendered&&this._simpleReport()&&this._analysisMode!=='calendar')this._renderSimpleReport(this.shadowRoot.getElementById('content'),this._energyViewState);
     }
 
     get hass() {
@@ -6412,10 +7418,14 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
     }
 
     setConfig(config) {
+      this._reportPanelV53?.close();
+      this._dashboardPlacementV53?.close();
+      this._calendarAccessGate?.stop();this._featureAccessV53?.stop();
       this._calendarHost?.stop();
       this._analysisMode='recorded';
       this._deviceQuery = '';
       const next = config && typeof config === 'object' ? config : {};
+      const initial=!this._configured;this._configured=true;this._simpleExpanded=false;
       const hasRate = Object.prototype.hasOwnProperty.call(next, 'energy_price');
       const currency = typeof next.currency === 'string' && next.currency.trim() ? next.currency.trim() : null;
       this._config = {
@@ -6426,6 +7436,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
         show_automations: next.show_automations !== false,
         show_system: next.show_system !== false,
         show_support: next.show_support !== false,
+        show_help: next.show_help !== false,
         energy_source_mode: next.energy_source_mode === 'explicit' ? 'explicit' : 'dashboard',
         energy_total_statistics: Array.isArray(next.energy_total_statistics) ? next.energy_total_statistics : [],
         energy_device_statistics: Array.isArray(next.energy_device_statistics) ? next.energy_device_statistics : [],
@@ -6436,7 +7447,12 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
           : null,
         currency,
         compare_previous_period: next.compare_previous_period === true,
+        variant: ['tile','compact','full'].includes(next.variant)?next.variant:next.compact===true?'compact':'full',
+        tap_target:next.tap_target==='panel'?'panel':'full',
+        default_tab: ['energy','automations','system'].includes(next.default_tab)?next.default_tab:'energy',
       };
+      if(initial)this._activeTab=this._availableTabs().includes(this._config.default_tab)?this._config.default_tab:this._availableTabs()[0]||null;
+      if(initial&&this._simpleReport()){this._simpleFullTab=this._activeTab;if(this._config.show_energy)this._activeTab='energy';}
       this._observeReviewedExportSource();
       this._tariffGuard?.observe();
       if (this._scaffoldRendered) {
@@ -6447,11 +7463,11 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       }
     }
 
-    getCardSize() { return 5; }
+    getCardSize() { return this._simpleReport()?(this._config.variant==='tile'?1:4):5; }
 
-    getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
+    getGridOptions() { return this._simpleReport()?{columns:this._config.variant==='tile'?6:12,rows:this.getCardSize(),min_rows:1,min_columns:6}:{ columns: 12, min_rows: 3, min_columns: 6 }; }
 
-    static getStubConfig() { return { title: 'Smart Reports', energy_source_mode: 'dashboard' }; }
+    static getStubConfig() { return { title: 'Smart Reports', energy_source_mode: 'dashboard',variant:'compact' }; }
 
     static getConfigElement() { return document.createElement('ha-smart-reports-editor'); }
 
@@ -6473,9 +7489,29 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
           .report-picker{display:block;width:100%;min-width:0;padding:10px;border:1px solid var(--sr-border);border-radius:8px;background:var(--sr-card);color:var(--sr-text);margin:0 0 12px}
           .report-picker[data-report-picker="main"]{width:calc(100% - 32px);margin:0 16px 12px}[hidden]{display:none!important}
           :host(.bento-dark){--sr-good:#4ade80;--sr-warn:#fbbf24;--sr-bad:#f87171}
+
+          .smart-simple-card .pane{padding:0;min-height:0}.smart-simple-card{overflow:hidden}
+          [data-smart-simple]{display:grid;gap:4px;padding:12px 16px;font-size:14px;line-height:20px;min-width:0;box-sizing:border-box}
+          [data-smart-simple] h2{font-size:14px;line-height:20px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+          [data-smart-simple] p{margin:0;overflow-wrap:anywhere;font-size:12px;line-height:16px;color:var(--sr-muted)}
+          [data-smart-import]{font-size:22px;line-height:28px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+          [data-smart-cost]{font-size:14px;line-height:20px;overflow-wrap:anywhere}
+          [data-smart-simple] ul{list-style:none;margin:0;padding:0;font-size:12px;line-height:16px;display:grid;gap:2px}
+          [data-smart-change]{display:flex;justify-content:space-between;gap:8px;min-width:0}[data-smart-change] span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}[data-smart-change] span:last-child{flex-shrink:0}
+          [data-smart-simple] button{justify-self:end;min-height:44px}
+          [data-smart-simple=compact]{grid-template-columns:minmax(0,1fr) auto}
+          [data-smart-simple=compact] .smart-simple-status{grid-column:2;grid-row:1;align-self:center;text-align:end}
+          [data-smart-simple=compact]>:not(h2):not(.smart-simple-status){grid-column:1/-1}
+          [data-smart-simple=tile]{position:relative;height:56px;grid-template-columns:32px minmax(0,1fr);gap:0 8px;padding:8px}
+          [data-smart-simple=tile] ha-icon{grid-column:1;grid-row:1/3;align-self:center;display:flex;align-items:center;justify-content:center;width:32px;height:32px;--mdc-icon-size:20px;border-radius:50%;color:var(--primary-color);background:color-mix(in srgb,var(--primary-color) 14%,transparent)}
+          [data-smart-simple=tile] h2{grid-column:2;align-self:end;pointer-events:none}
+          [data-smart-simple=tile] [data-smart-import]{grid-column:2;font-size:12px;line-height:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+          [data-smart-simple=tile] button{position:absolute;inset:0;width:100%;height:100%;min-height:44px;min-width:44px;padding:0;border:0;background:transparent;border-radius:inherit}
+          [data-smart-simple=tile] button:focus-visible{outline:3px solid var(--primary-color);outline-offset:-3px}
+
         </style>
         <ha-card class="card">
-          <div class="header"><h2 id="title"></h2><span class="muted" id="recorderLabel">${this._t("Recorder-backed")}</span></div>
+          <div class="header"><h2 id="title"></h2><span class="muted" id="recorderLabel">${this._t("Recorder-backed")}</span><button type="button" class="action" data-smart-access-settings hidden>${this._t("Settings")}</button></div>
           <nav class="tabs" id="tabs" data-report-nav="main" role="tablist" aria-label="${this._t("Report sections")}">
             <button class="tab" type="button" data-tab="energy">${this._t("Energy")}</button>
             <button class="tab" type="button" data-tab="automations">${this._t("Automations")}</button>
@@ -6494,6 +7530,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
         this._syncSupport();
       });
       this._syncSupport();
+      this.shadowRoot.querySelector('[data-smart-access-settings]').addEventListener('click',()=>this._selectTab('config'));
       this.shadowRoot.getElementById('periodSelect').value = this._period;
       this.shadowRoot.getElementById('periodSelect').addEventListener('change', (event) => {
         const period = VALID_PERIODS.has(event.target.value) ? event.target.value : '7d';
@@ -6518,6 +7555,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
 
     _syncLabels() {
       const root = this.shadowRoot;
+      root.querySelector('[data-smart-access-settings]').textContent=this._t('Settings');
       root.getElementById('recorderLabel').textContent = this._t('Recorder-backed');
       root.getElementById('tabs').setAttribute('aria-label', this._t('Report sections'));
       for (const button of root.querySelectorAll('[data-tab]')) {
@@ -6555,7 +7593,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       if (!this._scaffoldRendered) return;
       let dismissed = false;
       try { dismissed = localStorage.getItem('ha-smart-reports-support-dismissed') === '1'; } catch (_) {}
-      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]').hidden = !this._hass?.user?.is_admin || this._config.show_support === false || dismissed;
+      this.shadowRoot.querySelector('.donate-section[data-source="own-card"]').hidden = !this._hass?.user?.is_admin || this._config.show_support === false || dismissed || this._simpleReport();
     }
 
     _availableTabs() {
@@ -6572,6 +7610,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
         this._navigationObserver = new ResizeObserver(() => this._syncNavigation());
         this._navigationObserver.observe(this);
       }
+      if(this._simpleReport()){for(const group of this.shadowRoot.querySelectorAll('[data-report-nav],[data-report-picker]'))group.hidden=true;return;}
       const width = this.getBoundingClientRect().width;
       const compact = width > 0 && width < 280;
       for (const group of this.shadowRoot.querySelectorAll('[data-report-nav]')) {
@@ -6649,8 +7688,10 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
     _syncTabs() {
       if (!this._scaffoldRendered) return;
       const available = this._availableTabs();
-      if (!available.includes(this._activeTab)) this._activeTab = available[0] || null;
+      if (this._activeTab!=='config'&&!available.includes(this._activeTab)) this._activeTab = available[0] || null;
       this.shadowRoot.getElementById('title').textContent = this._config.title;
+      this.shadowRoot.querySelector('[data-smart-access-settings]').hidden=!this._canManageAccess();
+      this.shadowRoot.querySelector('[data-smart-access-settings]').setAttribute('aria-pressed',String(this._activeTab==='config'));
       this.shadowRoot.getElementById('tabs').hidden = available.length === 0;
       for (const button of this.shadowRoot.querySelectorAll('[data-tab]')) {
         const tab = button.dataset.tab;
@@ -6660,17 +7701,22 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
         button.setAttribute('aria-selected', String(tab === this._activeTab));
       }
       this.shadowRoot.getElementById('energyToolbar').hidden = this._activeTab !== 'energy' || this._analysisMode === 'calendar';
-      if (this._activeTab === null) {
+      if(this._simpleReport()&&this._activeTab!=='energy')this._renderSimpleReport(this.shadowRoot.getElementById('content'),{status:'unavailable'});
+      else if (this._activeTab === null) {
         const container = this.shadowRoot.getElementById('content');
         container.replaceChildren(this._stateBlock('Enable at least one report section.', 'Turn on Energy, Automations, or System in the card configuration.', '', 'status'));
-      } else if (this._activeTab === 'energy') this._renderEnergyState();
+      } else if (this._activeTab === 'config') this._renderAccessSettings();
+      else if (this._activeTab === 'energy') this._renderEnergyState();
       else if (this._activeTab === 'automations') this._renderAutomations();
       else this._renderSystem();
-      this._syncNavigation();
+      this._syncNavigation();this._syncVariantChrome();
     }
 
     _selectTab(tab) {
-      if (!this._availableTabs().includes(tab) || tab === this._activeTab) return;
+      if ((tab==='config'?!this._canManageAccess():!this._availableTabs().includes(tab)) || tab === this._activeTab) return;
+      if(tab==='config')this._lastReportTab=this._activeTab;
+      if(this._activeTab==='config')this._featureAccessV53?.stop();
+      if(tab!=='energy')this._calendarAccessGate?.stop();
       if (this._activeTab === 'energy') { this._invalidateEnergyRequest(); this._calendarHost?.stop(); }
       this._activeTab = tab;
       this._tariffGuard?.observe();
@@ -6694,11 +7740,12 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
     }
 
     async _runRefresh() {
-      if (!this._connected || !this._hass) return;
+      if (!this._connected || !this._hass || this._simpleReport()&&this._activeTab!=='energy') return;
       this._lastRefreshStartedAt = Date.now();
       try {
         if (this._activeTab === null) return;
         if (this._activeTab === 'energy') { if(this._analysisMode==='calendar')this._calendarHost?.refresh();else await this._loadEnergy(); }
+        else if (this._activeTab === 'config') this._renderAccessSettings();
         else if (this._activeTab === 'automations') this._renderAutomations();
         else this._renderSystem();
       } catch (error) {
@@ -7165,7 +8212,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       const exportAssociation = this._observeReviewedExportSource();
       const requestHass = this._hass, requestCall = requestHass?.callWS;
       if (this._config.energy_cost_mode === 'configured_tariff') this._tariffController().reset();
-      const compare = this._config.compare_previous_period === true;
+      const compare = this._config.compare_previous_period === true || this._config.variant==='compact';
       if (compare) this._tariffController();
       const ticket = compare ? this._tariffGuard.snapshot() : null;
       const generation = ++this._energyRequestGeneration;
@@ -7374,10 +8421,47 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       return Object.freeze(days);
     }
 
+    _sharedTariffGuard() {
+      return this._tariffGuard ||= createTariffGuardV3({getHass:()=>this._hass,
+        getContext:()=>({config:this._config,period:this._period,tab:this._activeTab,connected:this._connected})});
+    }
+
+    _featureWire() {
+      return this._featureAccessGuard ||= createTariffGuardV3({getHass:()=>this._hass,
+        getContext:()=>({config:this._config,period:this._period,tab:this._activeTab,connected:this._connected})});
+    }
+
+    _calendarAccess() {
+      if(!this._calendarAccessGate)this._calendarAccessGate=createSmartCalendarAccessV53({card:this,guard:this._featureWire(),
+        onInvalidate:()=>{if(this._analysisMode==='calendar'){this._calendarHost?.stop();this._invalidateReviewedExport(true);}},
+        onChange:()=>{if(this._calendarGateRenderPending)return;this._calendarGateRenderPending=true;queueMicrotask(()=>{this._calendarGateRenderPending=false;this._syncCalendarAccess();});}});
+      this._calendarAccessGate.start();return this._calendarAccessGate;
+    }
+
+    _syncCalendarAccess() {
+      if(!this._connected||!this._scaffoldRendered||!this._calendarAccessGate)return;
+      const state=this._calendarAccessGate.state(),button=this.shadowRoot.querySelector('[data-smart-analysis="calendar"]');
+      if(button){button.hidden=state.status==='ready'&&state.analysis.visible!==true;button.disabled=['idle','loading'].includes(state.status);}
+      const key=JSON.stringify(state);
+      if(this._activeTab==='energy'&&this._analysisMode==='calendar'&&key!==this._calendarGatePainted){this._calendarGatePainted=key;this._renderEnergyState();}
+    }
+
+    _canManageAccess(){const h=this._hass;return this._connected&&!!h?.user?.id&&h.user.is_admin===true&&h.user.is_active!==false&&h.connected!==false&&h.connection?.connected!==false;}
+
+    _renderAccessSettings(){
+      const container=this.shadowRoot.getElementById('content');
+      if(!this._canManageAccess()){this._featureAccessV53?.stop();container.replaceChildren(this._stateBlock('Administrator access is required.','','','status'));return;}
+      const language=languageOf(this._hass),existing=container.querySelector('[data-smart-access-view]');
+      if(existing?.dataset.language===language){this._featureAccessV53?.observe();return;}
+      container.replaceChildren();const section=document.createElement('section');section.dataset.smartAccessView='';section.dataset.language=language;
+      const back=document.createElement('button');back.type='button';back.className='action';back.textContent=this._t('Back to reports');back.addEventListener('click',()=>{this._featureAccessV53?.stop();this._activeTab=this._availableTabs().includes(this._lastReportTab)?this._lastReportTab:this._availableTabs()[0]||null;this._tariffGuard?.observe();this._syncTabs();this._scheduleRefresh(true);});section.append(back);
+      const details=document.createElement('details');details.dataset.featureAccessV53='';const summary=document.createElement('summary');summary.textContent=this._t('Access to HA Tools features');details.append(summary);const body=document.createElement('div');body.dataset.featureAccessBody='';details.append(body);section.append(details);container.append(section);
+      this._featureAccessV53 ||= createFeatureAccessV53({card:this,guard:this._featureWire()});this._featureAccessV53.mount(details);
+    }
+
     _tariffController() {
       if (this._tariffHost) return this._tariffHost;
-      this._tariffGuard ||= createTariffGuardV3({ getHass: () => this._hass,
-        getContext: () => ({ config: this._config, period: this._period, tab: this._activeTab, connected: this._connected }) });
+      this._sharedTariffGuard();
       this._tariffGuard.subscribe(() => {
         this._invalidateEnergyRequest();
         this._clearMeasuredEnergySource();
@@ -7874,11 +8958,157 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       return block;
     }
 
+    _simpleReport(){return ['tile','compact'].includes(this._config.variant)&&!this._simpleExpanded;}
+
+    _syncVariantChrome(){
+      if(!this._scaffoldRendered)return;
+      const simple=this._simpleReport(),root=this.shadowRoot;root.querySelector('.card').classList.toggle('smart-simple-card',simple);this._syncDashboardPlacementV53();this._syncHelpV53();
+      root.querySelector('.header').hidden=simple;
+      root.getElementById('energyToolbar').hidden=simple||this._activeTab!=='energy'||this._analysisMode==='calendar';
+      root.querySelector('[data-smart-access-settings]').hidden=simple||!this._canManageAccess();
+      this._syncSupport();
+      let back=root.querySelector('[data-smart-back]');
+      if(!simple&&['tile','compact'].includes(this._config.variant)&&!back){back=document.createElement('button');back.type='button';back.className='action';back.dataset.smartBack='';back.textContent=String(languageOf(this._hass)).startsWith('pl')?'Wróć do skrótu':'Back to summary';back.addEventListener('click',()=>{this._simpleFullTab=this._activeTab;this._simpleExpanded=false;if(this._config.show_energy)this._activeTab='energy';this._syncTabs();if(this._activeTab==='energy'&&['idle','loading'].includes(this._energyViewState.status))this._scheduleRefresh(true);root.querySelector('[data-smart-open]')?.focus({preventScroll:true});});root.querySelector('.header').append(back);}
+      if(back){back.hidden=simple||this._config.variant==='full';back.textContent=String(languageOf(this._hass)).startsWith('pl')?'Wróć do skrótu':'Back to summary';}
+    }
+
+    _syncHelpV53() {
+      if(!this._scaffoldRendered)return;
+      let help=this.shadowRoot.querySelector('[data-smart-help]');
+      if(!help){help=document.createElement('details');help.dataset.smartHelp='';help.style.cssText='margin:12px 16px;font-size:14px;line-height:1.5';const summary=document.createElement('summary');summary.style.cssText='min-height:44px;cursor:pointer;display:flex;align-items:center';help.append(summary);
+        for(const key of ["The energy report uses history recorded by Home Assistant. By default, selected statistics use the Energy dashboard sources. A sensor’s current state does not replace missing history.", "Selected statistics and Calendar are separate reports. Calendar uses HA Energy sources and requires access confirmed by HA Tools Email. It does not fall back to a different report when access is unavailable.", "Periods use Home Assistant’s time zone. Selected statistics end at the last completed hour. Calendar shows its own exact interval and coverage. A daylight-saving day can have 23 or 25 hours.", "Missing measurements are not zero. Confirmed readings and complete totals have separate coverage. A complete total remains unavailable when required data is missing.", "A nested device is already included in its parent. Each device may have different coverage. Rooms follow the entity or device assignment in HA; No room and Unmeasured are separate categories.", "Recorded costs, configured historical tariff costs and explicit flat-rate estimates have separate labels. Missing rates leave costs unavailable. Fixed fees stay separate from usage; a common-measurement comparison is not a whole-period bill.", "Comparison uses the selected reference and confirmed comparable measurements. A zero baseline has no percentage. Search changes the visible device list; totals and exports still cover the loaded report.", "Chart and Data show the same snapshot. Switching between them does not fetch measurements again. Data and export retain the precise values behind shortened labels.", "Before saving an export, review its complete preview and included fields. Names and source IDs use aliases by default; private fields require a separate choice for each export. Calendar exports include the historical rate versions used in calculations. Tokens, access policies and SMTP settings are excluded. This is not an HA backup.", "Full report window opens the real report with current access checks. Adding to a dashboard requires an administrator and an explicit preview. Undo is available only for the confirmed change in the open session; a later dashboard edit blocks it.", "Automations and System show the current HA state. The energy-report period does not change those views."]){const p=document.createElement('p');p.dataset.smartHelpKey=key;help.append(p);}this.shadowRoot.querySelector('.card').append(help);}
+      help.hidden=this._simpleReport()||this._config.show_help===false;
+      help.querySelector('summary').textContent=this._t('How to read the report');
+      for(const p of help.querySelectorAll('[data-smart-help-key]'))p.textContent=this._t(p.dataset.smartHelpKey);
+    }
+
+    _placementIdentityV53() {
+      this._placementGuardV53 ||= createTariffGuardV3({getHass:()=>this._hass,getContext:()=>({config:this._config,variant:this._placementVariantV53||'compact',route:location.pathname+location.search+location.hash}),browser:window});
+      return this._placementGuardV53;
+    }
+    _placementAllowedV53() {
+      if(!this.isConnected||this.preview||this._inReportPanelV53||this._simpleReport()||this._hass?.user?.is_admin!==true)return false;
+      const guard=this._placementIdentityV53(),token=guard.snapshot();return guard.available(token)&&guard.current(token,true);
+    }
+    _placementConfigV53() {
+      const variant=this.shadowRoot.querySelector('[data-smart-dashboard-variant]')?.value||this._placementVariantV53||'compact';
+      return JSON.parse(JSON.stringify({...this._config,type:'custom:ha-smart-reports',variant,compact:variant==='compact'}));
+    }
+    _stopPlacementV53() {
+      if(!this._dashboardPlacementV53?.sourceDisconnected?.())this._dashboardPlacementV53?.close();
+      this._placementUnsubscribeV53?.();this._placementUnsubscribeV53=null;
+      this._placementGuardV53?.dispose();this._placementGuardV53=null;
+      this._dashboardPlacementMountV53?.remove();
+      // Keep the factory/mount: a raw request must settle before another lane.
+    }
+    _syncDashboardPlacementV53() {
+      if(!this.isConnected||!this._scaffoldRendered)return;
+      const root=this.shadowRoot;
+      if(!this._placementAllowedV53()){
+        this._dashboardPlacementV53?.close();this._dashboardPlacementMountV53?.remove();root.querySelector('[data-smart-dashboard-footer]')?.remove();return;
+      }
+      const guard=this._placementIdentityV53();
+      if(!this._placementUnsubscribeV53)this._placementUnsubscribeV53=guard.subscribe(()=>{this._dashboardPlacementV53?.close();this._syncDashboardPlacementV53();});
+      let footer=root.querySelector('[data-smart-dashboard-footer]');
+      if(!footer){
+        footer=document.createElement('footer');footer.dataset.smartDashboardFooter='';
+        const css=document.createElement('style');css.textContent='[data-smart-dashboard-footer]{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px}[data-smart-dashboard-footer] button,[data-smart-dashboard-footer] select{min-width:44px;min-height:44px;font:inherit;font-size:14px;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px;padding:8px}[data-smart-dashboard-footer] :focus-visible{outline:3px solid var(--primary-color);outline-offset:2px}';
+        const label=document.createElement('label'),select=document.createElement('select');select.dataset.smartDashboardVariant='';label.append(select);
+        for(const value of ['tile','compact','full']){const option=document.createElement('option');option.value=value;select.append(option);}
+        select.value=this._placementVariantV53||'compact';select.addEventListener('change',()=>{this._placementVariantV53=select.value;this._placementGuardV53?.observe();});
+        const button=document.createElement('button');button.type='button';button.dataset.smartDashboardAdd='';button.addEventListener('click',()=>{
+          if(!this._placementAllowedV53()){this._syncDashboardPlacementV53();return;}
+          this._dashboardPlacementMountV53 ||= document.createElement('div');root.append(this._dashboardPlacementMountV53);
+          this._dashboardPlacementV53 ||= createDashboardPlacementV53({host:this._dashboardPlacementMountV53,getHass:()=>this._placementAllowedV53()?this._hass:null,getCardConfig:()=>this._placementConfigV53(),getSourceKey:()=>this._placementIdentityV53().snapshot().epoch,createGuard:createTariffGuardV3,cardTypes:['custom:ha-smart-reports']});
+          this._dashboardPlacementV53.open();
+        });
+        footer.append(css,label,button);root.querySelector('.card').append(footer);
+      }
+      const pl=String(languageOf(this._hass)).startsWith('pl'),select=footer.querySelector('select');select.setAttribute('aria-label',pl?'Wariant karty na dashboardzie':'Dashboard card variant');
+      for(const option of select.options)option.textContent=this._t({tile:'Tile',compact:'Compact',full:'Full'}[option.value]);
+      footer.querySelector('[data-smart-dashboard-add]').textContent=pl?'Dodaj do mojego dashboardu':'Add to my dashboard';
+      if(this._dashboardPlacementMountV53&&!this._dashboardPlacementMountV53.isConnected)root.append(this._dashboardPlacementMountV53);
+      this._dashboardPlacementV53?.update();
+    }
+
+    _openReportV53(opener) {
+      if(!this.isConnected||this.preview||this._hass?.user?.is_active===false||!this._hass?.user?.id||this._hass?.connection?.connected===false||window.navigator.onLine===false)return false;
+      if(this._config.tap_target==='panel'&&!this._inReportPanelV53){
+        this._reportPanelV53 ||= createSmartReportPanelV53({host:this,getHass:()=>this._hass,getConfig:()=>this._config,getSourceKey:()=>this._config,
+          getSelection:()=>({tab:this._simpleFullTab||this._activeTab,recordedPeriod:this._period,energyView:this._energyView,analysisMode:this._analysisMode,calendarSelection:this._calendarHost?.selection()}),
+          applySelection:(child,seed)=>{if(seed.tab)child._activeTab=seed.tab;if(seed.recordedPeriod)child._period=seed.recordedPeriod;if(seed.energyView)child._energyView=seed.energyView;if(seed.analysisMode)child._analysisMode=seed.analysisMode;
+            if(seed.calendarSelection)child._calendarHost=createSmartAnalysisHostV53({card:child,initialSelection:seed.calendarSelection});},createGuard:createTariffGuardV3});
+        return this._reportPanelV53.open(opener);
+      }
+      this._simpleExpanded=true;if(this._availableTabs().includes(this._simpleFullTab))this._activeTab=this._simpleFullTab;this._syncTabs();this.shadowRoot.querySelector('[data-smart-back]')?.focus({preventScroll:true});return true;
+    }
+
+    _renderSimpleReport(container,state,calendar=false){
+      const pl=String(languageOf(this._hass)).startsWith('pl'),t=(en,polish)=>pl?polish:en;
+      const focused=this.shadowRoot.activeElement?.matches('[data-smart-open]');
+      const section=document.createElement('section');section.dataset.smartSimple=this._config.variant;
+      const heading=document.createElement('h2');heading.textContent=this._config.title;section.append(heading);
+      const ready=['ready','partial','no_data'].includes(state.status),snapshot=calendar?state.snapshot:null;
+      const period=snapshot?.period||state.period||{};
+      const number=v=>typeof v==='number'&&Number.isFinite(v)?v:typeof v==='string'&&v.trim()!==''&&Number.isFinite(Number(v))?Number(v):null;
+      const format=(v,unit)=>{const n=number(v);return n===null?'—':`${n!==0&&Math.abs(n)<0.01?this._formatReportChange(n).replace(/^\+/,''):this._formatNumber(n,2)}${unit?' '+unit:''}`;};
+      let energy=null,cost=null,currency=null,comparison=null,costComparison=null,changes=[];
+      if(ready){
+        if(calendar&&snapshot){
+          energy=snapshot.totals?.measurement_complete===true?snapshot.totals.kwh:null;
+          cost=snapshot.totals?.pricing_complete===true?snapshot.totals.total_cost:null;currency=snapshot.totals?.currency;
+          const kind=state.selection?.comparison||snapshot.context?.comparison_kind||'previous',c=snapshot.comparisons?.[kind];if(c?.status==='ready')comparison={delta:c.delta_kwh,percent:c.percent,scope:c.comparison_scope,kind};
+          const costs=c?.costs,a=costs?.current,b=costs?.baseline;
+          // The producer percentage describes usage_cost, even when a separate
+          // whole-period delta includes fixed fees. Never mix those two scopes.
+          const samePrice=costs?.status==='ready'&&a?.pricing_complete===true&&b?.pricing_complete===true&&a.compatible===true&&b.compatible===true&&/^[A-Z]{3}$/.test(a.currency)&&a.currency===b.currency&&['gross','net'].includes(a.price_basis)&&a.price_basis===b.price_basis&&['calendar_totals','common_measurements'].includes(costs.comparison_scope);
+          if(samePrice){
+            const total=costs.comparison_scope==='calendar_totals'&&number(costs.delta_total_cost)!==null;
+            const delta=total?costs.delta_total_cost:costs.metric==='usage_cost'?costs.delta_cost:null;
+            if(number(delta)!==null)costComparison={delta,percent:total&&costs.metric!=='total_cost'?null:costs.percent,currency:a.currency,scope:costs.comparison_scope,kind,total};
+          }
+          const rows=c?.groups?.devices||{};
+          changes=Object.entries(rows).filter(([,v])=>v.status==='ready'&&number(v.delta_kwh)!==null).map(([id,v])=>({name:snapshot.groups?.devices?.[id]?.name||id,delta:number(v.delta_kwh)}));
+        }else{
+          energy=state.total?.value;cost=state.cost?.value;currency=state.cost?.currency;
+          const c=state.comparison,metric=c?.metrics?.energy;if(metric?.comparable)comparison={delta:metric.delta,percent:metric.percent,scope:'calendar_totals'};
+          const money=c?.metrics?.cost;if(money?.comparable&&/^[A-Z]{3}$/.test(money.unit)&&number(money.delta)!==null)costComparison={delta:money.delta,percent:money.percent,currency:money.unit,scope:'calendar_totals',kind:'previous',total:true};
+          const previous=new Map((c?.previous?.devices||[]).map(v=>[v.statistic_id,v]));
+          changes=(state.devices||[]).flatMap(v=>{const before=previous.get(v.statistic_id);return v.status==='ready'&&before?.status==='ready'&&v.unit===before.unit&&number(v.value)!==null&&number(before.value)!==null?[{name:v.label||v.statistic_id,delta:number(v.value)-number(before.value)}]:[];});
+        }
+      }
+      const periodText=calendar?({day:t('Day','Dzień'),week:t('Week','Tydzień'),month:t('Month','Miesiąc'),year:t('Year','Rok')}[period.kind]||''):(period.key==='1d'?this._t('Today'):period.key==='30d'?this._t('30 days'):this._t('7 days'));
+      const status=document.createElement('p');status.className='smart-simple-status';status.setAttribute('role','status');
+      status.textContent=ready?periodText:['idle','loading'].includes(state.status)?t('Loading report…','Wczytywanie raportu…'):t('Report data unavailable','Dane raportu niedostępne');section.append(status);
+      const primary=document.createElement('strong');primary.dataset.smartImport='';primary.textContent=format(energy,'kWh');section.append(primary);
+      const costLine=document.createElement('span');costLine.dataset.smartCost='';costLine.textContent=`${calendar?t('Period cost','Koszt okresu'):this._t(state.cost?.method==='flat_rate_estimate'?'Estimated cost':'Actual cost')}: ${format(cost,currency)}`;
+      if(this._config.variant==='tile'){
+        const icon=document.createElement('ha-icon');icon.setAttribute('icon','mdi:chart-box-outline');icon.setAttribute('aria-hidden','true');section.prepend(icon);
+        const brief=(v,unit)=>{const n=number(v);return n===null?'—':`${n!==0&&Math.abs(n)<0.01?this._formatReportChange(n).replace(/^\+/,''):this._formatNumber(n,2).replace(/([.,]\d*?[1-9])0+$|[.,]0+$/, '$1')}${unit?' '+unit:''}`;};
+        heading.textContent=`${periodText} · ${this._config.title}`;heading.title=heading.textContent;
+        primary.textContent=`${brief(energy,'kWh')} · ${!calendar&&state.cost?.method==='flat_rate_estimate'?'≈ ':''}${brief(cost,pl&&currency==='PLN'?'zł':currency)}`;
+        primary.title=`${periodText}: ${format(energy,'kWh')} · ${format(cost,currency)}`;status.hidden=true;
+      }
+      else{
+        section.append(costLine);const delta=document.createElement('p');delta.dataset.smartComparison='';
+        delta.textContent=comparison?`${({previous:t('vs previous','vs poprzedni okres'),same_weekday:t('vs same weekday','vs ten sam dzień tyg.'),mean7:t('vs 7-period mean','vs średnia z 7'),year_ago:t('vs year ago','vs ubiegły rok')})[comparison.kind||'previous']}: ${this._formatReportChange(number(comparison.delta))} kWh${number(comparison.percent)===null?'':` (${this._formatReportChange(number(comparison.percent))}%)`}${comparison.scope==='common_measurements'?t(' · common measurements',' · wspólne pomiary'):''}`:t('Previous period: no comparable data','Poprzedni okres: brak porównywalnych danych');section.append(delta);
+        const moneyDelta=document.createElement('p');moneyDelta.dataset.smartCostComparison='';
+        const costKind=costComparison?.kind||state.selection?.comparison||snapshot?.context?.comparison_kind||'previous';
+        const costBaseline=({previous:t('vs previous','vs poprzedni okres'),same_weekday:t('vs same weekday','vs ten sam dzień tyg.'),mean7:t('vs 7-period mean','vs średnia z 7'),year_ago:t('vs year ago','vs ubiegły rok')})[costKind];
+        moneyDelta.textContent=costComparison?`${costComparison.total?t('Period cost','Koszt okresu'):t('Usage cost','Koszt zużycia')} ${costBaseline}: ${this._formatReportChange(number(costComparison.delta))} ${costComparison.currency}${number(costComparison.percent)===null?'':` (${this._formatReportChange(number(costComparison.percent))}%)`}${costComparison.scope==='common_measurements'?t(' · common measurements',' · wspólne pomiary'):''}`:`${t('Cost','Koszt')} ${costBaseline}: ${t('no comparable data','brak porównywalnych danych')}`;
+        section.append(moneyDelta);
+        const list=document.createElement('ul');list.setAttribute('aria-label',t('Largest measured changes','Największe zmierzone zmiany'));
+        for(const row of changes.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)||a.name.localeCompare(b.name)).slice(0,3)){const li=document.createElement('li');li.dataset.smartChange='';const name=document.createElement('span');name.textContent=row.name;name.title=row.name;const value=document.createElement('span');value.textContent=`${this._formatReportChange(row.delta)} kWh`;li.append(name,value);list.append(li);}section.append(list);
+      }
+      const open=document.createElement('button');open.type='button';open.className='action';open.dataset.smartOpen='';open.textContent=t('Open report','Otwórz raport');open.addEventListener('click',()=>this._openReportV53(open));if(this._config.variant==='tile'){open.setAttribute('aria-label',open.textContent);open.setAttribute('aria-description',primary.title);open.title=primary.title;open.textContent='';}section.append(open);
+      container.replaceChildren(section);if(focused)open.focus({preventScroll:true});this._syncVariantChrome();
+    }
+
     _renderAnalysisEntry(container) {
       const nav=document.createElement('nav');nav.setAttribute('aria-label',String(languageOf(this._hass)).startsWith('pl')?'Źródło raportu':'Report source');nav.className='toolbar-actions';
-      const pl=String(languageOf(this._hass)).startsWith('pl');
+      const pl=String(languageOf(this._hass)).startsWith('pl'),access=this._calendarAccess().state();
       for(const [key,label]of [['recorded',pl?'Wybrane statystyki':'Selected statistics'],['calendar',pl?'Kalendarz · Energia HA':'Calendar · HA Energy']]) {
-        const b=document.createElement('button');b.type='button';b.className='action';b.dataset.smartAnalysis=key;b.textContent=label;b.setAttribute('aria-pressed',String(this._analysisMode===key));
+        const b=document.createElement('button');b.type='button';b.className='action';b.dataset.smartAnalysis=key;b.textContent=label;if(key==='calendar'){b.hidden=access.status==='ready'&&access.analysis.visible!==true;b.disabled=['idle','loading'].includes(access.status);}b.setAttribute('aria-pressed',String(this._analysisMode===key));
         b.addEventListener('click',()=>{if(this._analysisMode===key)return;this._invalidateEnergyRequest();this._calendarHost?.stop();this._analysisMode=key;this._syncTabs();if(key==='recorded')this._scheduleRefresh(true);});nav.append(b);
       }container.append(nav);
     }
@@ -7887,9 +9117,14 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       this._tariffGuard?.observe();
       if (!this._scaffoldRendered) return;
       const container = this.shadowRoot.getElementById('content'); const state = this._energyViewState || { status: 'idle' };
+      if(this._simpleReport()&&this._analysisMode!=='calendar'){this._renderSimpleReport(container,state);return;}
       if(this._analysisMode==='calendar') {
-        container.replaceChildren();this._renderAnalysisEntry(container);
-        const note=document.createElement('p');note.className='muted';note.textContent=String(languageOf(this._hass)).startsWith('pl')?'Źródła: konfiguracja Energia HA. Dostęp i obliczenia potwierdza HA Tools Email. Wybrane ręcznie statystyki należą do osobnego raportu.':'Sources: HA Energy configuration. HA Tools Email authorizes access and calculates this report. Manually selected statistics belong to the separate report.';container.append(note);
+        container.replaceChildren();if(!this._simpleReport())this._renderAnalysisEntry(container);
+        const note=document.createElement('p');note.className='muted';note.textContent=String(languageOf(this._hass)).startsWith('pl')?'Źródła: konfiguracja Energia HA. Dostęp i obliczenia potwierdza HA Tools Email. Wybrane ręcznie statystyki należą do osobnego raportu.':'Sources: HA Energy configuration. HA Tools Email authorizes access and calculates this report. Manually selected statistics belong to the separate report.';if(!this._simpleReport())container.append(note);
+        const access=this._calendarAccess().state();
+        if(access.status!=='ready'||access.analysis.visible!==true||access.analysis.read!==true){
+          this._calendarHost?.stop();if(this._simpleReport()){this._renderSimpleReport(container,{status:['idle','loading'].includes(access.status)?'loading':'unavailable'},true);return;}const pl=String(languageOf(this._hass)).startsWith('pl');const p=document.createElement('p');p.setAttribute('role','status');p.textContent=access.status==='unsupported'?(pl?'Zainstaluj lub zaktualizuj HA Tools Email, aby użyć kalendarza. Wybrane statystyki pozostają dostępne.':'Install or update HA Tools Email to use the calendar. Selected statistics remain available.'):['idle','loading'].includes(access.status)?(pl?'Sprawdzanie dostępu do kalendarza…':'Checking calendar access…'):(pl?'Nie potwierdzono uprawnień do odczytu kalendarza. Sprawdź dostęp i ponów.':'Calendar read permission could not be confirmed. Check access and retry.');container.append(p);const retry=document.createElement('button');retry.type='button';retry.className='action';retry.textContent=pl?'Ponów':'Retry';retry.addEventListener('click',()=>this._calendarAccessGate.refresh());container.append(retry);return;
+        }
         const mount=document.createElement('section');mount.dataset.smartCalendar='';container.append(mount);
         this._calendarHost ||= createSmartAnalysisHostV53({card:this});this._calendarHost.mount(mount);return;
       }
@@ -8205,7 +9440,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       return JSON.stringify([h?.user?.id, h?.user?.is_admin, h?.user?.is_owner, h?.user?.is_active,
         h?.user?.groups, h?.user?.group_ids, this._exportObjectIdentity(h?.connection), this._exportObjectIdentity(h?.callWS),
         h?.connection?.connected, this._exportConnectionOffline, this._exportBrowserOffline, navigator.onLine,
-        this._connected, this._activeTab, this._period, this._config, h?.language, h?.locale, h?.config]);
+        this._connected, this._activeTab, this._analysisMode, this._period, this._config, h?.language, h?.locale, h?.config]);
     }
 
     _invalidateReviewedExport(unavailable = false) {
@@ -8259,7 +9494,8 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
 
     _reviewedExportContext() {
       const association = this._observeReviewedExportSource();
-      const source = JSON.stringify(this._energyViewState);
+      const calendar=this._analysisMode==='calendar',current=calendar?this._calendarHost?.state():this._energyViewState;
+      const source = JSON.stringify(current);
       if (source !== this._exportObservedData) {
         this._exportObservedData = source;
         this._exportRevision = (this._exportRevision || 0) + 1;
@@ -8271,15 +9507,33 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       const canExport = !!h?.user?.id && h.user.is_active !== false && typeof h.callWS === 'function' && this._activeTab === 'energy';
       return { role: JSON.stringify([h?.user?.is_admin === true,h?.user?.is_owner === true,h?.user?.groups || [],h?.user?.group_ids || []]),
         userId: h?.user?.id || 'unavailable', connectionId:this._exportObjectIdentity(h?.connection || h?.callWS),
-        datasetId:'smart-energy', revision:this._exportRevision || 1, connected, canExport,
-        sourceConfirmed:this._exportSourceAssociation === association && ['ready','partial','no_data'].includes(this._energyViewState?.status) };
+        datasetId:calendar?'smart-calendar-energy':'smart-energy', revision:this._exportRevision || 1, connected, canExport,
+        sourceConfirmed:calendar?current?.status==='ready'&&!!current.snapshot:this._exportSourceAssociation === association && ['ready','partial','no_data'].includes(this._energyViewState?.status) };
     }
 
     _projectReviewedExport(report, includePrivate) {
       return projectSmartReportV3(report, includePrivate === true);
     }
 
+    _buildReviewedCalendarExport({draft,signal}) {
+      if(signal.aborted||!this._reviewedExportContext().sourceConfirmed)return {status:'no_data'};
+      const state=this._calendarHost?.state();
+      if(state?.status!=='ready'||!state.snapshot)return {status:'no_data'};
+      const report=projectSmartCalendarV53(state.snapshot,{includePrivate:draft.includePrivate===true});
+      const serialized=draft.format==='json'?JSON.stringify(report,null,2)+'\n':calendarReportCsvV53(report);
+      if(signal.aborted||!this._reviewedExportContext().sourceConfirmed)return {status:'no_data'};
+      const pl=languageOf(this._hass).startsWith('pl');
+      const included=[pl?'Wybrany raport kalendarzowy: cały okres, pokrycie, przedziały wykresu i danych, grupy oraz porównania.':'Selected calendar report: full period, coverage, chart/data intervals, groups and comparisons.',
+        pl?'Historyczne fakty zastosowanych stawek, stref i opłat; zarejestrowany koszt HA i bieżące ceny jako osobne dane.':'Historical applied rate, zone and fee facts; HA recorded cost and current prices remain separate.',
+        draft.includePrivate?(pl?'Sprawdzone nazwy i identyfikatory źródeł, pokoi, pięter oraz taryf.':'Reviewed source, room, floor and tariff names and identifiers.'):(pl?'Spójne aliasy prywatnych nazw i identyfikatorów.':'Consistent aliases for private names and identifiers.')];
+      const excluded=[pl?'Tokeny, użytkownicy, adresy, surowa konfiguracja, nieprzejrzane profile, szkice i surowe błędy.':'Tokens, users, addresses, raw configuration, unreviewed profiles, drafts and raw errors.',
+        pl?'Pola spoza jawnego schematu, identyfikatory sesji i migawki oraz podpisy źródeł.':'Fields outside the explicit schema, session/snapshot identifiers and source signatures.'];
+      const sourceLimit=pl?'Tylko już wczytana migawka HA Tools Email. Braki pozostają null; bez ekstrapolacji, przeliczania rachunku lub obcinania rekordów. Opłaty stałe dotyczą gospodarstwa za okres. CSV zawiera te same sprawdzone fakty co JSON, po jednym polu w wierszu.':'Already read HA Tools Email snapshot only. Missing values remain null; no extrapolation, bill recalculation or record truncation. Fixed fees belong to the household period. CSV contains the same reviewed facts as JSON, one field per row.';
+      return {serialized,confirmed:true,sourceConfirmed:true,status:report.export_scope.result_state,included,excluded,sourceLimit};
+    }
+
     _buildReviewedExport({draft,signal}) {
+      if(this._analysisMode==='calendar')return this._buildReviewedCalendarExport({draft,signal});
       if (signal.aborted || !this._reviewedExportContext().sourceConfirmed) return {status:'no_data'};
       // No new backend reads: project only the materialized current report.
       const report = this._projectReviewedExport(this._buildExportDocument(this._now()),draft.includePrivate);
@@ -8329,8 +9583,8 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       this._exportDialog?.destroy();
       this._exportDialog = createExportDialog({root:this.shadowRoot,createUiV3,getLanguage:()=>languageOf(this._hass),
         getContext:()=>this._reviewedExportContext(),formats:['json','csv'],defaultFormat:format,
-        defaultFilename:`smart-report-${this._period}.${format}`,
-        policy:{id:'smart-measured-report-v1',allowlistedFields:['schema_version','generated_at','period','source_mode','energy','comparison','export_scope'],
+        defaultFilename:this._analysisMode==='calendar'?`smart-calendar-report.${format}`:`smart-report-${this._period}.${format}`,
+        policy:{id:this._analysisMode==='calendar'?'smart-calendar-report-v1':'smart-measured-report-v1',allowlistedFields:this._analysisMode==='calendar'?['schema_version','report_kind','period','coverage','totals','chart','groups','rates','fees','comparisons','native_pricing','export_scope']:['schema_version','generated_at','period','source_mode','energy','comparison','export_scope'],
           neverInclude:['tokens','users','addresses','raw_config','profiles','drafts','raw_errors']},
         buildPayload:options=>this._buildReviewedExport(options),
         performDownload:({blob,filename,signal})=>{
@@ -8340,7 +9594,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
           try { anchor.click(); } finally { setTimeout(()=>URL.revokeObjectURL(url),1000); }
           return {outcome:'initiated'};
         }});
-      this._exportDialog.open({opener:this.shadowRoot.getElementById(format === 'json' ? 'exportJsonBtn' : 'exportCsvBtn')});
+      this._exportDialog.open({opener:this._analysisMode==='calendar'?this.shadowRoot.querySelector(`[data-smart-calendar-export="${format}"]`):this.shadowRoot.getElementById(format === 'json' ? 'exportJsonBtn' : 'exportCsvBtn')});
     }
 
   }
@@ -8370,6 +9624,11 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       const mode = document.createElement('select'); mode.id = 'cf_source_mode'; mode.style.cssText = 'font:inherit;padding:9px;background:var(--card-background-color,#fff);color:inherit;border:1px solid var(--divider-color,#d9e0ea);border-radius:8px';
       for (const [value, text] of [['dashboard', 'Energy Dashboard'], ['explicit', 'Explicit statistics']]) { const option = document.createElement('option'); option.value = value; option.textContent = translate(this._hass, text); mode.appendChild(option); }
       mode.value = this._config.energy_source_mode === 'explicit' ? 'explicit' : 'dashboard'; modeLabel.appendChild(mode); this.shadowRoot.appendChild(modeLabel);
+      for(const [id,key,label,choices] of [['cf_tap_target','tap_target','Open report in',[['full','This card'],['panel','Full report window']]],['cf_variant','variant','View',[['full','Full'],['compact','Compact'],['tile','Tile']]],['cf_default_tab','default_tab','Initial report',[['energy','Energy'],['automations','Automations'],['system','System']]]]){
+        const wrap=document.createElement('label');wrap.textContent=translate(this._hass,label);const select=document.createElement('select');select.id=id;
+        for(const [value,text] of choices){const option=document.createElement('option');option.value=value;option.textContent=translate(this._hass,text);select.append(option);}
+        select.value=this._config[key]||(key==='variant'?(this._config.compact===true?'compact':'full'):key==='tap_target'?'full':'energy');select.addEventListener('change',()=>{this._config={...this._config,[key]:select.value};this._dispatch();});wrap.append(select);this.shadowRoot.append(wrap);
+      }
       const sources = document.createElement('section'); sources.style.cssText = 'display:grid;gap:12px'; sources.hidden = mode.value !== 'explicit';
       for (const [key, title] of [['energy_total_statistics', 'Total statistic IDs'], ['energy_device_statistics', 'Device statistic IDs'], ['energy_cost_statistics', 'Cost statistic IDs']]) {
         const label = document.createElement('label'); label.textContent = translate(this._hass, title);
@@ -8389,6 +9648,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
       for(const [value,label] of [['auto','Recorded costs, then explicit flat estimate'],['cost_statistics','Recorded monetary statistics'],['flat_rate_estimate','Explicit flat-rate estimate'],['configured_tariff','Configured tariff from measured hours']]){const option=document.createElement('option');option.value=value;option.textContent=translate(this._hass,label);costMode.appendChild(option);}
       costMode.value=['cost_statistics','flat_rate_estimate','configured_tariff'].includes(this._config.energy_cost_mode)?this._config.energy_cost_mode:'auto';costMode.addEventListener('change',()=>{this._config={...this._config,energy_cost_mode:costMode.value};this._dispatch();});costLabel.appendChild(costMode);
       this.shadowRoot.append(costLabel,rateLabel);
+      const helpLabel=document.createElement('label');helpLabel.style.cssText='display:flex;align-items:center;gap:8px;min-height:44px';const help=document.createElement('input');help.type='checkbox';help.id='cf_show_help';help.style.cssText='width:22px;height:22px;min-height:22px';help.checked=this._config.show_help!==false;help.addEventListener('change',()=>{this._config={...this._config,show_help:help.checked};this._dispatch();});helpLabel.append(help,document.createTextNode(translate(this._hass,'Show help')));this.shadowRoot.append(helpLabel);
       mode.addEventListener('change', () => { this._config = { ...this._config, energy_source_mode: mode.value }; sources.hidden = mode.value !== 'explicit'; this._dispatch(); });
       if (focus) {
         const target = this.shadowRoot.getElementById(focus.id);
@@ -8409,6 +9669,6 @@ if(typeof module!=='undefined'&&module.exports)module.exports={createSmartAnalys
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.8.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.9.0 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

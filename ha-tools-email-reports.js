@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.9.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:c00c6d2e4cda1247a8d815014fa9faac4161d6c4c45288b69ec340069570d84f
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:39bdc5c8238de7c68f6c8ddd7bf154de95c1f1a7a3a439bb79d1707423cba6bd
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -6748,6 +6748,7 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
     }
     showDialog(request){
       this.closeDialog();
+      this._cancelFocusRestore?.();
       if(request.closed)return;
       this._request=request;request.owner=this;
       // HA can call showDialog before attaching the element/providing hass.
@@ -6789,8 +6790,41 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
         dialog.showModal();close.focus({preventScroll:true});
       }catch(error){this.closeDialog();throw error;}
     }
+    _restoreFocusAfterHa(opener,sourceCurrent,closedIdentity,closedRoute){
+      this._cancelFocusRestore?.();
+      let pending=true,frame,timer;
+      const events=['show-dialog','pointerdown','keydown','focusin','location-changed','popstate','hashchange','offline'];
+      const cancel=()=>{
+        if(!pending)return;pending=false;
+        for(const name of events)win.removeEventListener(name,cancel,true);
+        if(frame!==undefined)win.cancelAnimationFrame(frame);
+        if(timer!==undefined)win.clearTimeout(timer);
+        if(this._cancelFocusRestore===cancel)this._cancelFocusRestore=null;
+      };
+      this._cancelFocusRestore=cancel;
+      for(const name of events)win.addEventListener(name,cancel,true);
+      // HA's dialog-closed handler blurs synchronously and restores its old
+      // targets after rAF + timer. Register after dispatch, behind that handler.
+      frame=win.requestAnimationFrame(()=>{
+        frame=undefined;
+        if(!pending)return;
+        timer=win.setTimeout(()=>{
+          const allowed=pending&&!this._request&&sourceCurrent()&&route()===closedRoute&&
+            same(identity(this._hass),closedIdentity)&&this._hass?.connection?.connected!==false&&
+            win.navigator.onLine!==false;
+          cancel();if(!allowed)return;
+          let focused=doc.activeElement;
+          while(focused?.shadowRoot?.activeElement)focused=focused.shadowRoot.activeElement;
+          if(focused&&focused!==doc.body&&focused!==doc.documentElement)return;
+          if(opener?.isConnected)opener.focus({preventScroll:true});
+        },0);
+      });
+    }
     closeDialog(){
       const r=this._request;if(!r)return true;
+      this._cancelFocusRestore?.();
+      const restore=this._current(),opener=r.opener,sourceCurrent=r.canRestoreFocus,
+        closedIdentity=r.identity,closedRoute=r.route;
       this._request=null;r.owner=null;r.closed=true;
       this._unsubscribe?.();this._unsubscribe=null;
       this._guard?.dispose();this._guard=null;this._token=null;
@@ -6798,14 +6832,16 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
       this._leave=null;
       this._card?.remove();this._card=null;
       const dialog=this._dialog;this._dialog=null;dialog?.close();dialog?.remove();
-      if(r.opener?.isConnected)r.opener.focus({preventScroll:true});
+      if(r.standalone&&restore&&sourceCurrent()&&opener?.isConnected)opener.focus({preventScroll:true});
       r.opener=null;r.config=null;r.selection=null;r.identity=null;r.applySelection=null;r.createGuard=null;
       this.dispatchEvent(new win.CustomEvent('dialog-closed',{detail:{dialog:tag},bubbles:true,composed:true}));
+      if(!r.standalone&&restore&&sourceCurrent())this._restoreFocusAfterHa(opener,sourceCurrent,closedIdentity,closedRoute);
+      r.canRestoreFocus=null;
       if(r.standalone)this.remove();
       return true;
     }
   });
-  let request=null;
+  let request=null,sourceFocusEpoch=0;
   const close=()=>{
     const r=request;request=null;if(!r)return;
     if(r.owner)r.owner.closeDialog();
@@ -6818,14 +6854,18 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
       if(!host.isConnected||host.preview||host._inReportPanelV53||!h?.user?.id||h.user.is_active===false||
         !h.connection||h.connection.connected===false||typeof h.callWS!=='function'||win.navigator.onLine===false||
         typeof createGuard!=='function'||typeof applySelection!=='function')return false;
-      const config=clone(getConfig()),selection=seed(getSelection?.());
+      const config=clone(getConfig()),selection=seed(getSelection?.()),focusEpoch=sourceFocusEpoch,
+        source=JSON.stringify(getSourceKey()),sourceIdentity=identity(h),sourceRoute=route();
       const available=['energy','automations','system'].filter(tab=>config['show_'+tab]!==false);
       selection.tab=available.includes(selection.tab)?selection.tab:available.includes(config.default_tab)?config.default_tab:available[0]||null;
       let ancestor=host;
       while(ancestor&&ancestor.localName!=='home-assistant')ancestor=ancestor.parentElement||ancestor.getRootNode?.().host;
       const native=typeof ancestor?.provideHass==='function';
       request={config:{...config,type:'custom:ha-smart-reports',variant:'full',compact:false,tap_target:'full',default_tab:selection.tab||'energy'},
-        selection,identity:identity(h),route:route(),source:JSON.stringify(getSourceKey()),
+        selection,identity:sourceIdentity,route:sourceRoute,source,
+        canRestoreFocus:()=>host.isConnected&&sourceFocusEpoch===focusEpoch&&route()===sourceRoute&&
+          JSON.stringify(getSourceKey())===source&&same(identity(getHass()),sourceIdentity)&&
+          getHass()?.connection?.connected!==false&&win.navigator.onLine!==false,
         title:config.title||'Smart Reports',language:String(h.locale?.language||h.language||'en').startsWith('pl')?'pl':'en',
         opener,applySelection,createGuard,closed:false,standalone:!native};
       if(native)host.dispatchEvent(new win.CustomEvent('show-dialog',{bubbles:true,composed:true,
@@ -6845,7 +6885,7 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
       if(request.standalone&&request.owner)request.owner.hass=h;
     },
     close,
-    sourceDisconnected(){if(request?.standalone)close();}
+    sourceDisconnected(){sourceFocusEpoch++;if(request?.standalone)close();}
   };
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={createSmartReportPanelV53};

@@ -19,6 +19,10 @@ jobs:
         run: npm ci
       - name: Behavior, bundle parity and runtime tests
         run: npm test
+      - name: Smart surfaces from the actual generated bundle
+        env:
+          SMART_REPORTS_SOURCE_PATH: ha-tools-email-reports.js
+        run: node --test tests/smart-reports-panel.test.cjs tests/smart-reports-dashboard-placement.test.cjs tests/smart-reports-calendar-analysis.test.cjs tests/smart-reports-calendar-reviewed-export.test.cjs tests/smart-reports-feature-access.test.cjs tests/smart-reports-variants.test.cjs tests/smart-reports-help.test.cjs
       - name: Python persistence tests
         run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Deterministic bundle gate

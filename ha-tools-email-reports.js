@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.9.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:9e680c2aae99993c2708ab72012481b1caedcd901e32d5cb5b602f074a202bc3
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:c00c6d2e4cda1247a8d815014fa9faac4161d6c4c45288b69ec340069570d84f
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -6769,7 +6769,7 @@ function createSmartReportPanelV53({host,getHass,getConfig,getSourceKey,getSelec
       const dialog=doc.createElement('dialog');
       dialog.setAttribute('data-smart-report-panel','');dialog.setAttribute('aria-label',r.title);
       const style=doc.createElement('style');
-      style.textContent='dialog[data-smart-report-panel]{box-sizing:border-box;width:min(1100px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:12px;border:1px solid var(--divider-color,#888);border-radius:16px;background:var(--primary-background-color,#fff);color:var(--primary-text-color,#222);overflow:auto}dialog[data-smart-report-panel]::backdrop{background:rgba(0,0,0,.5)}dialog[data-smart-report-panel] [data-smart-panel-close]{min-width:44px;min-height:44px;font:inherit;float:right}dialog[data-smart-report-panel] :focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}';
+      style.textContent='dialog[data-smart-report-panel]{box-sizing:border-box;width:min(1100px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:12px;border:1px solid var(--divider-color,#888);border-radius:16px;background:var(--primary-background-color,#fff);color:var(--primary-text-color,#222);overflow:auto}dialog[data-smart-report-panel]::backdrop{background:rgba(0,0,0,.5)}dialog[data-smart-report-panel] [data-smart-panel-close]{min-width:44px;min-height:44px;font:inherit;display:block;margin-inline-start:auto;margin-block-end:8px}dialog[data-smart-report-panel] :focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}';
       const close=doc.createElement('button');close.type='button';close.setAttribute('data-smart-panel-close','');
       close.textContent=r.language==='pl'?'Zamknij raport':'Close report';
       close.addEventListener('click',()=>this.closeDialog());
@@ -9038,7 +9038,14 @@ dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw
           getSelection:()=>({tab:this._simpleFullTab||this._activeTab,recordedPeriod:this._period,energyView:this._energyView,analysisMode:this._analysisMode,calendarSelection:this._calendarHost?.selection()}),
           applySelection:(child,seed)=>{if(seed.tab)child._activeTab=seed.tab;if(seed.recordedPeriod)child._period=seed.recordedPeriod;if(seed.energyView)child._energyView=seed.energyView;if(seed.analysisMode)child._analysisMode=seed.analysisMode;
             if(seed.calendarSelection)child._calendarHost=createSmartAnalysisHostV53({card:child,initialSelection:seed.calendarSelection});},createGuard:createTariffGuardV3});
-        return this._reportPanelV53.open(opener);
+        // Ordinary hass refreshes replace the small card's button while the
+        // independently owned dialog stays open. Resolve only this card's
+        // current opener when returning focus.
+        const source=this;
+        return this._reportPanelV53.open({
+          get isConnected(){return source.isConnected;},
+          focus(options){source.shadowRoot.querySelector('[data-smart-open]')?.focus(options);}
+        });
       }
       this._simpleExpanded=true;if(this._availableTabs().includes(this._simpleFullTab))this._activeTab=this._simpleFullTab;this._syncTabs();this.shadowRoot.querySelector('[data-smart-back]')?.focus({preventScroll:true});return true;
     }

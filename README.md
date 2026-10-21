@@ -31,7 +31,7 @@ administrator dashboard placement with a real preview, confirmed save and exact
 session Undo. Missing measurements, historical prices and incompatible cost
 comparisons remain unavailable. Names and IDs use aliases in exports by default.
 See the [Smart Reports guide](https://github.com/MacSiem/ha-smart-reports#optional-ha-energy-calendar)
-for source boundaries, layouts, options and export schema 4.
+for source boundaries, layouts, options and export schema 4. A [Polish quick-start guide](docs/SMART-REPORTS.pl.md) is also included.
 
 ## How it works
 
@@ -53,8 +53,9 @@ want by their own tag:
 3. **`ha-smart-reports`** — an on-demand energy / automations / system-health
    report. Energy periods use exact Recorder `change` statistics declared by
    Home Assistant Energy (or explicit statistic IDs); Automations and System
-   remain current-state operational summaries. It **does not** send email and
-   does not need the integration below.
+   remain current-state operational summaries. It **does not** send email.
+   Selected statistics, Automations and System work without the Email backend;
+   the optional HA Energy calendar requires HA Tools Email 2.4.2+.
 
 **`ha-log-email` (and Energy Optimizer's `ha-energy-email`) require the separate [HA Tools
 Email](https://github.com/MacSiem/ha-tools-email-integration) integration**

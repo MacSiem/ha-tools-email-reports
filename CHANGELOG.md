@@ -4,7 +4,7 @@
 
 - Bundle the exact Smart Reports 4.3.0 source, including the optional authorized HA Energy calendar, historical rates and scoped cost comparisons, room/floor/device views and reviewed calendar exports.
 - Add Smart Tile/Compact/Full layouts, selected initial tab, an independently owned full report window, safe native dashboard previews/Add/Undo and Polish/English full-view help.
-- Keep standalone Recorder reports and existing Log Email behavior. Both standalone Smart and this bundle provide the same Smart implementation in either resource load order.
+- Keep standalone Recorder reports and existing Log Email behavior. Both standalone Smart and this bundle provide the same Smart implementation in either resource load order. Preserve report-window width and current-opener focus, and keep narrow tab labels whole. Include a current Polish setup and usage guide.
 
 ## [4.8.0] - 2026-10-17
 

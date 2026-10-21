@@ -186,7 +186,7 @@ test('W8 disclosure state survives repaint and clears when the user context chan
 test('Bundle source pins match Smart 4.3 and the unchanged Energy compatibility wrapper', () => {
   const { createHash } = require('node:crypto');
   for (const [file, hash] of [
-    ['ha-smart-reports.js', '9e680c2aae99993c2708ab72012481b1caedcd901e32d5cb5b602f074a202bc3'],
+    ['ha-smart-reports.js', 'c00c6d2e4cda1247a8d815014fa9faac4161d6c4c45288b69ec340069570d84f'],
     ['ha-energy-email.js', 'e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5']
   ]) assert.equal(createHash('sha256').update(readFileSync(join(__dirname, '..', file))).digest('hex'), hash);
 });

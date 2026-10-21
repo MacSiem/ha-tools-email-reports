@@ -220,3 +220,7 @@ test('generated bundle handles missing Energy preferences without hiding Recorde
   assert.match(result.stdout, /# tests 7(?:\r?\n|$)/);
   assert.match(result.stdout, /# fail 0(?:\r?\n|$)/);
 });
+
+for(const [label,files]of [['standalone',[VENDORED]],['bundle',[BUNDLE]],['bundle first',[BUNDLE,VENDORED]],['standalone first',[VENDORED,BUNDLE]]])test(`active ${label} Smart exposes calendar and independent Recorder entry`,()=>{
+ const result=loadOrder(files);try{const w=result.dom.window,card=w.document.createElement('ha-smart-reports');w.document.body.append(card);assert.ok(card.shadowRoot.querySelector('[data-smart-analysis="calendar"]'),'winning custom element must implement the current calendar consumer');assert.ok(card.shadowRoot.querySelector('[data-smart-analysis="recorded"]'));assert.equal(card.shadowRoot.querySelector('#periodSelect').value,'7d');assert.equal(result.smartMetadataCount,1);}finally{result.dom.window.close();}
+});

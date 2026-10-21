@@ -1,5 +1,11 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.9.0] - 2026-10-21
+
+- Bundle the exact Smart Reports 4.3.0 source, including the optional authorized HA Energy calendar, historical rates and scoped cost comparisons, room/floor/device views and reviewed calendar exports.
+- Add Smart Tile/Compact/Full layouts, selected initial tab, an independently owned full report window, safe native dashboard previews/Add/Undo and Polish/English full-view help.
+- Keep standalone Recorder reports and existing Log Email behavior. Both standalone Smart and this bundle provide the same Smart implementation in either resource load order.
+
 ## [4.8.0] - 2026-10-17
 
 - Summarize retained log source, selected period, observed range and honest coverage; keep full limitations in collapsed native details and missing/partial warnings visible.

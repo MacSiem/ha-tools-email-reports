@@ -7,7 +7,7 @@ HACS plugin. The log card sends through the separate **HA Tools Email**
 integration; Smart Reports reads Home Assistant Energy/Recorder data and does
 not send email.
 
-> **Energy Email moved to Energy Optimizer (4.5.0).** `custom:ha-energy-email`
+> **Energy Email is maintained in Energy Optimizer.** `custom:ha-energy-email`
 > is now maintained in [Energy Optimizer](https://github.com/MacSiem/ha-energy-optimizer)
 > (HACS default catalog). This plugin keeps a thin wrapper so existing cards
 > keep working: with Energy Optimizer installed they render its card; without
@@ -19,9 +19,19 @@ Part of the [HA Tools](https://github.com/MacSiem) ecosystem.
 
 Version 4.6.1 immediately clears accepted Smart measurements and device details when the HA user, connection or timezone changes, including disconnection. Locale and theme changes retain current measurements.
 
-The generated bundle includes the exact Smart Reports 4.2.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
+The generated bundle includes the exact Smart Reports 4.3.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
 
 Log Email 4.8.0 shows readable local dates in log rows, next server instants, SMTP history, browser snapshots and preview headers. The display timezone defaults to your device timezone; your explicit Home Assistant profile choice of the HA timezone and your date/clock preferences are respected. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates. Schedules and previews remain usable when Lovelace reattaches a card after a layout change.
+
+Smart Reports 4.3.0 adds an optional HA Energy calendar with historical tariffs,
+room/floor/device views and reviewed calendar exports through the current HA
+Tools Email backend (2.4.2+). Selected Recorder statistics remain independent.
+Choose Tile, Compact or Full, a default tab and a full report window. Full offers
+administrator dashboard placement with a real preview, confirmed save and exact
+session Undo. Missing measurements, historical prices and incompatible cost
+comparisons remain unavailable. Names and IDs use aliases in exports by default.
+See the [Smart Reports guide](https://github.com/MacSiem/ha-smart-reports#optional-ha-energy-calendar)
+for source boundaries, layouts, options and export schema 4.
 
 ## How it works
 
@@ -93,7 +103,7 @@ advance the scheduled digest's last-seen keys. Future or missing timestamps are
 excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
 report; aggregate counts are not exact events or complete historical coverage.
 
-This README documents the 4.8.0 bundle. Check the installed bundle version when
+This README documents the 4.9.0 bundle. Check the installed bundle version when
 comparing it with an older release; update through HACS and reload the browser.
 
 ### What is automatic vs. manual

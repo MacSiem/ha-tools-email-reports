@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.9.0
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.0 sha256:5a6d878c92e9c401bd5bbedbb99c5cde6fd910234d7b17e912f96cbee0dd0e48
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:eb9aa7a8ca2762b3596a21f1d09737ba68c14c3de7363fc4c765e8578c65727c
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:a4d6123cfe707313e405a5683b4661afba33465b9ce74662df70414efcadbcf9
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -6651,7 +6651,8 @@ function createSmartAnalysisHostV53({card,initialSelection={}}) {
  const exportButtons=new Map();
  let selection={period:'day',comparison:'previous'},options={level:'areas',view:'chart',selected:null};
  if(['day','week','month','year'].includes(initialSelection.period))selection.period=initialSelection.period;
- const allowed=selection.period==='day'?['previous','same_weekday','mean7']:['previous','year_ago'];
+ const allowedComparisons=period=>period==='day'?['previous','same_weekday','mean7']:['previous','year_ago'];
+ const allowed=allowedComparisons(selection.period);
  if(allowed.includes(initialSelection.comparison))selection.comparison=initialSelection.comparison;
  if(typeof initialSelection.anchor==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(initialSelection.anchor)&&Number.isFinite(Date.parse(initialSelection.anchor+'T12:00:00Z'))&&new Date(initialSelection.anchor+'T12:00:00Z').toISOString().slice(0,10)===initialSelection.anchor)selection.anchor=initialSelection.anchor;
  const context=()=>[card._hass?.connection,card._hass?.user?.id,card._hass?.user?.is_active,card._hass?.user?.is_admin,card._hass?.connected,card._hass?.config?.time_zone,card._hass?.connection?.connected,card._hass?.callWS,JSON.stringify([card._hass?.user?.is_owner,card._hass?.user?.groups,card._hass?.user?.group_ids])];
@@ -6685,7 +6686,7 @@ function createSmartAnalysisHostV53({card,initialSelection={}}) {
   const key=el.dataset.analysisAction,value=el.matches('select,input')?el.value:el.dataset.analysisValue;
   if(key==='retry'){card._calendarAccessGate?.refresh();binding.invalidate();started=false;void read();return;}
   if(key==='section'&&['overview','comparison','rates'].includes(value))section=value;
-  else if(key==='period'&&['day','week','month','year'].includes(value)){selection.period=value;if(value!=='day'&&['same_weekday','mean7'].includes(selection.comparison))selection.comparison='previous';}
+  else if(key==='period'&&['day','week','month','year'].includes(value)){selection.period=value;if(!allowedComparisons(value).includes(selection.comparison))selection.comparison='previous';}
   else if(key==='anchor'){if(value)selection.anchor=value;else delete selection.anchor;}
   else if(key==='comparison')selection.comparison=value;
   else if(key==='level'&&['areas','floors','devices'].includes(value))options.level=value;

@@ -115,7 +115,7 @@ comparing it with an older release; update through HACS and reload the browser.
 | Integration-presence detection + install banner | Choosing server calendar schedules (backend 2.2+); reviewing existing automation paths to avoid duplicates |
 | Error/warning digest from `system_log` (`ha-log-email`) | Choosing log filters and manual sends; configuring a tariff and currency only for energy reports |
 | Automation/system operational summary (`ha-smart-reports`) | Selecting explicit Smart Reports total/device/cost statistic roles |
-| Recorder-backed local-calendar energy periods (`ha-smart-reports`) | Reviewing and saving Smart Reports JSON / CSV locally |
+| Recorder-backed trailing local-date windows (`ha-smart-reports`) | Selecting the separate backend Calendar; reviewing and saving Smart Reports JSON / CSV locally |
 
 ## Screenshots
 
@@ -210,7 +210,9 @@ Dashboard preferences. It does not auto-detect energy entities from names or
 fall back to current entity states. If no grid import statistic is configured,
 the card shows a configuration state.
 
-Use explicit roles when the report should use a different exact set:
+Use explicit roles when Selected statistics should use a different exact set.
+Every entity/statistic ID below is synthetic; replace it with an existing
+recorded statistic from your installation:
 
 ```yaml
 type: custom:ha-smart-reports
@@ -234,12 +236,46 @@ Home Assistant configuration. Without them, a flat estimate requires
 both an explicit finite `energy_price >= 0` and a `currency`; Smart Reports
 has no default tariff.
 
-Today / 7 days / 30 days are local-calendar windows in Home Assistant's
-configured timezone. Missing, invalid, unsupported or incomplete required
-statistics are surfaced with per-source status/reason evidence and combined
-totals/cost are withheld. The export dialog previews filename, format, included and excluded fields before Save. JSON uses schema 2, or schema 3 for previous-period comparison, and includes both selected ranges and full device snapshot regardless of search. CSV preserves available status and provenance; CSV neutralizes formula-leading labels. Private fields default off. The visual
-editor exposes safe Title and Currency fields, tab selection is per card
-instance, and disabling every section performs no Home Assistant requests.
+Selected statistics use Home Assistant's time zone. Today starts at local
+midnight; 7 days includes today and six previous local dates; 30 days includes
+today and 29 previous local dates. All end at the last completed UTC hour.
+These are trailing local-date windows, not a calendar week or month, and are
+not fixed 168/720-hour intervals around DST. **Compare previous local-calendar period** is off
+by default and shifts both local boundaries back by 1, 7 or 30 days.
+
+The separate **Calendar · HA Energy** report uses calendar days,
+Monday-start weeks, months and years. For Day, references are Previous period,
+Same weekday and Mean of 7 previous days. For Week, Month and Year, they are
+Previous period and Same period last year. Calendar uses HA Energy sources;
+`energy_source_mode: explicit` affects Selected statistics only. Choose the
+calendar date, period and reference in Full Energy, not through YAML options.
+
+Missing, invalid, unsupported or incomplete required statistics retain
+per-source status and coverage. Complete totals and costs stay unavailable
+when their required inputs are missing. A zero comparison baseline has no
+percentage; today's flat rate does not create a historical Recorder cost
+comparison.
+
+The export dialog previews filename, format, included/excluded fields and
+complete content before Save. Selected-statistics JSON uses schema 2, or schema
+3 with comparison; its CSV includes metric rows and a `reviewed_full_document`
+row with the complete JSON. Calendar uses schema 4 (`calendar_energy`), and its
+CSV uses `row_type,path,value_type,value`, one typed field per row. Both retain
+the loaded report regardless of search, measured zero and missing `null`.
+Private fields default off. Parse CSV quoting before interpreting embedded JSON
+or typed Calendar fields; formula-leading cells are neutralized.
+
+Calendar's backend enforces its `energy_analysis` read policy and HA resource
+access. Household users may read and export locally when allowed; administrator
+settings, shared-tariff writes and email sending remain separate capabilities.
+Hiding a tab is presentation, not server ACL. Selected statistics use HA
+Recorder permissions.
+
+The visual editor exposes Title, Currency, Source mode, Open report in, View,
+Initial report, explicit total/device/cost IDs, Cost mode, Flat rate per kWh and
+Show help. `default_tab` selects the initial enabled full-report tab, not
+Calendar. Tab selection is per card instance; disabling all three report
+sections shows a configuration message and makes no HA data requests.
 
 Energy Email options are documented in the
 [Energy Optimizer README](https://github.com/MacSiem/ha-energy-optimizer).
@@ -247,10 +283,12 @@ Energy Email options are documented in the
 ## FAQ
 
 **Do I have to configure anything?**
-`ha-smart-reports` does not need the email integration, but its default Energy
-view expects a configured Home Assistant Energy grid-import statistic. It can
-instead use explicit statistic roles as shown above. `ha-log-email` needs the HA Tools Email integration and its SMTP settings saved
-once.
+`ha-smart-reports` Selected statistics work without the Email integration.
+That default report expects a configured Home Assistant Energy grid-import
+statistic, or explicit statistic roles as shown above. The separate
+**Calendar · HA Energy** report requires a compatible HA Tools Email backend
+and confirmed access; it does not require SMTP. `ha-log-email` needs the HA Tools
+Email integration and its SMTP settings saved once.
 
 **What happens if the HA Tools Email integration isn't installed?**
 `ha-log-email` shows an inline banner explaining the
@@ -304,7 +342,12 @@ The cards read Home Assistant logs and configured energy statistics. Reports and
 
 See [SECURITY.md](SECURITY.md) for safe vulnerability reporting and [NOTICE](NOTICE) for licensing notices.
 
-Smart Reports energy ranges end at the last completed Recorder UTC hour. Missing boundary hours or buckets extending beyond the range withhold the total and estimated cost. Before the first completed hour, Today has an empty range and no data, including timezones with fractional-hour offsets. The exported range matches the report exactly.
+Smart Reports Selected-statistics ranges end at the last completed Recorder
+UTC hour. Missing boundary hours or buckets extending beyond the range withhold
+the complete total and estimated cost. Before the first completed hour, Today
+has an empty range and no data, including timezones with fractional-hour
+offsets. Calendar supplies its own calendar interval, coverage and schema-4
+export. In both modes, the exported range matches the accepted report.
 
 Log Email loads when the card is mounted and an administrator is online. A login,
 reconnection or remount resumes an unfinished first read; stale results cannot

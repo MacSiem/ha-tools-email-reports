@@ -39,3 +39,12 @@ test('query persists across log tabs and does not enter server mail selection',t
  card._activeTab='errors';card._render();assert.equal(card._retainedModel().rows[0].level,'ERROR');assert.equal(card._retainedModel().undated.length,1);
  const selection=card._mailSelection('daily');assert.equal('search' in selection,false);assert.equal(JSON.stringify(selection).includes('HiddenNeedle'),false);
 });
+
+for(const source of ['ha-log-email.js','ha-tools-email-reports.js'])test(`${source}: full dated and undated retained details explicitly allow native text selection`,t=>{
+ const {dom,card}=fixture('en',source);t.after(()=>dom.window.close());
+ const now=Date.parse('2026-11-03T01:00:00Z');
+ card._retainedLogs=card._groupRetainedLogs([{id:'dated',name:'fixture',level:'ERROR',timestamp:now/1000,message:['D'.repeat(400)]},{id:'undated',name:'fixture',level:'ERROR',message:['U'.repeat(400)]}],now);
+ card._render();const details=[...card.shadowRoot.querySelectorAll('details[data-log-disclosure-key] pre')];
+ assert.equal(details.length,2);
+ for(const pre of details){assert.equal(pre.style.userSelect,'text');assert.match(pre.getAttribute('style'),/-webkit-user-select\s*:\s*text/);}
+});

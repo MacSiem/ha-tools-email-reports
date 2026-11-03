@@ -1,5 +1,9 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.9.1] - 2026-11-03
+
+- Show concise Log Digest diagnostics with a full local disclosure and keep undated entries separate from selected-period counts.
+
 ## [4.9.0] - 2026-10-21
 
 - Bundle the exact Smart Reports 4.3.0 source, including the optional authorized HA Energy calendar, historical rates and scoped cost comparisons, room/floor/device views and reviewed calendar exports.

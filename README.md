@@ -21,7 +21,9 @@ Version 4.6.1 immediately clears accepted Smart measurements and device details 
 
 The generated bundle includes the exact Smart Reports 4.3.0 source. With both repositories installed, either load order provides the same current report behavior; no extra standalone import is required to update the bundled card. Both resources must contain the same Smart version: an older bundle can register the card before a newer standalone file. Update both products or retain one Smart-providing resource, then reload the browser.
 
-Log Email 4.8.0 shows readable local dates in log rows, next server instants, SMTP history, browser snapshots and preview headers. The display timezone defaults to your device timezone; your explicit Home Assistant profile choice of the HA timezone and your date/clock preferences are respected. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates. Schedules and previews remain usable when Lovelace reattaches a card after a layout change.
+Log Email 4.8.1 shows readable local dates in log rows, next server instants, SMTP history, browser snapshots and preview headers. The display timezone defaults to your device timezone; your explicit Home Assistant profile choice of the HA timezone and your date/clock preferences are respected. Server calendar zones and raw timestamps remain available in details; the server-composed email body keeps its own calendar. Retained log coverage has one summary with full limitations in a native disclosure. Legacy automations start collapsed when none is enabled; only enabled legacy paths warn about possible duplicates. Schedules and previews remain usable when Lovelace reattaches a card after a layout change.
+
+Long diagnostic messages show a bounded, meaningful summary; open the local disclosure for the full retained detail. Entries without a usable timestamp remain visible separately and are not counted as events in the selected period.
 
 Smart Reports 4.3.0 adds an optional HA Energy calendar with historical tariffs,
 room/floor/device views and reviewed calendar exports through the current HA
@@ -104,7 +106,7 @@ advance the scheduled digest's last-seen keys. Future or missing timestamps are
 excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
 report; aggregate counts are not exact events or complete historical coverage.
 
-This README documents the 4.9.0 bundle. Check the installed bundle version when
+This README documents the 4.9.1 bundle. Check the installed bundle version when
 comparing it with an older release; update through HACS and reload the browser.
 
 ### What is automatic vs. manual

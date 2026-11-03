@@ -1,8 +1,42 @@
-/* HA Tools split — ha-log-email v4.8.0 (2026-10-17) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.8.1 (2026-10-17) — single-tool standalone repo */
 (function() {
 'use strict';
 
 const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+// Presentation only: preserve the full source in a native disclosure.
+function _logDigestExcerptP2(value, limit = 320) {
+  const text = String(value ?? '');
+  if (text.length <= limit) return text;
+  const priority = [], secondary = [];
+  const pattern = /(["'])(reason|cause|error|detail|message)\1\s*:\s*("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gi;
+  for (const match of text.matchAll(pattern)) {
+    if (match[3].length > 1000) continue;
+    try { const raw = match[3], v = (raw[0] === '"' ? JSON.parse(raw) : raw.slice(1,-1).replace(/\\(['\\])/g, '$1')).trim(); if (v) { const target = /^(reason|cause|error)$/i.test(match[2]) ? priority : secondary; if (target.length < 3) target.push(match[2] + ': ' + Array.from(v).slice(0,180).join('')); } } catch (_) {}
+  }
+  const parts = [...priority, ...secondary].slice(0,3);
+  const scalar = value => value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, pair => pair.length === 2 ? pair : '\uFFFD');
+  if (parts.length) {
+    const lines = text.trimEnd().split(/\r?\n/), first = lines[0].trim(), last = lines.at(-1).trim();
+    // Preserve the terminal exception separately from a nested structured reason.
+    const terminal = text.includes('Traceback') && /^[A-Za-z_][\w.]*\s*:/.test(last) ? last : '';
+    const chosen = terminal ? [Array.from(parts[0]).slice(0,110).join(''), Array.from(terminal).slice(0,130).join('')] : parts;
+    if (first && first.length <= 160 && !/^(\{|\[|Traceback)/.test(first)) chosen.unshift(terminal ? Array.from(first).slice(0,60).join('') : first);
+    return scalar(Array.from(chosen.join(' · ')).slice(0,limit).join('')) + ' …';
+  }
+  const half = Math.floor((limit-3)/2), chars = Array.from(text);
+  return scalar(chars.slice(0,half).join('') + ' … ' + chars.slice(-half).join(''));
+}
+
+function _logDigestFullP2(row) {
+  const text = value => {
+    if (Array.isArray(value)) return value.map(text).join(' ');
+    if (value && typeof value === 'object') { try { return JSON.stringify(value); } catch (_) { return String(value); } }
+    return String(value ?? '');
+  };
+  const message = text(row.message), exception = text(row.exception);
+  return message + (exception && !message.includes(exception) ? '\n' + exception : '');
+}
 
 // Keep the 200 UTF-16-unit limit without emitting half of a valid pair.
 // Raw JSON strings can also contain lone surrogates; replace those for UTF-8 MIME.
@@ -766,7 +800,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.8.0
+ * HA Log Email Card v4.8.1
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1582,8 +1616,9 @@ class HALogEmail extends HTMLElement {
     const groups = new Map();
     for (const raw of logs) {
       if (!raw || typeof raw !== 'object') continue;
-      const stamp = typeof raw.timestamp === 'number' && Number.isFinite(raw.timestamp) ? raw.timestamp * 1000 : NaN;
-      if (!Number.isFinite(stamp) || !Number.isFinite(new Date(stamp).getTime()) || stamp > now) continue;
+      const parsedStamp = typeof raw.timestamp === 'number' && Number.isFinite(raw.timestamp) ? raw.timestamp * 1000 : NaN;
+      const stamp = Number.isFinite(parsedStamp) && Number.isFinite(new Date(parsedStamp).getTime()) ? parsedStamp : null;
+      if (stamp !== null && stamp > now) continue;
       const supplied = ['id', 'entry_id', 'key', 'hash'].find(key =>
         typeof raw[key] === 'string' || (typeof raw[key] === 'number' && Number.isFinite(raw[key])));
       const backendIdentity = supplied ? raw[supplied] : null;
@@ -1595,28 +1630,28 @@ class HALogEmail extends HTMLElement {
         Array.isArray(raw.source) ? raw.source.map(value => String(value)).join(':') : typeof raw.source === 'string' ? raw.source : ''].filter(Boolean).join(' · ') || 'unknown';
       const count = Number.isSafeInteger(raw.count) && raw.count >= 0 ? raw.count : null;
       const first = typeof raw.first_occurred === 'number' && Number.isFinite(raw.first_occurred) ? raw.first_occurred * 1000 : stamp;
-      const firstStamp = first <= stamp && Number.isFinite(new Date(first).getTime()) ? first : stamp;
+      const firstStamp = stamp !== null && first <= stamp && Number.isFinite(new Date(first).getTime()) ? first : stamp;
       const existing = groups.get(identity);
       if (existing) {
         // A repeated stable backend row is the same HA aggregate, not another occurrence.
         existing.count = existing.count == null || count == null ? null : supplied ? Math.max(existing.count, count) : existing.count + count;
         if (!Number.isSafeInteger(existing.count)) existing.count = null;
-        if (supplied && stamp >= existing.stamp) {
+        if (supplied && stamp !== null && (existing.stamp === null || stamp >= existing.stamp)) {
           existing.sourceKey = sourceKey;
           existing.domain = source;
           existing.level = typeof raw.level === 'string' ? raw.level : 'unknown';
-          existing.message = Array.isArray(raw.message) ? raw.message.map(value => String(value)).join(' ') : String(raw.message ?? '');
+          existing.message = _logDigestFullP2(raw);
         }
-        existing.firstStamp = Math.min(existing.firstStamp, firstStamp);
-        existing.stamp = Math.max(existing.stamp, stamp);
-        existing.when = new Date(existing.stamp).toISOString();
+        if (firstStamp !== null) existing.firstStamp = existing.firstStamp === null ? firstStamp : Math.min(existing.firstStamp, firstStamp);
+        if (stamp !== null) existing.stamp = existing.stamp === null ? stamp : Math.max(existing.stamp, stamp);
+        existing.when = existing.stamp === null ? '' : new Date(existing.stamp).toISOString();
       } else {
         groups.set(identity, { identity, backendIdentity, sourceKey, domain: source, level: typeof raw.level === 'string' ? raw.level : 'unknown',
-          message: Array.isArray(raw.message) ? raw.message.map(value => String(value)).join(' ') : String(raw.message ?? ''),
-          count, stamp, firstStamp, when: new Date(stamp).toISOString() });
+          message: _logDigestFullP2(raw),
+          count, stamp, firstStamp, when: stamp === null ? '' : new Date(stamp).toISOString() });
       }
     }
-    return [...groups.values()].sort((a, b) => b.stamp - a.stamp || a.identity.localeCompare(b.identity));
+    return [...groups.values()].sort((a, b) => (b.stamp ?? -Infinity) - (a.stamp ?? -Infinity) || a.identity.localeCompare(b.identity));
   }
 
   _logEntryCap() {
@@ -1640,11 +1675,12 @@ class HALogEmail extends HTMLElement {
       return this._filterLogModel(rows, filters, tab, { period, cap, partial: true, source: data && !data.unavailable ? 'sensor.ha_log_summary' : 'system_log/list / sensor.ha_log_summary (unavailable)',
         currentOnly: true, unavailable: !canShow, first: null, last: null });
     }
-    const retained = this._retainedLogs.filter(row => row.stamp <= now);
+    const undated = this._retainedLogs.filter(row => row.stamp === null);
+    const retained = this._retainedLogs.filter(row => row.stamp !== null && row.stamp <= now);
     const range = retained.flatMap(row => [row.firstStamp, row.stamp]).filter(stamp => Number.isFinite(stamp) && stamp <= now);
     const candidates = retained.filter(row => row.stamp >= now - duration[period]);
     return this._filterLogModel(candidates, filters, tab, { period, cap, partial: false, source: 'system_log/list', currentOnly: false,
-      unavailable: false, first: range.length ? Math.min(...range) : null, last: range.length ? Math.max(...range) : null });
+      unavailable: false, undated, first: range.length ? Math.min(...range) : null, last: range.length ? Math.max(...range) : null });
   }
 
   _filterLogModel(candidates, filters, tab, metadata) {
@@ -1653,9 +1689,11 @@ class HALogEmail extends HTMLElement {
       (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
     const rows = filtered.slice(0, metadata.cap);
     const occurrences = rows.some(row => row.count == null) ? null : rows.reduce((sum, row) => sum + row.count, 0);
-    return { ...metadata, rows, unique: rows.length, occurrences: Number.isSafeInteger(occurrences) ? occurrences : null,
-      filteredUnique: filtered.length, sources: [...new Map(candidates.map(row => [row.sourceKey, row.domain])).entries()],
-      severities: [...new Set(candidates.map(row => row.level))].sort() };
+    const undated = (metadata.undated || []).filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
+      (filters.source === 'all' || row.sourceKey === filters.source) && (tab !== 'errors' || ['ERROR','CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+    return { ...metadata, undated, rows, unique: rows.length, occurrences: Number.isSafeInteger(occurrences) ? occurrences : null,
+      filteredUnique: filtered.length, sources: [...new Map([...candidates, ...(metadata.undated || [])].map(row => [row.sourceKey, row.domain])).entries()],
+      severities: [...new Set([...candidates, ...(metadata.undated || [])].map(row => row.level))].sort() };
   }
 
   _ensureInitialLogData() {
@@ -3037,11 +3075,12 @@ ${_LOG_RECORD_CSS}
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
         `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'} (${model.unique})</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
-        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${_esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
+        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${i === 3 && String(value ?? '').length > 320 ? `<span data-log-excerpt>${_esc(_logDigestExcerptP2(value))}</span><details data-log-disclosure-key="log-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%">${_esc(value)}</pre></details>` : _esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
       <p data-log-source-summary>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)} · ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)} · ${pl ? 'Zaobserwowany zakres' : 'Observed retained range'}: ${_esc(rangeDate(model.first))} — ${_esc(rangeDate(model.last))} · ${pl ? 'Pokazano / limit' : 'Shown / cap'}: ${model.unique} / ${model.cap} · ${pl ? 'Strefa widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${model.unavailable ? (pl ? 'Dane niedostępne' : 'Data unavailable') : model.partial ? (pl ? 'Bieżący odczyt sensora; brak pokrycia historii' : 'Current sensor snapshot; historical coverage unavailable') : (pl ? 'Zachowane agregaty; kompletność historii nieustalona' : 'Retained aggregates; completeness of history unknown')}</p>
       ${model.occurrences == null && !model.unavailable ? `<p role="status">${pl ? 'Liczba wystąpień (HA) nieznana.' : 'HA occurrence count unknown.'}</p>` : ''}
       ${model.partial ? `<p role="status">${!this._logData || this._logData.unavailable ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.')}</p>` : ''}
+      ${model.undated?.length ? `<details data-log-disclosure-key="undated"><summary>${pl ? 'Nieznany czas · poza liczbami okresu' : 'Unknown time · outside period counts'} (${model.undated.length})</summary><ul>${model.undated.slice(0,model.cap).map(row => `<li>${_esc(row.level)} · ${_esc(row.domain)} · ×${_esc(row.count ?? '—')}: <span>${_esc(_logDigestExcerptP2(row.message))}</span>${row.message.length > 320 ? `<details data-log-disclosure-key="undated-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${_esc(row.message)}</pre></details>` : ''}</li>`).join('')}</ul>${model.undated.length>model.cap?`<p>${pl ? 'Pokazano' : 'Shown'} ${model.cap}/${model.undated.length}</p>`:''}</details>` : ''}
       <details data-log-disclosure-key="retained"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>
       <p class="log-filter-scope">${pl ? 'Filtry dotyczą tylko tej listy. Nie zmieniają podglądu emaila, wysyłki ani harmonogramów.' : 'Filters apply only to this list. They do not change the email preview, sends or schedules.'}</p>
       <p>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)}. ${pl ? 'Limit' : 'Limit'} max_entries: ${model.cap}. ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)}.</p>
@@ -3123,7 +3162,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.8.0 registered');
+  console.log('[ha-log-email] v4.8.1 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

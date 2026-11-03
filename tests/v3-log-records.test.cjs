@@ -140,3 +140,13 @@ test('two actual browser reads at the same timestamp retain independent disclosu
   assert.equal(JSON.stringify(f.card._logHistory),before);
  }finally{f.close();}
 });
+test('large retained JSON keeps a useful bounded mobile summary and full local disclosure',async()=>{
+ const f=await setup('overview','pl');try{
+  const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/log-p2-mixed.json'),'utf8'))[1];fixture.timestamp=NOW/1000-1;fixture.first_occurred=NOW/1000-60;
+  f.card._retainedLogs=f.card._groupRetainedLogs([fixture],NOW);f.card._render();f.resize(390);
+  const outer=f.root.querySelector('.ht-log-records > details'),summary=outer.querySelector('summary strong');
+  assert.match(summary.textContent,/DEVICE_OFFLINE_SYNTHETIC/);assert.ok(summary.textContent.length<500);
+  outer.open=true;const inner=outer.querySelector('dd details[data-log-disclosure-key^="log-message-"]');assert.ok(inner);assert.equal(inner.open,false);inner.open=true;
+  assert.match(inner.querySelector('pre').textContent,/x{1000}/);f.resize(900);assert.equal(f.root.querySelector('td details[data-log-disclosure-key^="log-message-"]').open,true);
+ }finally{f.close();}
+});

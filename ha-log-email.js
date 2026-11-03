@@ -2936,7 +2936,7 @@ ${_LOG_RECORD_CSS}
     const updateSearch = event => {
       if (event.isComposing) return;
       this._logFilters = { ...this._logFilters, search: event.target.value };
-      this._render();
+      this._renderSearchResults();
     };
     search?.addEventListener('input', updateSearch);
     search?.addEventListener('compositionend', updateSearch);
@@ -3051,6 +3051,35 @@ ${_LOG_RECORD_CSS}
 
   }
 
+  _renderSearchResults() {
+    // Keep the native input node mounted during typing. Replacing it inside
+    // the input event can drop subsequent keys in real nested shadow roots.
+    const root = this.shadowRoot, current = root.querySelector('[data-log-search-results]');
+    if (!current) return;
+    for (const detail of current.querySelectorAll('details[data-log-disclosure-key]'))
+      this._disclosures.set(detail.dataset.logDisclosureKey, detail.open);
+    _rememberLogRecords(this);
+    _disconnectLogRecords(this);
+    const template = this.ownerDocument.createElement('template');
+    template.innerHTML = this._renderRetainedLogs();
+    const next = template.content.querySelector('[data-log-search-results]');
+    if (!next) return;
+    current.replaceWith(next);
+    for (const detail of next.querySelectorAll('details[data-log-disclosure-key]'))
+      if (this._disclosures.has(detail.dataset.logDisclosureKey)) detail.open = this._disclosures.get(detail.dataset.logDisclosureKey);
+    _bindLogRecords(this, null);
+    const model = this._retainedModel();
+    const errors = model.rows.filter(row => ['ERROR', 'CRITICAL'].includes(row.level)).length;
+    const warnings = model.rows.filter(row => row.level === 'WARNING').length;
+    const unavailable = !this._logData || this._logData.unavailable || model.unavailable;
+    const status = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') :
+      errors ? this._countLabel(errors, 'error') : warnings ? this._countLabel(warnings, 'warning') :
+      model.partial ? (this._lang === 'pl' ? 'Częściowe dane' : 'Partial data') :
+      (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
+    const badge = root.querySelector('.header-badge');
+    if (badge) badge.textContent = status;
+  }
+
   _renderRetainedLogs() {
     const pl = this._lang === 'pl', model = this._retainedModel();
     const format = this._formatUi();
@@ -3082,6 +3111,7 @@ ${_LOG_RECORD_CSS}
         <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
       </div>
       <div class="log-filter-chips">${activeFilters.map(key => `<button type="button" data-log-clear-filter="${key}" aria-label="${_esc((pl ? 'Zresetuj filtr' : 'Reset filter') + ': ' + filterLabels[key] + ' — ' + filterValue(key))}">${_esc(filterLabels[key])}: ${_esc(filterValue(key))} <span aria-hidden="true">×</span></button>`).join('')}</div>
+      <div data-log-search-results>
       <div class="log-model-counts">
         <div data-log-metric="unique">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')}</div>
         <div data-log-metric="occurrences">${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}</div>
@@ -3104,6 +3134,7 @@ ${_LOG_RECORD_CSS}
         (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
         'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
       <p>ISO: ${_esc(rawDate(model.first))} — ${_esc(rawDate(model.last))}</p></details>
+      </div>
     </section>`;
 
 

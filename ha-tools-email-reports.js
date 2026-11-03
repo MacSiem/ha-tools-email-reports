@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.9.1
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.1 sha256:864bbb4b87fb9a1af7cc91aa380f1c624314ad9383c1c8bb4f9ecc84e0f28323
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.1 sha256:761071890630b961fd294370b3fa8760def286125aedde3a8112beee046ad0db
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:a4d6123cfe707313e405a5683b4661afba33465b9ce74662df70414efcadbcf9
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -147,7 +147,14 @@ function _logDigestExcerptP2(value, limit = 320) {
   }
   const parts = [...priority, ...secondary].slice(0,3);
   const scalar = value => value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, pair => pair.length === 2 ? pair : '\uFFFD');
-  if (parts.length) { const first = text.split(/\r?\n/,1)[0].trim(); if (first && first.length <= 160 && !/^(\{|\[|Traceback)/.test(first)) parts.unshift(first); return scalar(Array.from(parts.join(' · ')).slice(0,limit).join('')) + ' …'; }
+  if (parts.length) {
+    const lines = text.trimEnd().split(/\r?\n/), first = lines[0].trim(), last = lines.at(-1).trim();
+    // Preserve the terminal exception separately from a nested structured reason.
+    const terminal = text.includes('Traceback') && /^[A-Za-z_][\w.]*\s*:/.test(last) ? last : '';
+    const chosen = terminal ? [Array.from(parts[0]).slice(0,110).join(''), Array.from(terminal).slice(0,130).join('')] : parts;
+    if (first && first.length <= 160 && !/^(\{|\[|Traceback)/.test(first)) chosen.unshift(terminal ? Array.from(first).slice(0,60).join('') : first);
+    return scalar(Array.from(chosen.join(' · ')).slice(0,limit).join('')) + ' …';
+  }
   const half = Math.floor((limit-3)/2), chars = Array.from(text);
   return scalar(chars.slice(0,half).join('') + ' … ' + chars.slice(-half).join(''));
 }

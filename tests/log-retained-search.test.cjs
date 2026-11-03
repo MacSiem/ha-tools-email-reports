@@ -49,8 +49,8 @@ for(const source of ['ha-log-email.js','ha-tools-email-reports.js'])test(`${sour
  for(const pre of details){assert.equal(pre.style.userSelect,'text');assert.match(pre.getAttribute('style'),/-webkit-user-select\s*:\s*text/);}
 });
 
-test('search retains the same focused input through consecutive typing within HA shadow roots',t=>{
- const {dom,w,card}=fixture();t.after(()=>dom.window.close());
+for(const source of ['ha-log-email.js','ha-tools-email-reports.js'])test(`${source}: search retains the same focused input through consecutive typing within HA shadow roots`,t=>{
+ const {dom,w,card}=fixture('en',source);t.after(()=>dom.window.close());
  const host=w.document.createElement('main'),shadow=host.attachShadow({mode:'open'});w.document.body.append(host);card._initialLogSettled=true;shadow.append(card);card._render();
  const input=card.shadowRoot.getElementById('log-search');input.focus();
  for (const letter of ['x','y']) {input.value+=letter;input.dispatchEvent(new w.InputEvent('input',{data:letter,bubbles:true,composed:true}));assert.equal(card.shadowRoot.getElementById('log-search'),input);assert.equal(card.shadowRoot.activeElement,input);}

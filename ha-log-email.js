@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.8.1 (2026-10-17) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.8.2 (2026-10-17) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -800,7 +800,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.8.1
+ * HA Log Email Card v4.8.2
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1325,7 +1325,7 @@ class HALogEmail extends HTMLElement {
     // Browser counts are separate from server SMTP metadata. Never restore raw objects.
     this._legacyBrowserCounts = this._readBrowserCounts('ha-log-email-history');
     this._retainedLogs = null;
-    this._logFilters = { severity: 'all', source: 'all', period: '24h' };
+    this._logFilters = { severity: 'all', source: 'all', period: '24h', search: '' };
     this._selectedLogSourceLabel = null;
     this._dataEpoch = 0;
     this._dataContext = null;
@@ -1406,6 +1406,8 @@ class HALogEmail extends HTMLElement {
     this._hass = hass;
     this._bindEmailContext();
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
+      if (oldContext && (oldContext.user !== newContext.user || oldContext.admin !== newContext.admin))
+        this._logFilters = { ...this._logFilters, search: '' };
       this._scheduleSaveFocus = null;
       this._selectedLogSourceLabel = null;
       this._invalidateEmailResults();
@@ -1684,13 +1686,17 @@ class HALogEmail extends HTMLElement {
   }
 
   _filterLogModel(candidates, filters, tab, metadata) {
-    const filtered = candidates.filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
+    // Search full retained messages before the visible row cap; the query is
+    // presentation-only and is never included in a server preview or send.
+    const query = String(filters.search ?? '').trim().toLocaleLowerCase();
+    const matches = row => (filters.severity === 'all' || row.level === filters.severity) &&
       (filters.source === 'all' || row.sourceKey === filters.source) &&
-      (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+      (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING') &&
+      (!query || [row.message, row.domain, row.level].some(value => String(value ?? '').toLocaleLowerCase().includes(query)));
+    const filtered = candidates.filter(matches);
     const rows = filtered.slice(0, metadata.cap);
     const occurrences = rows.some(row => row.count == null) ? null : rows.reduce((sum, row) => sum + row.count, 0);
-    const undated = (metadata.undated || []).filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
-      (filters.source === 'all' || row.sourceKey === filters.source) && (tab !== 'errors' || ['ERROR','CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+    const undated = (metadata.undated || []).filter(matches);
     return { ...metadata, undated, rows, unique: rows.length, occurrences: Number.isSafeInteger(occurrences) ? occurrences : null,
       filteredUnique: filtered.length, sources: [...new Map([...candidates, ...(metadata.undated || [])].map(row => [row.sourceKey, row.domain])).entries()],
       severities: [...new Set([...candidates, ...(metadata.undated || [])].map(row => row.level))].sort() };
@@ -2814,13 +2820,13 @@ max: 3</pre>
 /* Container width, not browser width, determines the alternate record layout. */
 .card { display: block; container: log-email-card / inline-size; min-width: 0; }
 .card .tabs { flex-wrap: wrap; overflow: visible; }
-.card button, .card select, .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
-.card :is(button, select, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
+.card button, .card select, .card input[type="search"], .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
+.card :is(button, select, input, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
 .native-tabs { display: none; padding: 12px; color: var(--bento-text); }
 .native-tabs select { width: 100%; }
 .log-filters, .history-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 12px; }
 .log-filters label { display: grid; gap: 4px; min-width: 0; flex: 1 1 120px; }
-.card select, .history-actions button { border: 1px solid var(--bento-border); border-radius: 8px; padding: 8px; background: var(--bento-card); color: var(--bento-text); max-width: 100%; }
+.card select, .card input[type="search"], .history-actions button { border: 1px solid var(--bento-border); border-radius: 8px; padding: 8px; background: var(--bento-card); color: var(--bento-text); max-width: 100%; }
 .retained-logs, .attempt-history, .browser-snapshots { overflow-wrap: anywhere; min-width: 0; }
 .retained-logs p, .attempt-history p, .browser-snapshots p { color: var(--bento-text-secondary); line-height: 1.6; }
 .history-records { width: 100%; border-collapse: collapse; table-layout: fixed; color: var(--bento-text); }
@@ -2926,6 +2932,14 @@ ${_LOG_RECORD_CSS}
     this.shadowRoot.getElementById('history-refresh')?.addEventListener('click', () => this._refreshAttemptHistory());
     this.shadowRoot.getElementById('history-discard')?.addEventListener('click', () => this._discardAttemptHistory());
     this.shadowRoot.getElementById('log-refresh')?.addEventListener('click', () => this._fetchLogData());
+    const search = this.shadowRoot.getElementById('log-search');
+    const updateSearch = event => {
+      if (event.isComposing) return;
+      this._logFilters = { ...this._logFilters, search: event.target.value };
+      this._renderSearchResults();
+    };
+    search?.addEventListener('input', updateSearch);
+    search?.addEventListener('compositionend', updateSearch);
     for (const key of ['severity', 'source', 'period']) {
       this.shadowRoot.getElementById('log-' + key)?.addEventListener('change', event => {
         if (key === 'source') this._selectedLogSourceLabel = event.target.selectedOptions[0]?.textContent || null;
@@ -3037,6 +3051,35 @@ ${_LOG_RECORD_CSS}
 
   }
 
+  _renderSearchResults() {
+    // Keep the native input node mounted during typing. Replacing it inside
+    // the input event can drop subsequent keys in real nested shadow roots.
+    const root = this.shadowRoot, current = root.querySelector('[data-log-search-results]');
+    if (!current) return;
+    for (const detail of current.querySelectorAll('details[data-log-disclosure-key]'))
+      this._disclosures.set(detail.dataset.logDisclosureKey, detail.open);
+    _rememberLogRecords(this);
+    _disconnectLogRecords(this);
+    const template = this.ownerDocument.createElement('template');
+    template.innerHTML = this._renderRetainedLogs();
+    const next = template.content.querySelector('[data-log-search-results]');
+    if (!next) return;
+    current.replaceWith(next);
+    for (const detail of next.querySelectorAll('details[data-log-disclosure-key]'))
+      if (this._disclosures.has(detail.dataset.logDisclosureKey)) detail.open = this._disclosures.get(detail.dataset.logDisclosureKey);
+    _bindLogRecords(this, null);
+    const model = this._retainedModel();
+    const errors = model.rows.filter(row => ['ERROR', 'CRITICAL'].includes(row.level)).length;
+    const warnings = model.rows.filter(row => row.level === 'WARNING').length;
+    const unavailable = !this._logData || this._logData.unavailable || model.unavailable;
+    const status = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') :
+      errors ? this._countLabel(errors, 'error') : warnings ? this._countLabel(warnings, 'warning') :
+      model.partial ? (this._lang === 'pl' ? 'Częściowe dane' : 'Partial data') :
+      (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
+    const badge = root.querySelector('.header-badge');
+    if (badge) badge.textContent = status;
+  }
+
   _renderRetainedLogs() {
     const pl = this._lang === 'pl', model = this._retainedModel();
     const format = this._formatUi();
@@ -3061,12 +3104,14 @@ ${_LOG_RECORD_CSS}
       ['Severity', 'Source', 'Last occurrence', 'Message', 'Occurrences (HA)'];
     return `<section class="retained-logs" aria-label="${pl ? 'Zachowany dziennik' : 'Retained log'}">
       <div class="log-filters">
+        <label for="log-search">${pl ? 'Szukaj w dzienniku' : 'Search logs'}<input type="search" id="log-search" value="${_esc(this._logFilters.search || '')}" autocomplete="off"></label>
         ${select('severity', pl ? 'Poziom' : 'Severity', [['all', pl ? 'Wszystkie' : 'All'], ...severities.map(value => [value, value])])}
         ${select('source', pl ? 'Źródło' : 'Source', [['all', pl ? 'Wszystkie źródła' : 'All sources'], ...sources])}
         ${select('period', pl ? 'Zachowany okres' : 'Retained period', periods)}
         <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
       </div>
       <div class="log-filter-chips">${activeFilters.map(key => `<button type="button" data-log-clear-filter="${key}" aria-label="${_esc((pl ? 'Zresetuj filtr' : 'Reset filter') + ': ' + filterLabels[key] + ' — ' + filterValue(key))}">${_esc(filterLabels[key])}: ${_esc(filterValue(key))} <span aria-hidden="true">×</span></button>`).join('')}</div>
+      <div data-log-search-results>
       <div class="log-model-counts">
         <div data-log-metric="unique">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')}</div>
         <div data-log-metric="occurrences">${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}</div>
@@ -3075,12 +3120,12 @@ ${_LOG_RECORD_CSS}
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
         `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'} (${model.unique})</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
-        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${i === 3 && String(value ?? '').length > 320 ? `<span data-log-excerpt>${_esc(_logDigestExcerptP2(value))}</span><details data-log-disclosure-key="log-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%">${_esc(value)}</pre></details>` : _esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
+        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${i === 3 && String(value ?? '').length > 320 ? `<span data-log-excerpt>${_esc(_logDigestExcerptP2(value))}</span><details data-log-disclosure-key="log-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;user-select:text;-webkit-user-select:text">${_esc(value)}</pre></details>` : _esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
       <p data-log-source-summary>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)} · ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)} · ${pl ? 'Zaobserwowany zakres' : 'Observed retained range'}: ${_esc(rangeDate(model.first))} — ${_esc(rangeDate(model.last))} · ${pl ? 'Pokazano / limit' : 'Shown / cap'}: ${model.unique} / ${model.cap} · ${pl ? 'Strefa widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${model.unavailable ? (pl ? 'Dane niedostępne' : 'Data unavailable') : model.partial ? (pl ? 'Bieżący odczyt sensora; brak pokrycia historii' : 'Current sensor snapshot; historical coverage unavailable') : (pl ? 'Zachowane agregaty; kompletność historii nieustalona' : 'Retained aggregates; completeness of history unknown')}</p>
       ${model.occurrences == null && !model.unavailable ? `<p role="status">${pl ? 'Liczba wystąpień (HA) nieznana.' : 'HA occurrence count unknown.'}</p>` : ''}
       ${model.partial ? `<p role="status">${!this._logData || this._logData.unavailable ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.')}</p>` : ''}
-      ${model.undated?.length ? `<details data-log-disclosure-key="undated"><summary>${pl ? 'Nieznany czas · poza liczbami okresu' : 'Unknown time · outside period counts'} (${model.undated.length})</summary><ul>${model.undated.slice(0,model.cap).map(row => `<li>${_esc(row.level)} · ${_esc(row.domain)} · ×${_esc(row.count ?? '—')}: <span>${_esc(_logDigestExcerptP2(row.message))}</span>${row.message.length > 320 ? `<details data-log-disclosure-key="undated-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${_esc(row.message)}</pre></details>` : ''}</li>`).join('')}</ul>${model.undated.length>model.cap?`<p>${pl ? 'Pokazano' : 'Shown'} ${model.cap}/${model.undated.length}</p>`:''}</details>` : ''}
+      ${model.undated?.length ? `<details data-log-disclosure-key="undated"><summary>${pl ? 'Nieznany czas · poza liczbami okresu' : 'Unknown time · outside period counts'} (${model.undated.length})</summary><ul>${model.undated.slice(0,model.cap).map(row => `<li>${_esc(row.level)} · ${_esc(row.domain)} · ×${_esc(row.count ?? '—')}: <span>${_esc(_logDigestExcerptP2(row.message))}</span>${row.message.length > 320 ? `<details data-log-disclosure-key="undated-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text">${_esc(row.message)}</pre></details>` : ''}</li>`).join('')}</ul>${model.undated.length>model.cap?`<p>${pl ? 'Pokazano' : 'Shown'} ${model.cap}/${model.undated.length}</p>`:''}</details>` : ''}
       <details data-log-disclosure-key="retained"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>
       <p class="log-filter-scope">${pl ? 'Filtry dotyczą tylko tej listy. Nie zmieniają podglądu emaila, wysyłki ani harmonogramów.' : 'Filters apply only to this list. They do not change the email preview, sends or schedules.'}</p>
       <p>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)}. ${pl ? 'Limit' : 'Limit'} max_entries: ${model.cap}. ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)}.</p>
@@ -3089,6 +3134,7 @@ ${_LOG_RECORD_CSS}
         (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
         'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
       <p>ISO: ${_esc(rawDate(model.first))} — ${_esc(rawDate(model.last))}</p></details>
+      </div>
     </section>`;
 
 
@@ -3162,7 +3208,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.8.1 registered');
+  console.log('[ha-log-email] v4.8.2 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

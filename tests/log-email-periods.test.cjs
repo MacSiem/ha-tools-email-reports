@@ -17,11 +17,11 @@ for(const source of ['ha-log-email.js','ha-tools-email-reports.js']) {
       card._activeTab='send';card._mailPeriodMode=mode;
       // Null and a sensor-only snapshot must both delegate to backend retained data.
       for(const data of [null,{errors:[{message:'SENSOR_SNAPSHOT'}],warnings:[],total:1}]) {
-        card._logData=data;card._logFilters={period:'24h',severity:'WARNING',source:'unrelated'};
+        card._logData=data;card._logFilters={period:'24h',severity:'WARNING',source:'unrelated',search:'PRIVATE-LOCAL-QUERY'};
         await card._sendEmailNow(cadence);
         const req=sent.at(-1);assert.ok(req);assert.equal(req.cadence,cadence);assert.equal(req.period_mode,mode);assert.equal(req.max_entries,23);
         assert.equal(req.kind,'log_digest');assert.equal(JSON.stringify(req.recipients),'["fixture@example.invalid"]');
-        for(const key of ['subject','html','body','severity','source','calendar_period'])assert.equal(key in req,false,key);
+        for(const key of ['subject','html','body','severity','source','search','calendar_period'])assert.equal(key in req,false,key);
         assert.equal(card._sendStatus.status,'unconfirmed');
       }
       assert.equal(sent.length,2,'one WS mutation for each deliberate send');

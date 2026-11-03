@@ -16,7 +16,14 @@ function _logDigestExcerptP2(value, limit = 320) {
   }
   const parts = [...priority, ...secondary].slice(0,3);
   const scalar = value => value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, pair => pair.length === 2 ? pair : '\uFFFD');
-  if (parts.length) { const first = text.split(/\r?\n/,1)[0].trim(); if (first && first.length <= 160 && !/^(\{|\[|Traceback)/.test(first)) parts.unshift(first); return scalar(Array.from(parts.join(' · ')).slice(0,limit).join('')) + ' …'; }
+  if (parts.length) {
+    const lines = text.trimEnd().split(/\r?\n/), first = lines[0].trim(), last = lines.at(-1).trim();
+    // Preserve the terminal exception separately from a nested structured reason.
+    const terminal = text.includes('Traceback') && /^[A-Za-z_][\w.]*\s*:/.test(last) ? last : '';
+    const chosen = terminal ? [Array.from(parts[0]).slice(0,110).join(''), Array.from(terminal).slice(0,130).join('')] : parts;
+    if (first && first.length <= 160 && !/^(\{|\[|Traceback)/.test(first)) chosen.unshift(terminal ? Array.from(first).slice(0,60).join('') : first);
+    return scalar(Array.from(chosen.join(' · ')).slice(0,limit).join('')) + ' …';
+  }
   const half = Math.floor((limit-3)/2), chars = Array.from(text);
   return scalar(chars.slice(0,half).join('') + ' … ' + chars.slice(-half).join(''));
 }

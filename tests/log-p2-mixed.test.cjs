@@ -44,3 +44,11 @@ test('exception details remain accessible and their later reason appears in the 
   const d=new JSDOM(card._renderRetainedLogs());try{const excerpt=d.window.document.querySelector('[data-log-excerpt]');assert.match(excerpt.textContent,/Connection failed/);assert.match(excerpt.textContent,/AUTH_EXPIRED_SYNTHETIC/);assert.ok(d.window.document.querySelector('pre').textContent.includes(exception));}finally{d.window.close()}
  }finally{dom.window.close()}
 });
+
+test('native traceback summary retains both late reason and terminal root cause',()=>{
+ const dom=new JSDOM('',{runScripts:'outside-only',url:'http://localhost/'});try{
+  const w=dom.window;w.eval(fs.readFileSync('ha-log-email.js','utf8'));const card=w.document.createElement('ha-log-email');const now=Date.parse('2026-11-03T01:00:00Z');w.Date.now=()=>now;
+  const msg="Traceback (synthetic)\n{'opaque':'"+'x'.repeat(9000)+"','reason':'SYNTHETIC_REASON_AFTER_OPAQUE_CONTEXT'}\nRuntimeError: SYNTHETIC_CURRENT_ROOT_CAUSE\n";
+  for(const lang of ['en','pl']) {card._config={max_entries:50};card._lang=lang;card._hass={locale:{language:lang},language:lang,user:{is_admin:true},connected:true,states:{},services:{}};card._retainedLogs=card._groupRetainedLogs([{id:'native',timestamp:now/1000,level:'ERROR',name:'fixture',message:[msg],count:1}],now);const d=new JSDOM(card._renderRetainedLogs());try {const excerpt=d.window.document.querySelector('[data-log-excerpt]');assert.match(excerpt.textContent,/SYNTHETIC_REASON_AFTER_OPAQUE_CONTEXT/);assert.match(excerpt.textContent,/RuntimeError: SYNTHETIC_CURRENT_ROOT_CAUSE/);assert.equal(d.window.document.querySelector('pre').textContent,msg);}finally{d.window.close()}}
+ }finally{dom.window.close()}
+});

@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
  * HA Tools Email Reports bundle v4.9.2
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:52f065f92f2bca6aace4ac912965104a64e4e5b368e74007c0ec222741ac04dd
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:69f8a00b03e153880b7c5bd9cd1918687bbdbd29ab6f586d8b636689e3b3a5b3
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:a4d6123cfe707313e405a5683b4661afba33465b9ce74662df70414efcadbcf9
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -3067,7 +3067,7 @@ ${_LOG_RECORD_CSS}
     const updateSearch = event => {
       if (event.isComposing) return;
       this._logFilters = { ...this._logFilters, search: event.target.value };
-      this._render();
+      this._renderSearchResults();
     };
     search?.addEventListener('input', updateSearch);
     search?.addEventListener('compositionend', updateSearch);
@@ -3182,6 +3182,35 @@ ${_LOG_RECORD_CSS}
 
   }
 
+  _renderSearchResults() {
+    // Keep the native input node mounted during typing. Replacing it inside
+    // the input event can drop subsequent keys in real nested shadow roots.
+    const root = this.shadowRoot, current = root.querySelector('[data-log-search-results]');
+    if (!current) return;
+    for (const detail of current.querySelectorAll('details[data-log-disclosure-key]'))
+      this._disclosures.set(detail.dataset.logDisclosureKey, detail.open);
+    _rememberLogRecords(this);
+    _disconnectLogRecords(this);
+    const template = this.ownerDocument.createElement('template');
+    template.innerHTML = this._renderRetainedLogs();
+    const next = template.content.querySelector('[data-log-search-results]');
+    if (!next) return;
+    current.replaceWith(next);
+    for (const detail of next.querySelectorAll('details[data-log-disclosure-key]'))
+      if (this._disclosures.has(detail.dataset.logDisclosureKey)) detail.open = this._disclosures.get(detail.dataset.logDisclosureKey);
+    _bindLogRecords(this, null);
+    const model = this._retainedModel();
+    const errors = model.rows.filter(row => ['ERROR', 'CRITICAL'].includes(row.level)).length;
+    const warnings = model.rows.filter(row => row.level === 'WARNING').length;
+    const unavailable = !this._logData || this._logData.unavailable || model.unavailable;
+    const status = unavailable ? (this._lang === 'pl' ? 'Niedostępne' : 'Unavailable') :
+      errors ? this._countLabel(errors, 'error') : warnings ? this._countLabel(warnings, 'warning') :
+      model.partial ? (this._lang === 'pl' ? 'Częściowe dane' : 'Partial data') :
+      (this._lang === 'pl' ? 'Brak zachowanych problemów' : 'No retained problems');
+    const badge = root.querySelector('.header-badge');
+    if (badge) badge.textContent = status;
+  }
+
   _renderRetainedLogs() {
     const pl = this._lang === 'pl', model = this._retainedModel();
     const format = this._formatUi();
@@ -3213,6 +3242,7 @@ ${_LOG_RECORD_CSS}
         <button type="button" class="refresh-btn" id="log-refresh">${this._t.refreshData}</button>
       </div>
       <div class="log-filter-chips">${activeFilters.map(key => `<button type="button" data-log-clear-filter="${key}" aria-label="${_esc((pl ? 'Zresetuj filtr' : 'Reset filter') + ': ' + filterLabels[key] + ' — ' + filterValue(key))}">${_esc(filterLabels[key])}: ${_esc(filterValue(key))} <span aria-hidden="true">×</span></button>`).join('')}</div>
+      <div data-log-search-results>
       <div class="log-model-counts">
         <div data-log-metric="unique">${this._countLabel(model.unavailable ? '—' : model.unique, model.partial ? 'current snapshot row' : 'unique problem')}</div>
         <div data-log-metric="occurrences">${this._countLabel(model.unavailable || model.occurrences == null ? '—' : model.occurrences, 'occurrence')}</div>
@@ -3221,12 +3251,12 @@ ${_LOG_RECORD_CSS}
       ${this._loading ? `<p role="status">${this._t.loading}</p>` : ''}
       ${!model.rows.length ? `<p role="status">${pl ? 'Brak zachowanych wpisów dla wybranego okresu i filtrów.' : 'No retained entries for the selected period and filters.'}</p>` :
         `<table class="history-records" role="table"><caption>${pl ? 'Wyświetlone problemy' : 'Displayed problems'} (${model.unique})</caption><thead role="rowgroup"><tr role="row">${labels.map(label => `<th scope="col" role="columnheader">${label}</th>`).join('')}</tr></thead><tbody role="rowgroup">
-        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${i === 3 && String(value ?? '').length > 320 ? `<span data-log-excerpt>${_esc(_logDigestExcerptP2(value))}</span><details data-log-disclosure-key="log-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%">${_esc(value)}</pre></details>` : _esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
+        ${model.rows.map(row => `<tr role="row" data-log-identity="${_esc(row.identity)}">${[row.level, row.domain, row.when ? rangeDate(Date.parse(row.when)) : '—', row.message, row.count ?? '—'].map((value, i) => `<td role="cell" data-label="${labels[i]}">${i === 3 && String(value ?? '').length > 320 ? `<span data-log-excerpt>${_esc(_logDigestExcerptP2(value))}</span><details data-log-disclosure-key="log-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;user-select:text;-webkit-user-select:text">${_esc(value)}</pre></details>` : _esc(value)}${i === 2 && row.when ? `<details data-log-disclosure-key="log-time-${_esc(row.identity)}"><summary>${pl ? 'Surowy czas' : 'Raw time'}</summary><p>${_esc(row.when)}</p></details>` : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table>`}
       <p data-log-source-summary>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)} · ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)} · ${pl ? 'Zaobserwowany zakres' : 'Observed retained range'}: ${_esc(rangeDate(model.first))} — ${_esc(rangeDate(model.last))} · ${pl ? 'Pokazano / limit' : 'Shown / cap'}: ${model.unique} / ${model.cap} · ${pl ? 'Strefa widoku' : 'Display timezone'}: ${_esc(format.timeZone)} · ${model.unavailable ? (pl ? 'Dane niedostępne' : 'Data unavailable') : model.partial ? (pl ? 'Bieżący odczyt sensora; brak pokrycia historii' : 'Current sensor snapshot; historical coverage unavailable') : (pl ? 'Zachowane agregaty; kompletność historii nieustalona' : 'Retained aggregates; completeness of history unknown')}</p>
       ${model.occurrences == null && !model.unavailable ? `<p role="status">${pl ? 'Liczba wystąpień (HA) nieznana.' : 'HA occurrence count unknown.'}</p>` : ''}
       ${model.partial ? `<p role="status">${!this._logData || this._logData.unavailable ? (pl ? 'Dane dziennika niedostępne lub jeszcze niesprawdzone. Nie pokazujemy wcześniejszych wierszy.' : 'Log data unavailable or not checked yet. Previous rows are not shown.') : (pl ? 'Częściowe dane — tylko bieżący odczyt sensora. Nie stanowi historii dla wybranego zachowanego okresu.' : 'Partial — current sensor snapshot only. This cannot establish the selected retained period.')}</p>` : ''}
-      ${model.undated?.length ? `<details data-log-disclosure-key="undated"><summary>${pl ? 'Nieznany czas · poza liczbami okresu' : 'Unknown time · outside period counts'} (${model.undated.length})</summary><ul>${model.undated.slice(0,model.cap).map(row => `<li>${_esc(row.level)} · ${_esc(row.domain)} · ×${_esc(row.count ?? '—')}: <span>${_esc(_logDigestExcerptP2(row.message))}</span>${row.message.length > 320 ? `<details data-log-disclosure-key="undated-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${_esc(row.message)}</pre></details>` : ''}</li>`).join('')}</ul>${model.undated.length>model.cap?`<p>${pl ? 'Pokazano' : 'Shown'} ${model.cap}/${model.undated.length}</p>`:''}</details>` : ''}
+      ${model.undated?.length ? `<details data-log-disclosure-key="undated"><summary>${pl ? 'Nieznany czas · poza liczbami okresu' : 'Unknown time · outside period counts'} (${model.undated.length})</summary><ul>${model.undated.slice(0,model.cap).map(row => `<li>${_esc(row.level)} · ${_esc(row.domain)} · ×${_esc(row.count ?? '—')}: <span>${_esc(_logDigestExcerptP2(row.message))}</span>${row.message.length > 320 ? `<details data-log-disclosure-key="undated-message-${_esc(row.identity)}"><summary>${pl ? 'Pełne zachowane szczegóły' : 'Full retained details'}</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text">${_esc(row.message)}</pre></details>` : ''}</li>`).join('')}</ul>${model.undated.length>model.cap?`<p>${pl ? 'Pokazano' : 'Shown'} ${model.cap}/${model.undated.length}</p>`:''}</details>` : ''}
       <details data-log-disclosure-key="retained"><summary>${pl ? 'Źródło, zakres i ograniczenia' : 'Source, range and limitations'}</summary>
       <p class="log-filter-scope">${pl ? 'Filtry dotyczą tylko tej listy. Nie zmieniają podglądu emaila, wysyłki ani harmonogramów.' : 'Filters apply only to this list. They do not change the email preview, sends or schedules.'}</p>
       <p>${pl ? 'Źródło' : 'Source'}: ${_esc(model.source)}. ${pl ? 'Limit' : 'Limit'} max_entries: ${model.cap}. ${pl ? 'Wybrany okres' : 'Selected period'}: ${_esc(model.period)}.</p>
@@ -3235,6 +3265,7 @@ ${_LOG_RECORD_CSS}
         (pl ? 'Zachowane dane Home Assistant, nie pełna historia. Okres filtruje ostatni znany czas. Licznik HA może obejmować wcześniejsze powtórzenia; nie dowodzi liczby wystąpień wyłącznie w tym okresie.' :
         'Home Assistant retained data, not a complete history. The period filters the last known time. HA aggregate counts can include older repetitions; they do not establish occurrences exclusively within this period.')}</p>
       <p>ISO: ${_esc(rawDate(model.first))} — ${_esc(rawDate(model.last))}</p></details>
+      </div>
     </section>`;
 
 

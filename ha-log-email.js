@@ -1,4 +1,4 @@
-/* HA Tools split — ha-log-email v4.8.1 (2026-10-17) — single-tool standalone repo */
+/* HA Tools split — ha-log-email v4.8.2 (2026-10-17) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -800,7 +800,7 @@ const LOG_EMAIL_SUPPORT_KEY = 'ha-log-email-support-dismissed';
 const logEmailSupportDismissed = () => { try { return localStorage.getItem(LOG_EMAIL_SUPPORT_KEY) === '1'; } catch (_) { return false; } };
 
 /**
- * HA Log Email Card v4.8.1
+ * HA Log Email Card v4.8.2
  * Send periodic email summaries of HA errors and warnings.
  * Part of HA Tools Panel - Smart Reports
  * Author: Jeff (AI) for MacSiem
@@ -1325,7 +1325,7 @@ class HALogEmail extends HTMLElement {
     // Browser counts are separate from server SMTP metadata. Never restore raw objects.
     this._legacyBrowserCounts = this._readBrowserCounts('ha-log-email-history');
     this._retainedLogs = null;
-    this._logFilters = { severity: 'all', source: 'all', period: '24h' };
+    this._logFilters = { severity: 'all', source: 'all', period: '24h', search: '' };
     this._selectedLogSourceLabel = null;
     this._dataEpoch = 0;
     this._dataContext = null;
@@ -1406,6 +1406,8 @@ class HALogEmail extends HTMLElement {
     this._hass = hass;
     this._bindEmailContext();
     if (identityChanged || !online(hass) || hass?.user?.is_admin !== true) {
+      if (oldContext && (oldContext.user !== newContext.user || oldContext.admin !== newContext.admin))
+        this._logFilters = { ...this._logFilters, search: '' };
       this._scheduleSaveFocus = null;
       this._selectedLogSourceLabel = null;
       this._invalidateEmailResults();
@@ -1684,13 +1686,17 @@ class HALogEmail extends HTMLElement {
   }
 
   _filterLogModel(candidates, filters, tab, metadata) {
-    const filtered = candidates.filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
+    // Search full retained messages before the visible row cap; the query is
+    // presentation-only and is never included in a server preview or send.
+    const query = String(filters.search ?? '').trim().toLocaleLowerCase();
+    const matches = row => (filters.severity === 'all' || row.level === filters.severity) &&
       (filters.source === 'all' || row.sourceKey === filters.source) &&
-      (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+      (tab !== 'errors' || ['ERROR', 'CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING') &&
+      (!query || [row.message, row.domain, row.level].some(value => String(value ?? '').toLocaleLowerCase().includes(query)));
+    const filtered = candidates.filter(matches);
     const rows = filtered.slice(0, metadata.cap);
     const occurrences = rows.some(row => row.count == null) ? null : rows.reduce((sum, row) => sum + row.count, 0);
-    const undated = (metadata.undated || []).filter(row => (filters.severity === 'all' || row.level === filters.severity) &&
-      (filters.source === 'all' || row.sourceKey === filters.source) && (tab !== 'errors' || ['ERROR','CRITICAL'].includes(row.level)) && (tab !== 'warnings' || row.level === 'WARNING'));
+    const undated = (metadata.undated || []).filter(matches);
     return { ...metadata, undated, rows, unique: rows.length, occurrences: Number.isSafeInteger(occurrences) ? occurrences : null,
       filteredUnique: filtered.length, sources: [...new Map([...candidates, ...(metadata.undated || [])].map(row => [row.sourceKey, row.domain])).entries()],
       severities: [...new Set([...candidates, ...(metadata.undated || [])].map(row => row.level))].sort() };
@@ -2814,13 +2820,13 @@ max: 3</pre>
 /* Container width, not browser width, determines the alternate record layout. */
 .card { display: block; container: log-email-card / inline-size; min-width: 0; }
 .card .tabs { flex-wrap: wrap; overflow: visible; }
-.card button, .card select, .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
-.card :is(button, select, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
+.card button, .card select, .card input[type="search"], .card .tab-btn { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
+.card :is(button, select, input, a, [tabindex]):focus-visible { outline: 3px solid var(--log-email-link); outline-offset: 3px; }
 .native-tabs { display: none; padding: 12px; color: var(--bento-text); }
 .native-tabs select { width: 100%; }
 .log-filters, .history-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-block: 12px; }
 .log-filters label { display: grid; gap: 4px; min-width: 0; flex: 1 1 120px; }
-.card select, .history-actions button { border: 1px solid var(--bento-border); border-radius: 8px; padding: 8px; background: var(--bento-card); color: var(--bento-text); max-width: 100%; }
+.card select, .card input[type="search"], .history-actions button { border: 1px solid var(--bento-border); border-radius: 8px; padding: 8px; background: var(--bento-card); color: var(--bento-text); max-width: 100%; }
 .retained-logs, .attempt-history, .browser-snapshots { overflow-wrap: anywhere; min-width: 0; }
 .retained-logs p, .attempt-history p, .browser-snapshots p { color: var(--bento-text-secondary); line-height: 1.6; }
 .history-records { width: 100%; border-collapse: collapse; table-layout: fixed; color: var(--bento-text); }
@@ -2926,6 +2932,14 @@ ${_LOG_RECORD_CSS}
     this.shadowRoot.getElementById('history-refresh')?.addEventListener('click', () => this._refreshAttemptHistory());
     this.shadowRoot.getElementById('history-discard')?.addEventListener('click', () => this._discardAttemptHistory());
     this.shadowRoot.getElementById('log-refresh')?.addEventListener('click', () => this._fetchLogData());
+    const search = this.shadowRoot.getElementById('log-search');
+    const updateSearch = event => {
+      if (event.isComposing) return;
+      this._logFilters = { ...this._logFilters, search: event.target.value };
+      this._render();
+    };
+    search?.addEventListener('input', updateSearch);
+    search?.addEventListener('compositionend', updateSearch);
     for (const key of ['severity', 'source', 'period']) {
       this.shadowRoot.getElementById('log-' + key)?.addEventListener('change', event => {
         if (key === 'source') this._selectedLogSourceLabel = event.target.selectedOptions[0]?.textContent || null;
@@ -3061,6 +3075,7 @@ ${_LOG_RECORD_CSS}
       ['Severity', 'Source', 'Last occurrence', 'Message', 'Occurrences (HA)'];
     return `<section class="retained-logs" aria-label="${pl ? 'Zachowany dziennik' : 'Retained log'}">
       <div class="log-filters">
+        <label for="log-search">${pl ? 'Szukaj w dzienniku' : 'Search logs'}<input type="search" id="log-search" value="${_esc(this._logFilters.search || '')}" autocomplete="off"></label>
         ${select('severity', pl ? 'Poziom' : 'Severity', [['all', pl ? 'Wszystkie' : 'All'], ...severities.map(value => [value, value])])}
         ${select('source', pl ? 'Źródło' : 'Source', [['all', pl ? 'Wszystkie źródła' : 'All sources'], ...sources])}
         ${select('period', pl ? 'Zachowany okres' : 'Retained period', periods)}
@@ -3162,7 +3177,7 @@ ${_LOG_RECORD_CSS}
 if (!customElements.get('ha-log-email')) customElements.define('ha-log-email', HALogEmail);
 
 window.customElements.whenDefined('ha-log-email').then(() => {
-  console.log('[ha-log-email] v4.8.1 registered');
+  console.log('[ha-log-email] v4.8.2 registered');
 });
 
 class HaLogEmailEditor extends HTMLElement {

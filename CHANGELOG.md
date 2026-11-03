@@ -1,5 +1,9 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.9.2] - 2026-11-03
+
+- Search retained log messages, sources and levels before the card display limit without changing reports or sends.
+
 ## [4.9.1] - 2026-11-03
 
 - Show concise Log Digest diagnostics with a full local disclosure and keep undated entries separate from selected-period counts.

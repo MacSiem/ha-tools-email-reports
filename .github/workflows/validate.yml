@@ -6,6 +6,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -15,6 +19,36 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - name: Repository hygiene
+        run: |
+          if git ls-files 'codex-runs/**' | grep -q .; then
+            echo "FAIL: tracked agent-run artifact"
+            git ls-files 'codex-runs/**'
+            exit 1
+          fi
+      - name: JS syntax (node --check)
+        run: |
+          fail=0
+          for f in $(git ls-files '*.js'); do
+            node --check "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }
+          done
+          exit $fail
+      - name: Theming invariant (no OS prefers-color-scheme)
+        run: |
+          if git grep -l -F -- "@media (prefers-color-scheme" -- '*.js'; then
+            echo "FAIL: OS prefers-color-scheme present — cards must follow HA theme via :host(.bento-dark) luminance"
+            exit 1
+          fi
+          echo "OK: no OS prefers-color-scheme"
+      - name: A11y invariant (focus-visible present in cards)
+        run: |
+          miss=0
+          for f in $(git ls-files '*.js' | grep -vE 'editor|\.min\.'); do
+            if grep -q 'customElements.define' "$f" && grep -q ':host' "$f"; then
+              grep -q ':focus-visible' "$f" || { echo "FAIL: no :focus-visible in $f"; miss=1; }
+            fi
+          done
+          exit $miss
       - name: Install pinned test dependencies
         run: npm ci
       - name: Behavior, bundle parity and runtime tests
@@ -32,33 +66,3 @@ jobs:
         run: |
           python3 scripts/ha_ci_advisory.py --root . ha-log-email.js shared/ha-tools-format.js shared/ha-tools-email-history.js > "$RUNNER_TEMP/ha-ci-advisory.json"
           python3 -m json.tool "$RUNNER_TEMP/ha-ci-advisory.json"
-      - name: Repository hygiene
-        run: |
-          if git ls-files 'codex-runs/**' | grep -q .; then
-            echo "FAIL: tracked agent-run artifact"
-            git ls-files 'codex-runs/**'
-            exit 1
-          fi
-      - name: JS syntax (node --check)
-        run: |
-          fail=0
-          for f in $(git ls-files '*.js'); do
-            node --check "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }
-          done
-          exit $fail
-      - name: Theming invariant (no OS prefers-color-scheme)
-        run: |
-          if grep -rln "@media (prefers-color-scheme" --include='*.js' .; then
-            echo "FAIL: OS prefers-color-scheme present — cards must follow HA theme via :host(.bento-dark) luminance"
-            exit 1
-          fi
-          echo "OK: no OS prefers-color-scheme"
-      - name: A11y invariant (focus-visible present in cards)
-        run: |
-          miss=0
-          for f in $(git ls-files '*.js' | grep -vE 'editor|\.min\.'); do
-            if grep -q 'customElements.define' "$f" && grep -q ':host' "$f"; then
-              grep -q ':focus-visible' "$f" || { echo "FAIL: no :focus-visible in $f"; miss=1; }
-            fi
-          done
-          exit $miss

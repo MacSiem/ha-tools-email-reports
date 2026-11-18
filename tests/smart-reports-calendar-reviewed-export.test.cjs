@@ -7,9 +7,9 @@ const {loadRuntime,makeHass,explicitConfig,delay}=require('./helpers/smart-repor
 const clone=x=>JSON.parse(JSON.stringify(x));
 const dialog=card=>card.shadowRoot.querySelector('[data-ha-tools-export]')?.shadowRoot;
 const field=(card,key)=>dialog(card)?.querySelector(`[data-export="${key}"]`);
-async function setup(){
+async function setup(mutate=()=>{}){
  const dom=loadRuntime(),w=dom.window,card=w.document.createElement('ha-smart-reports'),listeners=new Set();let pending=false;
- const dto=clone(fixture);dto.groups.devices['sensor.device'].unknown='NEVER_EXPORT';dto.context.auth='NEVER_EXPORT';
+ const dto=clone(fixture);mutate(dto);dto.groups.devices['sensor.device'].unknown='NEVER_EXPORT';dto.context.auth='NEVER_EXPORT';
  const hass=makeHass({timeZone:'UTC',deferred:{'ha_tools_email/feature_capabilities':()=>featureCapabilities(hass.user.is_admin===true),'ha_tools_email/energy_analysis':()=>pending?new Promise(()=>{}):Promise.resolve(clone(dto))}});
  hass.user.is_active=true;hass.user.is_admin=false;
  hass.connection={connected:true,subscribeMessage:async(fn)=>{listeners.add(fn);return()=>listeners.delete(fn);},addEventListener(){},removeEventListener(){}};
@@ -55,4 +55,16 @@ test('calendar producer household-period fee scope survives both comparison side
 
 test('calendar cancel returns focus to its live opener after a cached refresh',async()=>{
  const f=await setup();try{const opener=f.card.shadowRoot.querySelector('[data-smart-calendar-export="json"]');opener.focus();await open(f);const name=field(f.card,'filename');name.value='calendar-review.json';name.dispatchEvent(new f.w.Event('input'));field(f.card,'refresh').click();await delay();name.focus();name.setSelectionRange(3,8);await f.card._runRefresh();await delay();assert.equal(field(f.card,'filename'),name);assert.equal(name.selectionStart,3);assert.equal(name.selectionEnd,8);field(f.card,'cancel').click();assert.equal(f.card.shadowRoot.activeElement,f.card.shadowRoot.querySelector('[data-smart-calendar-export="json"]'));}finally{f.close();}
+});
+
+for(const format of ['json','csv'])test(`calendar ${format} preserves known-source facts separately from incomplete household totals`,async()=>{
+ const f=await setup(dto=>{
+  dto.status='partial';dto.pricing_status='partial';dto.totals.kwh=null;dto.totals.total_cost=null;
+  dto.known_totals={kwh:'12.25',energy_cost:'3.50',variable_cost:'0',usage_cost:'3.50',fixed_cost:null,total_cost:null,effective_price:'0.285714',currency:'PLN',price_basis:'gross',secret:'NEVER_EXPORT'};
+  dto.known_chart={status:'partial',timezone:'UTC',grain:'hour',coverage_kind:'known_source_readings',bins:[{from:1,to:2,kwh:'0',energy_cost:'0',variable_cost:null,usage_cost:'0',complete:false,measured_sources:1,expected_sources:2,secret:'NEVER_EXPORT'}]};
+ });try{
+  const preview=await open(f,format);assert.doesNotMatch(preview,/NEVER_EXPORT/);
+  if(format==='json'){const p=JSON.parse(preview);assert.equal(p.totals.kwh,null);assert.equal(p.known_totals.kwh,'12.25');assert.equal(p.known_totals.total_cost,null);assert.equal(p.known_chart.coverage_kind,'known_source_readings');assert.equal(p.known_chart.bins[0].kwh,'0');assert.equal(p.known_chart.bins[0].variable_cost,null);assert.equal(p.known_chart.bins[0].measured_sources,1);assert.equal(p.known_chart.bins[0].expected_sources,2);}
+  else {assert.match(preview,/"known_source_total","\/known_totals\/kwh","string","12\.25"/);assert.match(preview,/"known_source_chart","\/known_chart\/bins\/0\/kwh","string","0"/);assert.match(preview,/"\/known_chart\/bins\/0\/variable_cost","null",""/);assert.match(preview,/"\/known_chart\/bins\/0\/expected_sources","number","2"/);}
+ }finally{f.close();}
 });

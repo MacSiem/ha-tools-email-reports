@@ -23,7 +23,7 @@ async function fixture(t, options = {}) {
     const id = timerId++; deadlines.set(id, callback); return -id;
   };
   window.clearTimeout = id => { if (id < 0) deadlines.delete(-id); else nativeClear(id); };
-  window.eval(source);
+  window.eval(options.bundle ? fs.readFileSync(path.join(__dirname, '..', 'ha-tools-email-reports.js'), 'utf8') : source);
   const calls = [], services = [];
   let rows = options.rows || [row()], lists = 0;
   const hass = { user: { id: 'admin-a', is_admin: true }, connected: true, connection: { connected: true },
@@ -274,4 +274,20 @@ test('server DST instants stay distinct in the selected display zone without sch
  const reads=f.calls.length;f.hass.locale.time_format='12';f.card.hass=f.hass;
  cards=f.root.querySelectorAll('.server-schedules > .server-schedule-list > article.schedule-card');assert.match(cards[0].textContent,/02:30.*AM/i);assert.equal(f.calls.length,reads);
  assert.equal(f.services.length,0);assert.equal(f.calls.filter(x=>/set_schedule|send_now/.test(x.type)).length,0);
+});
+
+for (const bundle of [false, true]) for (const scenario of ['complete', 'empty', 'partial']) test(`stored log summary ${bundle ? 'bundle' : 'source'} ${scenario} preserves counts and coverage`, async t => {
+  const complete = scenario !== 'partial', empty = scenario === 'empty';
+  const preview = { cadence: 'weekly', effective_timezone: 'Europe/Warsaw', total: empty ? 0 : 7, unique_problems: empty ? 0 : 2, counts_complete: complete,
+    period: { from: '2026-09-01T00:00:00+00:00', to: '2026-09-08T00:00:00+00:00', semantics: 'previous_completed_calendar_period' },
+    source: { name: 'system_log', count_semantics: 'retained_aggregates', complete, retained_entries: empty ? 0 : 2,
+      coverage: { complete, covered_seconds: complete ? 604800 : 302400, requested_seconds: 604800, resolution: 'minute', aggregation: 'hour' } } };
+  const f = await fixture(t, { preview, bundle }); await f.open(); f.edit(); f.click('schedule-preview'); await settle();
+  const panel = f.root.querySelector('.schedule-preview'); assert.ok(panel);
+  assert.match(panel.textContent, complete ? /Coverage: complete period/ : /Coverage: partial data/);
+  assert.match(panel.textContent, empty ? /0 \/ 0 \/ 0/ : /2 \/ 2 \/ 7/);
+  assert.match(panel.textContent, /2026-09-01/); assert.match(panel.textContent, /2026-09-08/);
+  assert.match(panel.textContent, /stored hourly aggregates/); assert.doesNotMatch(panel.textContent, /last-observed aggregates/);
+  assert.equal(f.card._serverSchedules.model().previewStatus.state, complete ? 'success' : 'partial');
+  assert.equal(f.services.length, 0);
 });

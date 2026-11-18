@@ -1,5 +1,9 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.9.3] - Unreleased
+
+- Include available Energy readings, costs and source coverage in Calendar CSV and JSON exports; keep the full household balance separate.
+
 ## [4.9.2] - 2026-11-03
 
 - Search retained log messages, sources and levels before the card display limit without changing reports or sends.

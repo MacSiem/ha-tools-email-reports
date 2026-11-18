@@ -183,10 +183,10 @@ test('W8 disclosure state survives repaint and clears when the user context chan
   f.card.hass = { ...f.hass, user: { id: 'second-admin', is_admin: true } };
   await settle(); assert.equal(disclosure().open, false);
 });
-test('Bundle source pins match Smart 4.3 and the unchanged Energy compatibility wrapper', () => {
+test('Bundle source pins match the updated Smart Calendar and Energy compatibility wrapper', () => {
   const { createHash } = require('node:crypto');
   for (const [file, hash] of [
-    ['ha-smart-reports.js', 'a4d6123cfe707313e405a5683b4661afba33465b9ce74662df70414efcadbcf9'],
+    ['ha-smart-reports.js', 'b9f51249c9eeb0dd39bf8dcee91bcb38bc62f64cca2a7c9b5a9f3af60e274a16'],
     ['ha-energy-email.js', 'e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5']
   ]) assert.equal(createHash('sha256').update(readFileSync(join(__dirname, '..', file))).digest('hex'), hash);
 });

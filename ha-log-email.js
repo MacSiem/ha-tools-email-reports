@@ -380,13 +380,19 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
           response.source?.name !== 'system_log' || response.source.count_semantics !== 'retained_aggregates' ||
           typeof response.source.complete !== 'boolean' || !Number.isInteger(response.source.retained_entries) ||
           response.source.retained_entries < 0) throw { code: 'invalid_response' };
+        const c = response.source.coverage;
+        const storedCoverage = c && typeof c === 'object' && !Array.isArray(c) &&
+          typeof c.complete === 'boolean' && c.complete === response.source.complete &&
+          Number.isFinite(c.covered_seconds) && c.covered_seconds >= 0 &&
+          Number.isFinite(c.requested_seconds) && c.requested_seconds > 0 && c.covered_seconds <= c.requested_seconds
+          ? { complete: c.complete, covered_seconds: c.covered_seconds, requested_seconds: c.requested_seconds } : null;
         preview = { cadence: response.cadence, total: response.total,
           unique_problems: Number.isInteger(response.unique_problems) && response.unique_problems >= 0 ? response.unique_problems : null,
           counts_complete: response.counts_complete === true,
           period: { from: response.period.from, to: response.period.to, semantics: response.period.semantics },
           effective_timezone: response.effective_timezone,
-          source: { name: response.source.name, complete: response.source.complete, count_semantics: response.source.count_semantics, retained_entries: response.source.retained_entries } };
-        previewStatus = { state: response.source.complete ? (response.source.retained_entries ? 'success' : 'no_data') : 'partial', reason: 'loaded' };
+          source: { name: response.source.name, complete: response.source.complete, count_semantics: response.source.count_semantics, retained_entries: response.source.retained_entries, coverage: storedCoverage } };
+        previewStatus = { state: response.source.complete ? (storedCoverage || response.source.retained_entries ? 'success' : 'no_data') : 'partial', reason: 'loaded' };
       } catch (error) {
         if (epoch !== token.epoch || previewing !== token || !allowed()) return;
         preview = null; previewStatus = { state: 'not_checked', reason: error?.code === 'mail_upgrade_required' ? 'mail_upgrade_required' : unavailable(error) ? 'unavailable' : error?.code === 'request_timeout' ? 'read_timeout' : 'read_failed' };
@@ -2196,7 +2202,7 @@ class HALogEmail extends HTMLElement {
     const preview = p?.html !== undefined ? this._renderMailFrame(p, 'schedule-mail-frame') : p ? `<section class="schedule-preview"><h4>${tr('Podgląd serwerowy', 'Server preview')} — ${_esc(cadence(p.cadence))}</h4>${state(m.previewStatus)}
       ${createUiV3({ language: this._lang }).sourceSummary([
         p.source.name, (pl ? 'Zakres: ' : 'Range: ') + (this._formatUi().pointLabel(p.period.from) || p.period.from) + ' — ' + (this._formatUi().pointLabel(p.period.to) || p.period.to),
-        p.source.complete === false ? (pl ? 'Pokrycie: częściowe dane' : 'Coverage: partial data') : (pl ? 'Pokrycie: kompletność nieustalona' : 'Coverage: completeness unknown')
+        p.source.coverage && p.source.complete ? (pl ? 'Pokrycie: pełny okres' : 'Coverage: complete period') : p.source.complete === false ? (pl ? 'Pokrycie: częściowe dane' : 'Coverage: partial data') : (pl ? 'Pokrycie: kompletność nieustalona' : 'Coverage: completeness unknown')
       ], _esc)}
       ${p.unique_problems == null || p.total == null || p.source.retained_entries == null ? `<p role="status">${tr('Brak danych dla części liczników zachowanych wpisów; nie oznacza to zera.', 'No data for some retained-entry counts; this does not mean zero.')}</p>` : ''}
       <details data-log-disclosure-key="summary-preview"><summary>${tr('Źródło, zakres i ograniczenia', 'Source, range and limitations')}</summary>
@@ -2206,7 +2212,7 @@ class HALogEmail extends HTMLElement {
       <dt>${tr('Źródło / metoda zliczania', 'Source / count semantics')}</dt><dd>${_esc(p.source.name)} / ${tr('zachowane agregaty Home Assistant', 'retained Home Assistant aggregates')}</dd>
       <dt>${tr('Zachowane wpisy / różne problemy / wystąpienia (HA)', 'Retained entries / unique problems / occurrences (HA)')}</dt><dd>${_esc(p.source.retained_entries)} / ${_esc(p.unique_problems ?? tr('Brak danych', 'No data'))} / ${_esc(p.total ?? tr('Brak danych', 'No data'))}</dd></dl>
       <p>${_esc(p.period.from)} / ${_esc(p.period.to)}</p>
-      <p>${tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></details></section>` :
+      <p>${p.source.coverage ? tr('Liczby dotyczą zapisanych godzinowych agregatów. Pokrycie dotyczy obserwacji okresu; podgląd nie wysyła emaila.', 'Counts describe stored hourly aggregates. Coverage describes observation of the period; preview does not send email.') : tr('Zachowane agregaty ostatniej obserwacji, nie pełna historia zdarzeń. Liczniki mogą obejmować całe życie wpisu; brakujące znaczniki czasu ograniczają kompletność. Nie wysyła emaila i nie zapisuje historii ani digestu.', 'Retained last-observed aggregates, not full event history. Counts may cover the lifetime of an entry; missing timestamps limit completeness. This does not send email or write history or a digest.')}</p></details></section>` :
       m.previewStatus.reason !== 'initial' ? `<section class="schedule-preview">${state(m.previewStatus)}<p>${_esc(reason[m.previewStatus.reason] || reason.read_failed)}</p></section>` : '';
     const legacy = ['daily', 'weekly'].map(c => {
       const id = 'automation.ha_tools_log_email_' + c, entity = this._hass?.states?.[id], value = entity?.state;

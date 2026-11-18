@@ -2321,6 +2321,12 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
   // Paired/common measurements may be useful in Comparison, but are a different total.
   const kpiComparison = (snapshot,data=false) => {
     const kind=snapshot.context?.comparison_kind || 'previous', c=snapshot.comparisons?.[kind];
+    if (comparisons[kind] && c?.status==='ready' && c.reason==null && c.comparison_scope==='common_measurements' &&
+        valid(c.current_kwh) && valid(c.baseline_kwh) && valid(c.delta_kwh) && markerSeries(snapshot,kind).reconciles) {
+      const direction=compare(c.delta_kwh,'0'), text=direction<0?t('Decrease','Spadek'):direction>0?t('Increase','Wzrost'):t('No change','Bez zmian');
+      const energy=value=>data?quantity(value):briefEnergy(value);
+      return `${comparisons[kind]} · ${t('Matched readings','Wspólne odczyty')}: ${energy(c.current_kwh)} / ${energy(c.baseline_kwh)} · ${text} ${data?quantity(c.delta_kwh,'kWh',true):briefEnergy(c.delta_kwh,true)}${valid(c.percent)?' · '+(data?quantity(c.percent,'%',true):briefNumber(c.percent,0,0,true)+'%'):''}`;
+    }
     if (!comparisons[kind] || c?.status!=='ready' || c.reason!=null || c.comparison_scope!=='calendar_totals' ||
         snapshot.coverage?.complete!==true || snapshot.totals?.measurement_complete!==true ||
         !valid(c.current_kwh) || !valid(snapshot.totals.kwh) || compare(c.current_kwh,snapshot.totals.kwh)!==0 || !valid(c.delta_kwh))
@@ -2338,9 +2344,10 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     return ui.clock(peak.start,ui.timeZone!==snapshot.period?.timezone || repeated);
   };
   const tiles = (snapshot, overview=false, data=false) => {
-    const total=snapshot.totals || {}, supplied=overview&&Object.hasOwn(snapshot,'period_summary'), native=nativeComplete(snapshot);
+    const known=snapshot.coverage?.complete!==true&&snapshot.known_totals&&typeof snapshot.known_totals==='object'?snapshot.known_totals:null;
+    const total=known || snapshot.totals || {}, supplied=overview&&Object.hasOwn(snapshot,'period_summary'), native=known?null:nativeComplete(snapshot);
     const base=[
-      [t('Consumption','Zużycie'),data?quantity(total.kwh):briefEnergy(total.kwh)], [native?nativeCostLabel():t('Cost','Koszt'),native?nativeMoney(native):data?money(total.total_cost,total.currency):briefMoney(total.total_cost,total.currency)],
+      [known?t('Known source readings','Znane odczyty źródeł'):t('Consumption','Zużycie'),data?quantity(total.kwh):briefEnergy(total.kwh)], [native?nativeCostLabel():known?t('Known readings cost','Koszt znanych odczytów'):t('Cost','Koszt'),native?nativeMoney(native):data?money(known?total.usage_cost:total.total_cost,total.currency):briefMoney(known?total.usage_cost:total.total_cost,total.currency)],
       native ? [t('Source','Źródło'),'Home Assistant Energy'] : [t('Effective price','Cena efektywna'),(data?money(total.effective_price,total.currency):briefRate(total.effective_price,total.currency)) + (valid(total.effective_price) ? '/kWh' : '')],
       [t('Measurement coverage','Pokrycie pomiarów'),coverage(snapshot.coverage)]
     ];
@@ -2620,7 +2627,9 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     return {groupReady,markup:`<p class="analysis-flow-heading">${esc(snapshot.groups?.energy_domain==='grid_import'?t('Grid import','Import z sieci'):t('Measured energy','Zmierzona energia'))} · ${esc(briefEnergy(total))}</p>${diagram}<div class="analysis-mobile-composition"><h4>${esc(t('From','Skąd'))}</h4>${bar('source',sources,!!source)}${source?legend(sources):`<p>${esc(t('Tariff-zone breakdown unavailable','Brak rozbicia stref taryfy'))}</p>`}<h4>${esc(t('To','Dokąd'))}</h4>${bar('destination',destinations,groupReady)}</div>${groupReady&&source?`<details data-analysis-flow-details><summary>${esc(t('How to read the flow','Jak czytać przepływ'))}</summary>`:''}<p class="analysis-note" data-analysis-flow-note>${esc(note)}</p>${groupReady&&source?'</details>':''}`};
   };
   const chart = (snapshot, options) => {
-    const bins=snapshot.chart?.bins || [],currency=snapshot.totals?.currency;
+    const bins=snapshot.chart?.bins || [],currency=snapshot.known_totals?.currency || snapshot.totals?.currency;
+    const knownBins=Array.isArray(snapshot.known_chart?.bins)?snapshot.known_chart.bins:[];
+    const knownByFrame=new Map(); for(const row of knownBins){const key=bounds(row.start,row.end)?.key;if(key)knownByFrame.set(key,knownByFrame.has(key)?null:row);}
     const allowed=snapshot.period?.kind==='day'?['previous','same_weekday','mean7']:['previous','year_ago'];
     const requested=options.comparison||snapshot.context?.comparison_kind,kind=allowed.includes(requested)?requested:'previous';
     const series=markerSeries(snapshot,kind);
@@ -2628,8 +2637,9 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     const axisLabels=new Map(axisTicks.map(tick=>[tick.index,tick.label]));
     const majorTicks=new Set([axisTicks[0]?.index,axisTicks[Math.floor((axisTicks.length-1)/2)]?.index,axisTicks.at(-1)?.index].filter(index=>index!==undefined));
     const points=bins.map((row,index)=>{
-      const key=bounds(row.start,row.end)?.key,marker=series.markers.get(key);
-      return {row,index,marker,label:ui.pointLabel(row.start)||unknown(),current:series.common?marker?.current??null:marker?.current??row.kwh,visualCurrent:marker?.current??row.kwh};
+      const key=bounds(row.start,row.end)?.key,marker=series.markers.get(key),known=knownByFrame.get(key);
+      const shown=known&&valid(known.kwh)?known.kwh:known&&valid(known.recorded_kwh)?known.recorded_kwh:row.kwh;
+      return {row,index,marker,known,label:ui.pointLabel(row.start)||unknown(),current:series.common?marker?.current??null:marker?.current??shown,visualCurrent:marker?.current??shown};
     });
     const max=maximum(points.flatMap(p=>[p.visualCurrent,p.marker?.baseline]));
     const rangeMarkup=marker=>marker?marker.ranges.map(p=>`<span data-analysis-baseline-range>${esc(intervalText(p))}</span>`).join('<br>'):esc(unknown());
@@ -2682,7 +2692,7 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     rule.priority == null ? '' : `${t('priority','priorytet')} ${number(rule.priority)}`
   ].filter(Boolean).join(' · ');
   const ratesView = (snapshot,options={}) => {
-    const total=snapshot.totals || {}, groups=snapshot.groups || {}, data=options.view==='data';
+    const total=snapshot.coverage?.complete!==true&&snapshot.known_totals&&typeof snapshot.known_totals==='object'?snapshot.known_totals:(snapshot.totals || {}), groups=snapshot.groups || {}, data=options.view==='data';
     const summaryMoney=(value,currency,signed=false)=>data?money(value,currency,signed):briefMoney(value,currency,signed);
     const summaryRate=(value,currency)=>data?money(value,currency):briefRate(value,currency);
     const summaryEnergy=value=>data?quantity(value):briefEnergy(value);
@@ -2694,7 +2704,9 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     // producer values passed directly to the shared formatter, never added here.
     const costReady=currencyKnown&&total.measurement_complete===true&&total.pricing_complete===true&&total.components_complete===true&&
       positive(total.total_cost)&&componentKeys.every(key=>positive(total[key])&&compare(total[key],total.total_cost)<=0);
-    const componentLegend=componentKeys.map(key=>`<li><span class="analysis-rate76-swatch analysis-rate76-${key}" aria-hidden="true"></span><span>${esc(costLabels[key])}: <strong>${esc(summaryMoney(total[key],total.currency))}</strong></span></li>`).join('');
+    const knownScope=total===snapshot.known_totals;
+    const scopedCostLabels=knownScope?{...costLabels,total_cost:t('Known readings with fixed fees','Znane odczyty z opłatami stałymi')}:costLabels;
+    const componentLegend=componentKeys.map(key=>`<li><span class="analysis-rate76-swatch analysis-rate76-${key}" aria-hidden="true"></span><span>${esc(scopedCostLabels[key])}: <strong>${esc(summaryMoney(total[key],total.currency))}</strong></span></li>`).join('');
     const costGraphic=!data&&costReady?`<div class="analysis-rate76-track" aria-hidden="true">${componentKeys.map(key=>`<span class="analysis-rate76-${key}" data-analysis-rate76-bar style="width:${width(total[key],Number(total.total_cost))}%" title="${esc(costLabels[key]+': '+summaryMoney(total[key],total.currency))}"></span>`).join('')}</div>`:'';
     const visibleRates=(snapshot.rates || []).map(rate=>{
       const profile=rate.profile || {},zones=profile.zones || [],legacy=rate.rate_semantics==='legacy_combined';
@@ -2754,10 +2766,10 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     const alternativeRows=(snapshot.alternatives || []).filter(row=>row.tariff_id!==snapshot.active_tariff_id);
     const comparable=row=>row.comparable===true&&currencyKnown&&row.currency===total.currency&&row.price_basis===total.price_basis;
     const alternatives=alternativeRows.map(row=>[esc(row.tariff_name || t('Unnamed tariff','Taryfa bez nazwy')),esc(quantity(row.kwh)),esc(money(row.total_cost,row.currency)),esc(comparable(row)?money(row.delta_cost,row.currency,true):unknown())]);
-    const costTable=table(t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'),[t('Component','Składnik'),t('Cost','Koszt')],Object.entries(costLabels).map(([key,label])=>[esc(label),esc(money(total[key],total.currency))]),'data-analysis-cost-components class="analysis-rate76-table"');
+    const costTable=table(knownScope?t('Cost of known readings','Koszt znanych odczytów'):t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'),[t('Component','Składnik'),t('Cost','Koszt')],(knownScope?[...Object.entries(scopedCostLabels).filter(([key])=>key!=='total_cost'),['usage_cost',t('Known readings cost','Koszt znanych odczytów')],['total_cost',scopedCostLabels.total_cost]]:Object.entries(scopedCostLabels)).map(([key,label])=>[esc(label),esc(money(total[key],total.currency))]),'data-analysis-cost-components class="analysis-rate76-table"');
     return `<section class="analysis-rate76" data-analysis-rates><div class="analysis-rate76-heading"><h3>${esc(t('Rates and costs','Stawki i koszty'))}</h3><div class="analysis-switch">${button('view','chart',t('Chart','Wykres'),!data)}${button('view','data',t('Data','Dane'),data)}</div></div>
       <div class="analysis-rate76-current" data-analysis-rate76-current>${visibleRates || `<p>${esc(unknown())}</p>`}</div>
-      <div class="analysis-rate76-layout"><div><section class="analysis-rate76-card" data-analysis-rate76-cost><h4>${esc(t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'))}</h4><p><strong>${esc(summaryMoney(total.total_cost,total.currency))}</strong> · ${esc(t('Effective price','Cena efektywna'))}: ${esc(summaryRate(total.effective_price,total.currency))}${valid(total.effective_price)?'/kWh':''}</p>
+      <div class="analysis-rate76-layout"><div><section class="analysis-rate76-card" data-analysis-rate76-cost><h4>${esc(knownScope?scopedCostLabels.total_cost:t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'))}</h4><p><strong>${esc(summaryMoney(total.total_cost,total.currency))}</strong> · ${esc(t('Effective price','Cena efektywna'))}: ${esc(summaryRate(total.effective_price,total.currency))}${valid(total.effective_price)?'/kWh':''}</p>
         ${costGraphic}<ul class="analysis-rate76-legend">${componentLegend}</ul>
         ${!costReady?`<p class="analysis-rate76-meta">${esc(t('A complete positive cost breakdown is unavailable. Available amounts retain their signs.','Pełne dodatnie rozbicie kosztu jest niedostępne. Dostępne kwoty zachowują swój znak.'))}</p>`:compare(total.total_cost,'0')===0?`<p class="analysis-rate76-meta">${esc(t('Zero cost','Koszt zerowy'))}</p>`:''}
         ${data?costTable:`<details class="analysis-rate76-history"><summary>${esc(t('Exact cost components','Dokładne składniki kosztu'))}</summary>${costTable}</details>`}
@@ -2984,6 +2996,10 @@ function projectSmartCalendarV53(snapshot, {includePrivate = false} = {}) {
   const zoneBreakdown = {status,reason,scope,fixed_fee_scope:scope,currency,price_basis:basis,reconciles_recorded_kwh:bool,reconciles_known_costs:bool,zones:[zoneRow],unattributed:{recorded_kwh:amount,measured_seconds:num,missing_seconds:num,known_costs:known,reasons:[reason]}};
   const bin = {...costs,...fields('from to fold end_fold expected_seconds measured_seconds',num),...fields('start end local_start local_end',timestamp),...fields('kwh recorded_kwh',amount),complete:bool,zone_breakdown:zoneBreakdown};
   const chart = {status,reason,timezone:tz,grain:choice(['hour','day','month']),fixed_fee_scope:scope,coverage_kind:choice(['complete_household_hours']),bins:[bin]};
+  // Known-source measurements are distinct from the complete-household balance.
+  const knownTotals = {...costFields,kwh:amount,currency,price_basis:basis};
+  const knownBin = {...bin,...fields('measured_sources expected_sources',num)};
+  const knownChart = {...chart,coverage_kind:choice(['known_source_readings']),bins:[knownBin]};
   const group = {...costs,...fields('kwh recorded_kwh measured_kwh',amount),measurement_complete:bool,coverage,name:label,statistic_id:source,device_id:source,area_id:area,area_name:label,floor_id:floor,floor_name:label,parent_id:source,included_in:source,included_in_stat:source,attribution:choice(['measured','nested','unassigned','unmeasured'])};
   const mapOf = (key,shape) => ({mapKey:key,mapShape:shape});
   const groupsMeta = {revision:num,registry_revision:num,captured_at:timestamp,membership_as_of:timestamp,membership_mode:choice(['current_snapshot']),floor_supported:bool,energy_domain:choice(['grid_import']),partition_complete:bool,currency,price_basis:basis,issues:[reason],rounding,domain_provenance:choice(['ha_energy_grid_only_configuration']),reconciles_household_delta:bool,reconciles_household_cost_delta:bool,attribution_label:choice(['current_registry_assignments'])};
@@ -2995,7 +3011,7 @@ function projectSmartCalendarV53(snapshot, {includePrivate = false} = {}) {
   const rate = {zone_usage_rates:[{zone_id:zone,usage_rate:amount}],version_id:version,valid_from:date,valid_to:date,validity_clock:choice(['civil','fixed']),rate_semantics:choice(['components','legacy_combined']),currency,price_basis:basis,fixed_monthly:components,legacy_combined_monthly:amount,clock,profile:{schema:num,currency,timezone:tz,priceBasis:basis,defaultZone:zone,clock,zones:[{id:zone,label,energyRate:amount,variableRate:amount,classification:choice(['cheap','expensive'])}],rules:[rule],exceptions:[rule],dynamic:{intervals:[{from:timestamp,to:timestamp,energyRate:amount,variableRate:amount}]}},provenance:choice(['configured_valid_from'])};
   const summary = {zone_breakdown:zoneBreakdown,window:{start:timestamp,end:timestamp,timezone:tz},cheap_zone_share:{status,reason,scope,classification_source:choice(['explicit_tariff_classification']),...fields('known_cheap_kwh classified_kwh total_kwh ratio',amount)},peak_hour:{status,reason,scope,id:v=>typeof v==='string'&&/^\d+:\d+$/.test(v)?v:null,...fields('from to fold end_fold tied_count',num),...fields('start end local_start local_end',timestamp),kwh:amount}};
   const native = {schema:num,source:choice(['ha_energy']),period_cost:{status,amount,recorded_amount:amount,currency,scope,coverage,components_status:choice(['unknown']),fixed_fees_status:choice(['unknown']),reason},current_prices:[{source_id:source,origin:choice(['number_energy_price','entity_energy_price']),price:amount,currency,energy_unit:choice(['kWh']),observed_at:timestamp,historical:bool,status,reason}],provenance:[{energy_source_id:source,cost_statistic_id:source}]};
-  const analysis = {generated_at:timestamp,period,coverage,status,pricing_status:status,totals,chart,groups,rates:[rate],fees,rounding,period_summary:summary,native_pricing:native,active_tariff_id:tariff,issues:[reason]};
+  const analysis = {generated_at:timestamp,period,coverage,status,pricing_status:status,totals,chart,known_totals:knownTotals,known_chart:knownChart,groups,rates:[rate],fees,rounding,period_summary:summary,native_pricing:native,active_tariff_id:tariff,issues:[reason]};
   const delta = {status,reason,comparison_scope:scope,...fields('current_kwh baseline_kwh own_current_kwh own_baseline_kwh full_current_kwh full_baseline_kwh delta_kwh percent delta_energy_cost delta_variable_cost delta_legacy_combined_cost delta_usage_cost delta_fixed_cost',amount),coverage:comparisonCoverage,costs:{current:costs,baseline:costs,status,reason,comparison_scope:scope,delta_cost:amount,delta_fixed_cost:amount}};
   const instant = v => typeof v==='number'?num(v):timestamp(v);
   const range = {from:instant,to:instant};
@@ -3025,7 +3041,7 @@ function projectSmartCalendarV53(snapshot, {includePrivate = false} = {}) {
   output.private_fields = includePrivate === true;
   output.export_scope = {policy:'smart-calendar-report-v1',result_state:snapshot.status==='ready' && snapshot.pricing_status==='ready'?'success':'partial',source:'already_read_calendar_snapshot',cost_semantics:'tariff_book_totals_and_separate_native_recorded_cost',fixed_fees:'household_period_only',recalculated:false,truncated:false};
   const rows=[];
-  const rowType = path => path[0]==='comparisons' ? 'comparison' : ({totals:'household_total',chart:'chart_fact',groups:'group_fact',rates:'rate_version',fees:'fee_component',period_summary:'period_fact',native_pricing:'native_ha_cost',alternatives:'alternative_tariff',period:'period',coverage:'coverage'})[path[0]] || 'report_metadata';
+  const rowType = path => path[0]==='comparisons' ? 'comparison' : ({totals:'household_total',chart:'chart_fact',known_totals:'known_source_total',known_chart:'known_source_chart',groups:'group_fact',rates:'rate_version',fees:'fee_component',period_summary:'period_fact',native_pricing:'native_ha_cost',alternatives:'alternative_tariff',period:'period',coverage:'coverage'})[path[0]] || 'report_metadata';
   // Traverse ONLY newly constructed allowlisted output; no raw DTO flattening.
   // JSON-pointer paths escape IDs and retain array positions; type distinguishes null/0/empty.
   const capture = (value,path=[]) => {
@@ -6292,7 +6308,7 @@ dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw
       this._exportDialog = createExportDialog({root:this.shadowRoot,createUiV3,getLanguage:()=>languageOf(this._hass),
         getContext:()=>this._reviewedExportContext(),formats:['json','csv'],defaultFormat:format,
         defaultFilename:this._analysisMode==='calendar'?`smart-calendar-report.${format}`:`smart-report-${this._period}.${format}`,
-        policy:{id:this._analysisMode==='calendar'?'smart-calendar-report-v1':'smart-measured-report-v1',allowlistedFields:this._analysisMode==='calendar'?['schema_version','report_kind','period','coverage','totals','chart','groups','rates','fees','comparisons','native_pricing','export_scope']:['schema_version','generated_at','period','source_mode','energy','comparison','export_scope'],
+        policy:{id:this._analysisMode==='calendar'?'smart-calendar-report-v1':'smart-measured-report-v1',allowlistedFields:this._analysisMode==='calendar'?['schema_version','report_kind','period','coverage','totals','chart','known_totals','known_chart','groups','rates','fees','comparisons','native_pricing','export_scope']:['schema_version','generated_at','period','source_mode','energy','comparison','export_scope'],
           neverInclude:['tokens','users','addresses','raw_config','profiles','drafts','raw_errors']},
         buildPayload:options=>this._buildReviewedExport(options),
         performDownload:({blob,filename,signal})=>{

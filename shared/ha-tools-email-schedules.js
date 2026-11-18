@@ -199,13 +199,19 @@ export function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 80
           response.source?.name !== 'system_log' || response.source.count_semantics !== 'retained_aggregates' ||
           typeof response.source.complete !== 'boolean' || !Number.isInteger(response.source.retained_entries) ||
           response.source.retained_entries < 0) throw { code: 'invalid_response' };
+        const c = response.source.coverage;
+        const storedCoverage = c && typeof c === 'object' && !Array.isArray(c) &&
+          typeof c.complete === 'boolean' && c.complete === response.source.complete &&
+          Number.isFinite(c.covered_seconds) && c.covered_seconds >= 0 &&
+          Number.isFinite(c.requested_seconds) && c.requested_seconds > 0 && c.covered_seconds <= c.requested_seconds
+          ? { complete: c.complete, covered_seconds: c.covered_seconds, requested_seconds: c.requested_seconds } : null;
         preview = { cadence: response.cadence, total: response.total,
           unique_problems: Number.isInteger(response.unique_problems) && response.unique_problems >= 0 ? response.unique_problems : null,
           counts_complete: response.counts_complete === true,
           period: { from: response.period.from, to: response.period.to, semantics: response.period.semantics },
           effective_timezone: response.effective_timezone,
-          source: { name: response.source.name, complete: response.source.complete, count_semantics: response.source.count_semantics, retained_entries: response.source.retained_entries } };
-        previewStatus = { state: response.source.complete ? (response.source.retained_entries ? 'success' : 'no_data') : 'partial', reason: 'loaded' };
+          source: { name: response.source.name, complete: response.source.complete, count_semantics: response.source.count_semantics, retained_entries: response.source.retained_entries, coverage: storedCoverage } };
+        previewStatus = { state: response.source.complete ? (storedCoverage || response.source.retained_entries ? 'success' : 'no_data') : 'partial', reason: 'loaded' };
       } catch (error) {
         if (epoch !== token.epoch || previewing !== token || !allowed()) return;
         preview = null; previewStatus = { state: 'not_checked', reason: error?.code === 'mail_upgrade_required' ? 'mail_upgrade_required' : unavailable(error) ? 'unavailable' : error?.code === 'request_timeout' ? 'read_timeout' : 'read_failed' };

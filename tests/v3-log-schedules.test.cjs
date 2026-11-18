@@ -288,6 +288,6 @@ for (const bundle of [false, true]) for (const scenario of ['complete', 'empty',
   assert.match(panel.textContent, empty ? /0 \/ 0 \/ 0/ : /2 \/ 2 \/ 7/);
   assert.match(panel.textContent, /2026-09-01/); assert.match(panel.textContent, /2026-09-08/);
   assert.match(panel.textContent, /stored hourly aggregates/); assert.doesNotMatch(panel.textContent, /last-observed aggregates/);
-  assert.equal(f.card._mailPreview.model().previewStatus.state, complete ? 'success' : 'partial');
+  assert.equal(f.card._serverSchedules.model().previewStatus.state, complete ? 'success' : 'partial');
   assert.equal(f.services.length, 0);
 });

@@ -5,9 +5,9 @@ const fixture=require('./fixtures/analysis-calendar-v53.json');
 const {featureCapabilities}=require('./helpers/smart-reports-feature-capabilities.cjs');
 const {loadRuntime,makeHass,explicitConfig,delay}=require('./helpers/smart-reports-harness.cjs');
 const clone=x=>JSON.parse(JSON.stringify(x));
-async function setup(response=()=>clone(fixture),config={}) {
+async function setup(response=()=>clone(fixture),config={},timeZone='UTC') {
  const dom=loadRuntime(),w=dom.window,card=w.document.createElement('ha-smart-reports'),listeners=new Set();let removed=0;
- const hass=makeHass({timeZone:'UTC',deferred:{'ha_tools_email/feature_capabilities':()=>featureCapabilities(hass.user.is_admin===true),'ha_tools_email/energy_analysis':m=>Promise.resolve().then(()=>response(m))}});
+ const hass=makeHass({timeZone,deferred:{'ha_tools_email/feature_capabilities':()=>featureCapabilities(hass.user.is_admin===true),'ha_tools_email/energy_analysis':m=>Promise.resolve().then(()=>response(m))}});
  hass.user.is_active=true;hass.connection={connected:true,subscribeMessage:async(fn,m)=>{assert.equal(m.type,'ha_tools_email/subscribe_analysis_updates');listeners.add(fn);return ()=>{listeners.delete(fn);removed++;};}};
  card.setConfig(explicitConfig(config));w.document.body.append(card);card.hass=hass;
  if(card._refreshTimer!==null){w.clearTimeout(card._refreshTimer);card._refreshTimer=null;}
@@ -149,4 +149,11 @@ for(const scenario of ['partial','unmatched','zero','missing'])test(`calendar kn
   const flow=r.querySelector('[data-analysis-flow]');if(flow)assert.doesNotMatch(flow.textContent,/2[,.\s]?064/);
   r.querySelector('[data-analysis-action="section"][data-analysis-value="rates"]').click();assert.match(r.textContent,/Cost of known readings/);
  }finally{h.close();}
+});
+
+test('calendar renders the native 43/44 synthetic staging projection',async()=>{
+ const projection=require('./fixtures/calendar-known-43-44.json');
+ const h=await setup(()=>{const d=clone(fixture);Object.assign(d,clone(projection));d.status='partial';d.generated_at='2026-11-18T12:00:00+00:00';d.context.measurement_timezone='Europe/Warsaw';d.context.period_kind='day';d.context.comparison_kind='previous';d.groups.partition_complete=false;return d;},{},'Europe/Warsaw');
+ try{await h.open();const r=h.card.shadowRoot,tiles=r.querySelector('.analysis-tiles');assert.ok(tiles);assert.match(tiles.textContent,/Known source readings/);assert.match(tiles.textContent,/2[,.\s]?064/);assert.match(tiles.textContent,/1[,.\s]?032/);assert.match(tiles.textContent,/Matched readings/);assert.match(tiles.textContent,/100%/);assert.equal(r.querySelectorAll('[data-analysis-marker]').length,24);}
+ finally{h.close();}
 });

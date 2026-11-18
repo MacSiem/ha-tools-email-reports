@@ -1,7 +1,7 @@
 /* GENERATED FILE — DO NOT EDIT
- * HA Tools Email Reports bundle v4.9.3
+ * HA Tools Email Reports bundle v4.9.4
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
- * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:654112f26f7a55bc286698940b353ede97349710c549d3b1d5c7be9c40548052
+ * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:20a93907cf84cb5d9b24ee01061c2b9854e60c8aba41d41fa473fe8fd2ed1a1b
  * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:b9f51249c9eeb0dd39bf8dcee91bcb38bc62f64cca2a7c9b5a9f3af60e274a16
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
@@ -345,7 +345,8 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
     let done = false;
     const finish = (fn, value) => { if (done) return; done = true; clearTimeout(timer); cancellations.delete(cancel); fn(value); };
     const cancel = () => finish(reject, { code: 'stale_context' });
-    const timer = setTimeout(() => finish(reject, { code: 'request_timeout' }), timeoutMs);
+    const deadline = message.type === 'ha_tools_email/preview_energy_report' && message.cadence === 'monthly' ? 120000 : timeoutMs;
+    const timer = setTimeout(() => finish(reject, { code: 'request_timeout' }), deadline);
     cancellations.add(cancel);
     if (holder) holder.cancel = cancel;
     Promise.resolve().then(() => { if (!done && allowed()) return source.callWS(message); if (!done) throw { code: 'stale_context' }; }).then(value => finish(resolve, value), error => finish(reject, error));
@@ -482,11 +483,16 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
         const response = await request(source, message, token);
         if (epoch !== token.epoch || previewing !== token || !allowed()) return;
         if (message.format === 'mail') {
+          const rawPeriod = response?.period;
+          const from = rawPeriod?.from ?? (kind === 'energy_report' ? rawPeriod?.start : undefined);
+          const to = rawPeriod?.to ?? (kind === 'energy_report' ? rawPeriod?.end : undefined);
           if (!response || response.cadence !== message.cadence || typeof response.subject !== 'string' ||
             typeof response.body !== 'string' || typeof response.html !== 'string' || response.html.length > 2000000 ||
-            typeof response.period?.from !== 'string' || typeof response.period?.to !== 'string' ||
-            !Number.isFinite(Date.parse(response.period.from)) || !Number.isFinite(Date.parse(response.period.to)) ||
-            Date.parse(response.period.from) >= Date.parse(response.period.to) ||
+            typeof from !== 'string' || typeof to !== 'string' ||
+            !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to)) ||
+            Date.parse(from) >= Date.parse(to) ||
+            (rawPeriod.from != null && rawPeriod.start != null && Date.parse(rawPeriod.from) !== Date.parse(rawPeriod.start)) ||
+            (rawPeriod.to != null && rawPeriod.end != null && Date.parse(rawPeriod.to) !== Date.parse(rawPeriod.end)) ||
             response.period.semantics !== (message.period_mode === 'calendar' ? 'previous_completed_calendar_period' :
               kind === 'log_digest' ? 'rolling_retained_last_observed' : 'rolling_completed_hours') ||
             typeof response.source !== 'object' || response.source === null ||
@@ -494,7 +500,7 @@ function createHaToolsEmailSchedules({ changed = () => {}, timeoutMs = 8000,
             typeof response.source.complete !== 'boolean' ||
             typeof response.generated_at !== 'string' || !Number.isFinite(Date.parse(response.generated_at))) throw { code: 'invalid_response' };
           preview = { cadence: response.cadence, subject: response.subject, body: response.body, html: response.html,
-            period: { ...response.period }, source: { ...response.source }, generated_at: response.generated_at,
+            period: { ...response.period, from, to }, source: { ...response.source }, generated_at: response.generated_at,
             effective_timezone: response.effective_timezone };
           previewStatus = { state: response.source.status === 'no_data' ? 'no_data' : response.source.complete === false ? 'partial' : 'success', reason: 'loaded' }; return;
         }
@@ -9824,6 +9830,6 @@ dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw
   console.info(`%c HA-SMART-REPORTS %c v${VERSION} `, 'color: white; background: #2563eb; font-weight: 700;', 'color: #2563eb; background: #dbeafe;');
 })();
 
-console.info('%c HA Tools — Email & Reports %c v4.9.3 — Log Email + Smart Reports (+ Energy Email compatibility)',
+console.info('%c HA Tools — Email & Reports %c v4.9.4 — Log Email + Smart Reports (+ Energy Email compatibility)',
   'background:#3b82f6;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px 0 0 4px;',
   'background:#e0f2fe;color:#1e40af;font-weight:bold;padding:2px 6px;border-radius:0 4px 4px 0;');

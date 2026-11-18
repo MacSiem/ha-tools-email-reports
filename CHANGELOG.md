@@ -1,6 +1,10 @@
 # Changelog — HA Tools — Email & Reports
 
-## [4.9.3] - Unreleased
+## [4.9.4] - Unreleased
+
+- Allow more time for monthly Energy previews and accept native report period boundaries.
+
+## [4.9.3] - 2026-11-18
 
 - Include available Energy readings, costs and source coverage in Calendar CSV and JSON exports; keep the full household balance separate.
 

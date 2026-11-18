@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.9.3
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:654112f26f7a55bc286698940b353ede97349710c549d3b1d5c7be9c40548052
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:89dd94e3dc7e37d31e703bb0a708bdd1071cd093ba9e13139eddf8e270aa83a9
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:b9f51249c9eeb0dd39bf8dcee91bcb38bc62f64cca2a7c9b5a9f3af60e274a16
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -5778,7 +5778,7 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     const known=snapshot.coverage?.complete!==true&&snapshot.known_totals&&typeof snapshot.known_totals==='object'?snapshot.known_totals:null;
     const total=known || snapshot.totals || {}, supplied=overview&&Object.hasOwn(snapshot,'period_summary'), native=known?null:nativeComplete(snapshot);
     const base=[
-      [known?t('Known source readings','Znane odczyty źródeł'):t('Consumption','Zużycie'),data?quantity(total.kwh):briefEnergy(total.kwh)], [native?nativeCostLabel():known?t('Known readings cost','Koszt znanych odczytów'):t('Cost','Koszt'),native?nativeMoney(native):data?money(total.total_cost,total.currency):briefMoney(total.total_cost,total.currency)],
+      [known?t('Known source readings','Znane odczyty źródeł'):t('Consumption','Zużycie'),data?quantity(total.kwh):briefEnergy(total.kwh)], [native?nativeCostLabel():known?t('Known readings cost','Koszt znanych odczytów'):t('Cost','Koszt'),native?nativeMoney(native):data?money(known?total.usage_cost:total.total_cost,total.currency):briefMoney(known?total.usage_cost:total.total_cost,total.currency)],
       native ? [t('Source','Źródło'),'Home Assistant Energy'] : [t('Effective price','Cena efektywna'),(data?money(total.effective_price,total.currency):briefRate(total.effective_price,total.currency)) + (valid(total.effective_price) ? '/kWh' : '')],
       [t('Measurement coverage','Pokrycie pomiarów'),coverage(snapshot.coverage)]
     ];
@@ -6135,7 +6135,9 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     // producer values passed directly to the shared formatter, never added here.
     const costReady=currencyKnown&&total.measurement_complete===true&&total.pricing_complete===true&&total.components_complete===true&&
       positive(total.total_cost)&&componentKeys.every(key=>positive(total[key])&&compare(total[key],total.total_cost)<=0);
-    const componentLegend=componentKeys.map(key=>`<li><span class="analysis-rate76-swatch analysis-rate76-${key}" aria-hidden="true"></span><span>${esc(costLabels[key])}: <strong>${esc(summaryMoney(total[key],total.currency))}</strong></span></li>`).join('');
+    const knownScope=total===snapshot.known_totals;
+    const scopedCostLabels=knownScope?{...costLabels,total_cost:t('Known readings with fixed fees','Znane odczyty z opłatami stałymi')}:costLabels;
+    const componentLegend=componentKeys.map(key=>`<li><span class="analysis-rate76-swatch analysis-rate76-${key}" aria-hidden="true"></span><span>${esc(scopedCostLabels[key])}: <strong>${esc(summaryMoney(total[key],total.currency))}</strong></span></li>`).join('');
     const costGraphic=!data&&costReady?`<div class="analysis-rate76-track" aria-hidden="true">${componentKeys.map(key=>`<span class="analysis-rate76-${key}" data-analysis-rate76-bar style="width:${width(total[key],Number(total.total_cost))}%" title="${esc(costLabels[key]+': '+summaryMoney(total[key],total.currency))}"></span>`).join('')}</div>`:'';
     const visibleRates=(snapshot.rates || []).map(rate=>{
       const profile=rate.profile || {},zones=profile.zones || [],legacy=rate.rate_semantics==='legacy_combined';
@@ -6195,10 +6197,10 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     const alternativeRows=(snapshot.alternatives || []).filter(row=>row.tariff_id!==snapshot.active_tariff_id);
     const comparable=row=>row.comparable===true&&currencyKnown&&row.currency===total.currency&&row.price_basis===total.price_basis;
     const alternatives=alternativeRows.map(row=>[esc(row.tariff_name || t('Unnamed tariff','Taryfa bez nazwy')),esc(quantity(row.kwh)),esc(money(row.total_cost,row.currency)),esc(comparable(row)?money(row.delta_cost,row.currency,true):unknown())]);
-    const costTable=table(total===snapshot.known_totals?t('Cost of known readings','Koszt znanych odczytów'):t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'),[t('Component','Składnik'),t('Cost','Koszt')],Object.entries(costLabels).map(([key,label])=>[esc(label),esc(money(total[key],total.currency))]),'data-analysis-cost-components class="analysis-rate76-table"');
+    const costTable=table(knownScope?t('Cost of known readings','Koszt znanych odczytów'):t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'),[t('Component','Składnik'),t('Cost','Koszt')],(knownScope?[...Object.entries(scopedCostLabels).filter(([key])=>key!=='total_cost'),['usage_cost',t('Known readings cost','Koszt znanych odczytów')],['total_cost',scopedCostLabels.total_cost]]:Object.entries(scopedCostLabels)).map(([key,label])=>[esc(label),esc(money(total[key],total.currency))]),'data-analysis-cost-components class="analysis-rate76-table"');
     return `<section class="analysis-rate76" data-analysis-rates><div class="analysis-rate76-heading"><h3>${esc(t('Rates and costs','Stawki i koszty'))}</h3><div class="analysis-switch">${button('view','chart',t('Chart','Wykres'),!data)}${button('view','data',t('Data','Dane'),data)}</div></div>
       <div class="analysis-rate76-current" data-analysis-rate76-current>${visibleRates || `<p>${esc(unknown())}</p>`}</div>
-      <div class="analysis-rate76-layout"><div><section class="analysis-rate76-card" data-analysis-rate76-cost><h4>${esc(t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'))}</h4><p><strong>${esc(summaryMoney(total.total_cost,total.currency))}</strong> · ${esc(t('Effective price','Cena efektywna'))}: ${esc(summaryRate(total.effective_price,total.currency))}${valid(total.effective_price)?'/kWh':''}</p>
+      <div class="analysis-rate76-layout"><div><section class="analysis-rate76-card" data-analysis-rate76-cost><h4>${esc(knownScope?scopedCostLabels.total_cost:t('Household cost for selected period','Koszt gospodarstwa za wybrany okres'))}</h4><p><strong>${esc(summaryMoney(total.total_cost,total.currency))}</strong> · ${esc(t('Effective price','Cena efektywna'))}: ${esc(summaryRate(total.effective_price,total.currency))}${valid(total.effective_price)?'/kWh':''}</p>
         ${costGraphic}<ul class="analysis-rate76-legend">${componentLegend}</ul>
         ${!costReady?`<p class="analysis-rate76-meta">${esc(t('A complete positive cost breakdown is unavailable. Available amounts retain their signs.','Pełne dodatnie rozbicie kosztu jest niedostępne. Dostępne kwoty zachowują swój znak.'))}</p>`:compare(total.total_cost,'0')===0?`<p class="analysis-rate76-meta">${esc(t('Zero cost','Koszt zerowy'))}</p>`:''}
         ${data?costTable:`<details class="analysis-rate76-history"><summary>${esc(t('Exact cost components','Dokładne składniki kosztu'))}</summary>${costTable}</details>`}

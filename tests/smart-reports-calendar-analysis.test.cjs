@@ -134,7 +134,7 @@ for(const scenario of ['partial','unmatched','zero','missing'])test(`calendar kn
  const h=await setup(()=>{const d=clone(fixture),c=d.comparisons.previous;
   d.status='partial';d.pricing_status='partial';d.coverage={complete:false,ratio:43/44,expected_source_seconds:3801600,measured_source_seconds:3715200};
   d.totals={...d.totals,kwh:null,total_cost:null,effective_price:null,measurement_complete:false};
-  d.known_totals={kwh:scenario==='zero'?'0':scenario==='missing'?null:'2064',energy_cost:'1032',variable_cost:'0',usage_cost:scenario==='missing'?null:'1032',fixed_cost:'0',total_cost:scenario==='zero'?'0':scenario==='missing'?null:'1032',effective_price:scenario==='zero'||scenario==='missing'?null:'0.5',currency:'PLN',price_basis:'gross'};
+  d.known_totals={kwh:scenario==='zero'?'0':scenario==='missing'?null:'2064',energy_cost:'1032',variable_cost:'0',usage_cost:scenario==='missing'?null:'1032',fixed_cost:'20',total_cost:scenario==='zero'?'20':scenario==='missing'?null:'1052',effective_price:scenario==='zero'||scenario==='missing'?null:'0.5',currency:'PLN',price_basis:'gross'};
   d.groups.unmeasured.kwh=null;d.groups.unmeasured.usage_cost=null;d.groups.partition_complete=false;
   d.known_chart={status:'ready',grain:'hour',timezone:'UTC',coverage_kind:'known_source_readings',bins:d.chart.bins.map(b=>({...b,kwh:scenario==='zero'?'0':scenario==='missing'?null:'86',complete:false,measured_sources:43,expected_sources:44}))};
   d.chart.bins.forEach(b=>{b.kwh=null;b.complete=false;b.usage_cost=null;});
@@ -142,12 +142,12 @@ for(const scenario of ['partial','unmatched','zero','missing'])test(`calendar kn
   c.chart={status:'ready',reason:null,timezone:'UTC',grain:'hour',comparison_scope:'common_measurements',coverage_kind:'selected_household_comparison_mask',fixed_fee_scope:'household_period_only',reconciles_comparison_energy:scenario!=='unmatched',markers:d.chart.bins.map(b=>({status:'ready',reason:null,current_from:b.from,current_to:b.to,baseline_from:b.from-86400000,baseline_to:b.to-86400000,current_kwh:'86',baseline_kwh:'43',mapping:'common_source_frame_intersection',expected_current_source_seconds:158400,expected_baseline_source_seconds:158400,selected_current_source_seconds:154800,selected_baseline_source_seconds:154800}))};
   return d;});try{await h.open();const r=h.card.shadowRoot,tiles=r.querySelector('.analysis-tiles'),text=tiles.textContent;
   assert.match(text,/Known source readings/);assert.match(text,/Known readings cost/);
-  if(scenario==='partial'){assert.match(text,/2[,.\s]?064/);assert.match(text,/1[,.\s]?032/);assert.match(text,/Matched readings/);assert.match(text,/100%/);}
+  if(scenario==='partial'){assert.match(text,/2[,.\s]?064/);assert.match(tiles.querySelectorAll('.analysis-tile')[1].textContent,/1[,.\s]?032/);assert.doesNotMatch(tiles.querySelectorAll('.analysis-tile')[1].textContent,/1[,.\s]?052/);assert.match(text,/Matched readings/);assert.match(text,/100%/);}
   if(scenario==='unmatched')assert.match(text,/No comparable baseline/);
   if(scenario==='zero')assert.match(text,/0(?:\.0)? kWh/);
   if(scenario==='missing')assert.match(text,/No data/);
   const flow=r.querySelector('[data-analysis-flow]');if(flow)assert.doesNotMatch(flow.textContent,/2[,.\s]?064/);
-  r.querySelector('[data-analysis-action="section"][data-analysis-value="rates"]').click();assert.match(r.textContent,/Cost of known readings/);
+  r.querySelector('[data-analysis-action="section"][data-analysis-value="rates"]').click();const cost=r.querySelector('[data-analysis-rate76-cost]');assert.match(cost.querySelector('h4').textContent,/Known readings with fixed fees/);assert.doesNotMatch(cost.textContent,/Household cost for selected period/);if(scenario==='partial'){assert.match(cost.querySelector('strong').textContent,/1[,.\s]?052/);const rows=[...cost.querySelectorAll('tr')].map(x=>x.textContent);assert.ok(rows.some(x=>/Fixed fees for period/.test(x)&&/20/.test(x)));assert.ok(rows.some(x=>/Known readings cost/.test(x)&&/1[,.\s]?032/.test(x)));assert.ok(rows.some(x=>/Known readings with fixed fees/.test(x)&&/1[,.\s]?052/.test(x)));}
  }finally{h.close();}
 });
 

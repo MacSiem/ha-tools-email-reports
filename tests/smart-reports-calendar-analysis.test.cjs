@@ -157,3 +157,14 @@ test('calendar renders the native 43/44 synthetic staging projection',async()=>{
  try{await h.open();const r=h.card.shadowRoot,tiles=r.querySelector('.analysis-tiles');assert.ok(tiles);assert.match(tiles.textContent,/Known source readings/);assert.match(tiles.textContent,/2[,.\s]?064/);assert.match(tiles.textContent,/1[,.\s]?032/);assert.match(tiles.textContent,/Matched readings/);assert.match(tiles.textContent,/100%/);assert.equal(r.querySelectorAll('[data-analysis-marker]').length,24);}
  finally{h.close();}
 });
+
+test('diagnostics show only real gaps and do not change chart or comparison',async()=>{
+ const make=(gap,lang='en')=>()=>{const d=clone(fixture);d.coverage={...d.coverage,complete:!gap,expected_source_seconds:158400,measured_source_seconds:gap?154800:158400};d.configuration_facts={grid_is_devices:gap,private_id:'DO_NOT_SHOW'};return d;};
+ const complete=await setup(make(false)),partial=await setup(make(true));
+ try{await complete.open();await partial.open();const a=complete.card.shadowRoot,b=partial.card.shadowRoot;
+  assert.equal(a.querySelector('[data-analysis-diagnostics]'),null);assert.doesNotMatch(a.querySelector('.analysis-period').textContent,/100%/);assert.doesNotMatch(a.querySelector('.analysis-tiles').textContent,/Measurement coverage/);
+  assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/Missing measurement time.*1.*source hours/);assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/also configured as a device/);assert.doesNotMatch(b.textContent,/DO_NOT_SHOW/);
+  assert.equal(a.querySelector('[data-analysis-chart]').innerHTML,b.querySelector('[data-analysis-chart]').innerHTML);
+  partial.hass.language='pl';partial.card.hass=partial.hass;assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/Brakujący czas pomiarów/);
+ }finally{complete.close();partial.close();}
+});

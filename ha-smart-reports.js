@@ -2348,8 +2348,7 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
     const total=known || snapshot.totals || {}, supplied=overview&&Object.hasOwn(snapshot,'period_summary'), native=known?null:nativeComplete(snapshot);
     const base=[
       [known?t('Known source readings','Znane odczyty źródeł'):t('Consumption','Zużycie'),data?quantity(total.kwh):briefEnergy(total.kwh)], [native?nativeCostLabel():known?t('Known readings cost','Koszt znanych odczytów'):t('Cost','Koszt'),native?nativeMoney(native):data?money(known?total.usage_cost:total.total_cost,total.currency):briefMoney(known?total.usage_cost:total.total_cost,total.currency)],
-      native ? [t('Source','Źródło'),'Home Assistant Energy'] : [t('Effective price','Cena efektywna'),(data?money(total.effective_price,total.currency):briefRate(total.effective_price,total.currency)) + (valid(total.effective_price) ? '/kWh' : '')],
-      [t('Measurement coverage','Pokrycie pomiarów'),coverage(snapshot.coverage)]
+      native ? [t('Source','Źródło'),'Home Assistant Energy'] : [t('Effective price','Cena efektywna'),(data?money(total.effective_price,total.currency):briefRate(total.effective_price,total.currency)) + (valid(total.effective_price) ? '/kWh' : '')]
     ];
     if(!supplied)return `<div class="analysis-tiles">${base.map(([label,value],index)=>`<div class="analysis-tile ${index<2?'analysis-tile-primary':'analysis-tile-secondary'}"><span>${esc(label)}</span><strong>${esc(value)}</strong>${index===0?`<span data-analysis-kpi-comparison>${esc(kpiComparison(snapshot,data))}</span>`:''}</div>`).join('')}</div>`;
     const frame=periodWindow(snapshot),share=shareProof(snapshot,frame),peak=peakProof(snapshot,frame);
@@ -2815,9 +2814,11 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
       <details data-analysis-calendar-options><summary>${esc(t('Date and comparison','Data i porównanie'))}</summary><div class="analysis-calendar-fields">
       <label>${esc(t('Calendar date','Data kalendarzowa'))}<input type="date" data-analysis-action="anchor" data-analysis-value="${esc(anchor)}" value="${esc(anchor)}"></label>
       ${select('comparison',t('Compare with','Porównaj z'),allowed.map(key=>[key,comparisons[key]]),kind)}</div></details></div>`;
-    return `<div class="energy-analysis-v53"><div class="analysis-period-controls"><div class="analysis-switch" role="group" aria-label="${esc(t('Period','Okres'))}">${periods.map(([value,label])=>button('period',value,label,period.kind===value)).join('')}</div><p class="analysis-period">${esc(range(period))} · ${esc(ui.timeZone)} · ${esc(coverage(snapshot.coverage))}</p></div>
+    const c=snapshot.coverage, missing=Number.isFinite(c?.expected_source_seconds)&&Number.isFinite(c?.measured_source_seconds)&&c.expected_source_seconds>c.measured_source_seconds&&c.measured_source_seconds>=0;
+    const diagnostic=missing||snapshot.configuration_facts?.grid_is_devices===true ? `<details data-analysis-diagnostics><summary>${esc(t('Data details','Szczegóły danych'))}</summary>${missing?`<p>${esc(t('Missing measurement time','Brakujący czas pomiarów'))}: ${esc(number((c.expected_source_seconds-c.measured_source_seconds)/3600))} ${esc(t('source hours','godzin źródeł'))}</p>`:''}${snapshot.configuration_facts?.grid_is_devices===true?`<p>${esc(t('A grid source is also configured as a device.','Źródło sieci jest też skonfigurowane jako urządzenie.'))}</p>`:''}</details>` : '';
+    return `<div class="energy-analysis-v53"><div class="analysis-period-controls"><div class="analysis-switch" role="group" aria-label="${esc(t('Period','Okres'))}">${periods.map(([value,label])=>button('period',value,label,period.kind===value)).join('')}</div><p class="analysis-period">${esc(range(period))} · ${esc(ui.timeZone)}</p></div>
       ${section==='overview'?tiles(snapshot,true,options.view==='data')+nativeDetails(snapshot):''}${section==='rates'?filters+ratesView(snapshot,options):section==='comparison'?comparisonView(snapshot,options,kind)+filters:chart(snapshot,options)+filters+groupsView(snapshot,level,options)}
-      <details data-analysis-source-details><summary>${esc(t('Source and time details','Źródło i szczegóły czasu'))}</summary><p>${esc(t('Measurement calendar','Kalendarz pomiarów'))}: ${esc(period.timezone||unknown())}</p><p>UTC: ${esc(period.start)} – ${esc(period.end)}</p></details></div>`;
+      ${diagnostic}<details data-analysis-source-details><summary>${esc(t('Source and time details','Źródło i szczegóły czasu'))}</summary><p>${esc(t('Measurement calendar','Kalendarz pomiarów'))}: ${esc(period.timezone||unknown())}</p><p>UTC: ${esc(period.start)} – ${esc(period.end)}</p></details></div>`;
   };
   const styles = () => `
 

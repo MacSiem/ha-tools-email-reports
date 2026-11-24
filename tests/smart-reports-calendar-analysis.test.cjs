@@ -170,6 +170,15 @@ test('diagnostics show only real gaps and do not change chart or comparison',asy
  }finally{complete.close();partial.close();}
 });
 
+test('a missing grid configuration is shown with retained report values',async()=>{
+ const h=await setup(()=>{const d=clone(fixture);d.configuration_facts={grid_missing:true};return d;});
+ try{await h.open();const root=h.card.shadowRoot;
+  assert.match(root.querySelector('[data-analysis-diagnostics]').textContent,/No grid import meter is configured/);
+  assert.ok(root.querySelector('.analysis-tiles'));
+  assert.ok(root.querySelector('[data-analysis-chart]'));
+ }finally{h.close();}
+});
+
 test('explicit missing-grid error is disclosed without a report',async()=>{
  const h=await setup(()=>Promise.reject({code:'energy_not_configured'}));try{await h.open();const detail=h.card.shadowRoot.querySelector('[data-analysis-diagnostics]');assert.ok(detail);assert.match(detail.textContent,/No grid import meter is configured/);assert.equal(h.card.shadowRoot.querySelector('.analysis-tiles'),null);}finally{h.close();}
 });

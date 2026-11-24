@@ -2,7 +2,7 @@
  * HA Tools Email Reports bundle v4.9.5
  * ha-energy-email.js — MacSiem/ha-tools-email-reports/ha-energy-email.js v4.5.1 sha256:e0c46328584577871e891487d8cd327211b063c0e24bd49fab47de0c6977bad5
  * ha-log-email.js — MacSiem/ha-tools-email-reports/ha-log-email.js v4.8.2 sha256:20a93907cf84cb5d9b24ee01061c2b9854e60c8aba41d41fa473fe8fd2ed1a1b
- * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:5074e84100460f4870cafbe5de6aca67243fee1f61517a62eb8995dc84e9a80a
+ * ha-smart-reports.js — MacSiem/ha-smart-reports/ha-smart-reports.js v4.3.0 sha256:d393fbd455d2461ae5a1a38c8a22480573f74b4da6a958c821389bbc5378e612
  */
 /* HA Tools split — ha-energy-email compatibility shim v4.5.1 (2026-09-29) */
 (function() {
@@ -6252,7 +6252,15 @@ function createEnergyAnalysisViewV53({card, format} = {}) {
       ${select('comparison',t('Compare with','Porównaj z'),allowed.map(key=>[key,comparisons[key]]),kind)}</div></details></div>`;
     const c=snapshot.coverage, missing=Number.isFinite(c?.expected_source_seconds)&&Number.isFinite(c?.measured_source_seconds)&&c.expected_source_seconds>c.measured_source_seconds&&c.measured_source_seconds>=0;
     const balanceIssues=(snapshot.groups?.issues||[]).filter(issue=>['consumption_exceeds_grid_import','children_exceed_parent'].includes(issue?.reason));
-    const diagnostic=missing||snapshot.configuration_facts?.grid_is_devices===true||balanceIssues.length ? `<details data-analysis-diagnostics><summary>${esc(t('Data details','Szczegóły danych'))}</summary>${missing?`<p>${esc(t('Missing measurement time','Brakujący czas pomiarów'))}: ${esc(number(c.measured_source_seconds/3600))} / ${esc(number(c.expected_source_seconds/3600))} ${esc(t('source hours measured / expected','godzin źródeł zmierzonych / oczekiwanych'))}</p>`:''}${snapshot.configuration_facts?.grid_is_devices===true?`<p>${esc(t('The same sources are configured for grid import and devices.','Te same źródła skonfigurowano dla importu z sieci i urządzeń.'))}</p>`:''}${balanceIssues.some(i=>i.reason==='consumption_exceeds_grid_import')?`<p>${esc(t('Device consumption exceeds grid import.','Zużycie urządzeń przekracza import z sieci.'))}</p>`:''}${balanceIssues.some(i=>i.reason==='children_exceed_parent')?`<p>${esc(t('Child device consumption exceeds its parent.','Zużycie urządzeń podrzędnych przekracza zużycie urządzenia nadrzędnego.'))}</p>`:''}</details>` : '';
+    const diagnostics = [];
+    if (missing) diagnostics.push(t('Missing measurement time','Brakujący czas pomiarów') + ': ' +
+      number(c.measured_source_seconds/3600) + ' / ' + number(c.expected_source_seconds/3600) + ' ' +
+      t('source hours measured / expected','godzin źródeł zmierzonych / oczekiwanych'));
+    if (snapshot.configuration_facts?.grid_missing===true) diagnostics.push(t('No grid import meter is configured.','Nie skonfigurowano licznika importu z sieci.'));
+    if (snapshot.configuration_facts?.grid_is_devices===true) diagnostics.push(t('The same sources are configured for grid import and devices.','Te same źródła skonfigurowano dla importu z sieci i urządzeń.'));
+    if (balanceIssues.some(i=>i.reason==='consumption_exceeds_grid_import')) diagnostics.push(t('Device consumption exceeds grid import.','Zużycie urządzeń przekracza import z sieci.'));
+    if (balanceIssues.some(i=>i.reason==='children_exceed_parent')) diagnostics.push(t('Child device consumption exceeds its parent.','Zużycie urządzeń podrzędnych przekracza zużycie urządzenia nadrzędnego.'));
+    const diagnostic = diagnostics.length ? `<details data-analysis-diagnostics><summary>${esc(t('Data details','Szczegóły danych'))}</summary>${diagnostics.map(line=>`<p>${esc(line)}</p>`).join('')}</details>` : '';
     return `<div class="energy-analysis-v53"><div class="analysis-period-controls"><div class="analysis-switch" role="group" aria-label="${esc(t('Period','Okres'))}">${periods.map(([value,label])=>button('period',value,label,period.kind===value)).join('')}</div><p class="analysis-period">${esc(range(period))} · ${esc(ui.timeZone)}</p></div>
       ${section==='overview'?tiles(snapshot,true,options.view==='data')+nativeDetails(snapshot):''}${section==='rates'?filters+ratesView(snapshot,options):section==='comparison'?comparisonView(snapshot,options,kind)+filters:chart(snapshot,options)+filters+groupsView(snapshot,level,options)}
       ${diagnostic}<details data-analysis-source-details><summary>${esc(t('Source and time details','Źródło i szczegóły czasu'))}</summary><p>${esc(t('Measurement calendar','Kalendarz pomiarów'))}: ${esc(period.timezone||unknown())}</p><p>UTC: ${esc(period.start)} – ${esc(period.end)}</p></details></div>`;

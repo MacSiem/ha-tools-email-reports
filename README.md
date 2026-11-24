@@ -106,7 +106,7 @@ advance the scheduled digest's last-seen keys. Future or missing timestamps are
 excluded. Retention and `max_entries` (1–1000, per severity list) can limit the
 report; aggregate counts are not exact events or complete historical coverage.
 
-This README documents the 4.9.4 bundle. Check the installed bundle version when
+This README documents the 4.9.5 bundle. Check the installed bundle version when
 comparing it with an older release; update through HACS and reload the browser.
 
 ### What is automatic vs. manual

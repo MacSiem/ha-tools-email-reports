@@ -1,5 +1,9 @@
 # Changelog — HA Tools — Email & Reports
 
+## [4.9.5] - Unreleased
+
+- Move actual Energy measurement gaps into a discreet data detail.
+
 ## [4.9.4] - Unreleased
 
 - Allow more time for monthly Energy previews and accept native report period boundaries.

@@ -157,3 +157,28 @@ test('calendar renders the native 43/44 synthetic staging projection',async()=>{
  try{await h.open();const r=h.card.shadowRoot,tiles=r.querySelector('.analysis-tiles');assert.ok(tiles);assert.match(tiles.textContent,/Known source readings/);assert.match(tiles.textContent,/2[,.\s]?064/);assert.match(tiles.textContent,/1[,.\s]?032/);assert.match(tiles.textContent,/Matched readings/);assert.match(tiles.textContent,/100%/);assert.equal(r.querySelectorAll('[data-analysis-marker]').length,24);}
  finally{h.close();}
 });
+
+test('diagnostics show only real gaps and do not change chart or comparison',async()=>{
+ const make=(gap,lang='en')=>()=>{const d=clone(fixture);d.coverage={...d.coverage,complete:!gap,expected_source_seconds:158400,measured_source_seconds:gap?154800:158400};d.configuration_facts={grid_is_devices:gap,private_id:'DO_NOT_SHOW'};if(gap)d.groups.issues=[{reason:'consumption_exceeds_grid_import'}];return d;};
+ const complete=await setup(make(false)),partial=await setup(make(true));
+ try{await complete.open();await partial.open();const a=complete.card.shadowRoot,b=partial.card.shadowRoot;
+  assert.equal(a.querySelector('[data-analysis-diagnostics]'),null);assert.doesNotMatch(a.querySelector('.analysis-period').textContent,/100%/);assert.doesNotMatch(a.querySelector('.analysis-tiles').textContent,/Measurement coverage/);
+  assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/Missing measurement time.*43.*44.*source hours/);assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/same sources are configured for grid import and devices/);assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/Device consumption exceeds grid import/);assert.doesNotMatch(b.textContent,/DO_NOT_SHOW/);
+  assert.equal(a.querySelector('[data-analysis-chart]').innerHTML,b.querySelector('[data-analysis-chart]').innerHTML);
+  for(const section of ['rates','comparison']){a.querySelector(`[data-analysis-action="section"][data-analysis-value="${section}"]`).click();assert.doesNotMatch(a.textContent,/Current coverage|Baseline coverage|Measurement coverage/);assert.doesNotMatch(a.querySelector('[data-analysis-rate76-groups]')?.textContent||'',/100%/);}
+  partial.hass.language='pl';partial.card.hass=partial.hass;assert.match(b.querySelector('[data-analysis-diagnostics]').textContent,/Brakujący czas pomiarów/);
+ }finally{complete.close();partial.close();}
+});
+
+test('a missing grid configuration is shown with retained report values',async()=>{
+ const h=await setup(()=>{const d=clone(fixture);d.configuration_facts={grid_missing:true};return d;});
+ try{await h.open();const root=h.card.shadowRoot;
+  assert.match(root.querySelector('[data-analysis-diagnostics]').textContent,/No grid import meter is configured/);
+  assert.ok(root.querySelector('.analysis-tiles'));
+  assert.ok(root.querySelector('[data-analysis-chart]'));
+ }finally{h.close();}
+});
+
+test('explicit missing-grid error is disclosed without a report',async()=>{
+ const h=await setup(()=>Promise.reject({code:'energy_not_configured'}));try{await h.open();const detail=h.card.shadowRoot.querySelector('[data-analysis-diagnostics]');assert.ok(detail);assert.match(detail.textContent,/No grid import meter is configured/);assert.equal(h.card.shadowRoot.querySelector('.analysis-tiles'),null);}finally{h.close();}
+});
